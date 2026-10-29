@@ -1,0 +1,132 @@
+﻿
+29/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Plano de Desenvolvimento `backend-api`
+---------------------------------------------------------------------------------------------------
+
+Chat-Gpt disse:
+
+Vamos executar a Etapa 1 — Preparação do ambiente do projeto `backend-api` da aplicação JulyTurAdm,
+passo a passo, no seu Linux Mint e usando o VS Code.
+
+O objetivo desta primeira etapa é deixar o ambiente pronto para que, nas etapas seguintes, possamos
+criar as entidades JPA, implementar a autenticação com Spring Security e configurar as permissões por módulo.
+
+Etapa 1 — Plano de execução
+
+1.1 — Verificar as ferramentas instaladas
+
+Java 17, Maven, Docker, VS Code e Git.
+
+1.2 — Verificar o MySQL 8 e o banco `bd_paytur`
+
+Confirmar que o servidor está funcionando e que o banco existe.
+
+1.3 — Conferir o projeto Maven
+
+Revisar o `pom.xml`, a estrutura de pastas e as dependências do Spring Boot 3.
+
+1.4 — Executar a aplicação
+
+Iniciar o Spring Boot e confirmar a conexão com o MySQL.
+
+Vamos começar somente pela Etapa 1.1. Assim, identificamos o que já está instalado antes de alterar qualquer configuração.
+
+
+---------------------------------------------------------------------------------------------------
+1.1 — Verificar as ferramentas instaladas
+
+Abra o Terminal do Linux Mint ou o terminal integrado do VS Code. Copie e execute os comandos abaixo, um de cada vez.
+
+
+Passo A — Verificar Java 17
+
+```
+java -version
+```
+
+Depois:
+
+```
+javac -version
+```
+
+O resultado esperado é uma versão `17.x`. Se aparecer outra versão, vamos verificar antes de modificar o ambiente.
+
+### Passo B — Verificar Maven
+
+```
+mvn -version
+```
+
+Confirme se o Maven está instalado e se utiliza o Java 17.
+
+---
+
+Passo C — Verificar Docker e MySQL
+
+```
+docker --version
+```
+
+```
+docker compose version
+```
+
+```
+docker ps
+```
+
+O último comando mostra os containers em execução. Se aparecer uma mensagem de erro, não altere
+nada ainda; precisamos identificar a causa.
+
+---
+
+Passo D — Verificar Git e VS Code
+
+```
+git --version
+```
+
+```
+code --version
+```
+
+Se algum comando não for reconhecido, anote qual deles falhou.
+
+---
+
+Passo E — Conferir o sistema operacional
+
+```
+cat /etc/os-release
+```
+
+E:
+
+```
+uname -r
+```
+
+---------------------------------------------------------------------------------------------------
+Como me enviar os resultados
+
+Execute os comandos e copie as saídas para esta conversa. Pode enviar tudo de uma vez, mesmo que algum comando apresente erro.
+
+Resultados do seu ambiente Linux
+
+Analisar resultados e continuar
+
+Importante: por enquanto, não instale nem atualize nada.
+
+Primeiro vamos confirmar o estado atual do ambiente; depois avançaremos para a verificação do 
+projeto Maven e do banco `bd_paytur`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+-------------------------------------------------fim-----------------------------------------------
+
+

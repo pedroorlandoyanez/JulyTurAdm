@@ -1,0 +1,127 @@
+﻿
+28/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Plano de Desenvolvimento `backend-api`
+---------------------------------------------------------------------------------------------------
+
+Chat-Gpt disse:
+
+O próximo passo técnico que recomendo é montar a primeira versão compilável do `backend-api`, com `pom.xml`,
+entidades JPA, repositórios, `SecurityConfig`, autenticação e testes básicos, antes de implementar o CRUD
+de usuários e a administração dos perfis pelo RH.
+
+Se quiser, também posso ajudar a organizar esse desenvolvimento em etapas e oferecer lembretes para
+retomar o projeto posteriormente.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Sim, me ajude a organizar esse desenvolvimento em etapas e envie lembretes para retomar o projeto posteriormente.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Vamos organizar o desenvolvimento do `backend-api` como um projeto profissional, com etapas pequenas,
+verificáveis e progressivas.
+
+A ideia é construir primeiro uma base compilável e segura, antes de avançar para o cadastro de colaboradores
+e os módulos financeiros do `JulyTurAdm`.
+
+Localização do projeto: /home/pedro/Documentos/peter/VsCodeProject/Projetc/JulyTurAdm
+
+Nome do projeto: backend-api
+
+1. Plano de desenvolvimento do `backend-api`
+
+Etapa 1 — Preparação do ambiente
+
+Primeira etapa
+
+Objetivo: garantir que a base do projeto esteja correta.
+
+- Conferir Java 17, Maven, Docker e MySQL 8.
+- Revisar o `pom.xml` e as versões compatíveis com Spring Boot 3.
+- Validar a conexão com o banco `bd_paytur`.
+- Definir a estrutura de pacotes e configurações.
+  Critério de conclusão: aplicação inicia e conecta ao banco.
+
+Etapa 2 — Modelagem JPA
+
+Objetivo: mapear as cinco tabelas.
+
+- Entidades `User`, `Role` e `Permission`.
+- Relacionamentos N:N com `users_roles` e `roles_permissions`.
+- Repositórios Spring Data JPA.
+- Testes de leitura dos perfis e permissões.
+  Critério de conclusão: os relacionamentos funcionam sem duplicidade ou erros de carregamento.
+
+Etapa 3 — Autenticação
+
+- Configurar `SecurityConfig`.
+- Implementar `CustomUserDetailsService`.
+- Configurar `PasswordEncoder`.
+- Validar e-mail, senha e conta desabilitada.
+  Critério de conclusão: somente usuários válidos conseguem autenticar.
+
+Etapa 4 — Autorização granular
+
+- Converter perfis em autoridades `ROLE_...`.
+- Carregar todas as permissões dos perfis.
+- Habilitar `@EnableMethodSecurity`.
+- Proteger endpoints com `@PreAuthorize`.
+  Critério de conclusão: consultas, inserções, atualizações e exclusões respeitam as permissões do banco.
+
+Etapa 5 — Administrador Master e RH
+
+- Provisionar o primeiro administrador por processo restrito.
+- Implementar cadastro e atualização de usuários.
+- Controlar a atribuição de perfis.
+- Impedir que o RH conceda privilégios administrativos indevidos.
+  Critério de conclusão: cada operador administra somente os acessos permitidos.
+
+Etapa 6 — Testes e preparação para produção
+
+- Testes de autenticação e autorização.
+- Testes de integração com MySQL.
+- Tratamento de respostas HTTP 401 e 403.
+- Revisão de logs, auditoria e proteção de dados.
+  Critério de conclusão: comportamento de segurança validado antes da integração aos módulos de negócio.
+
+2. Como vamos acompanhar o progresso
+
+Em cada sessão, seguiremos este método:
+
+1. Implementar uma parte pequena do projeto.
+2. Explicar o código Java e as decisões arquiteturais.
+3. Executar os comandos no seu ambiente Linux Mint e VS Code.
+4. Analisar erros de compilação e corrigir os problemas.
+5. Confirmar os testes antes de passar para a próxima etapa.
+
+Não vamos avançar para o CRUD de usuários antes de validar a autenticação e a autorização.
+Também manteremos as convenções de permissões que você definiu, como `CONTAS_PAGAR:SELECT` e `CONTAS_PAGAR:UPDATE`.
+
+---------------------------------------------------------------------------------------------------
+3. Configurar os lembretes
+
+Posso configurar lembretes recorrentes para retomar o desenvolvimento.
+Só preciso definir com você o horário mais conveniente.
+
+Quando deseja retomar o projeto? Amanha
+
+Horário de Brasília. O lembrete ajudará você a retomar a próxima etapa pendente.
+
+Frequência:
+Todos os dias
+
+Horário:
+09h — manhã OK
+
+Confirmar lembrete
+
+Assim, o projeto terá um roteiro de execução e um lembrete para você retomar o trabalho sem precisar
+reorganizar tudo a cada sessão.
+
+-------------------------------------------------fim-----------------------------------------------
+
+

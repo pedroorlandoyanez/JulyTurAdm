@@ -1,0 +1,90 @@
+﻿
+24/10/2026
+
+---------------------------------------------------------------------------------------------------
+Erro, Configurar Collection Postman
+---------------------------------------------------------------------------------------------------
+
+Acessar a conta:
+pedroorlandoyanez@gmail.com
+13975$Inf
+
+Workspace.: APIJulyTurAdm
+Collection: Collection_Backend_APIJulyTurAdm
+
+Acesse a minha conta na plataforma Postman, acesse a workspace "APIJulyTurAdm", entrei na collection "Collection_Backend_APIJulyTurAdm".
+Dentro da collection foram criados 3 endpoints (Permissões,Grupos e Usuários):
+-Cada cabeçalho de cada endpoint foi configurado com os valores:
+Key: Content-Type e Value: application/json
+Cada Corpo da Requisição de cada endpoint foi configurado com a opção raw (em formato texto puro) e o JSON enviado pelo Gemini.
+Cada requisição na collection foi salva.
+
+
+1. Configurar a URL e o Método
+
+Defina o verbo HTTP como POST.
+
+No campo da URL, insira exatamente:
+
+Exemplo:
+
+http://localhost:8081/api/permissoes
+
+---
+
+2. Configurar os Headers (Cabeçalhos)
+
+Vá até a aba Headers logo abaixo da URL e adicione o seguinte par de chave-valor (se já não estiver automático):
+
+Key: Content-Type
+
+Value: application/json
+
+---
+
+3. Configurar o Body (Corpo da Requisição)
+
+Vá até a aba Body (ao lado de Headers):
+
+Selecione a opção raw (em formato texto puro).
+
+No seletor à direita que vai aparecer (onde costuma estar escrito Text), mude para JSON.
+
+Cole o seguinte JSON de exemplo (que representa a primeira permissão do sistema):
+
+exemplo:
+{
+  "nomeExibicao": "Gerenciar Usuários e RH",
+  "nomeLogico": "ROLE_GERENCIAR_RH"
+}
+
+---
+
+Estrutura de metodos:
+
++--Collection_Backend_APIJulyTurAdm (Collection)
+  +--Adm (pasta)
+    +-- Permissoes (pasta)
+        +-- add_permissao (request)
+        +-- queryAll_permissoes (request)
+        +-- update_permissao (request)
+        +-- delete_permissao (request)
+
+    +-- Grupos (pasta)
+        +-- add_grupo (request)
+        +-- queryAll_grupos (request)
+        +-- update_grupo (request)
+        +-- delete_grupo (request)
+
+    +-- Usuarios (pasta)
+        +-- add_usuario (request)
+        +-- queryAll_usuarios (request)
+        +-- update_usuario (request)
+        +-- delete_usuario (request)
+
+
+SUCESSO.
+
+-------------------------------------------------fim-----------------------------------------------
+
+

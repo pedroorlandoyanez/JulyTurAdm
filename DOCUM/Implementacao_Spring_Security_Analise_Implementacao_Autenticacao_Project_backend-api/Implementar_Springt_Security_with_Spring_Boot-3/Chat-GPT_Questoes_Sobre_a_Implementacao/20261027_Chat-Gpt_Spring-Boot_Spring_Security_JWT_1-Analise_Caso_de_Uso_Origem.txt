@@ -1,0 +1,570 @@
+﻿
+27/10/2026
+
+--------------------------------------------------------------------------------
+Chat-Gpt 1-Caso de uso para adaptar a estrutura de tabelas ao nosso perfil.
+--------------------------------------------------------------------------------
+
+Nome do projeto backend: backend-api
+Tecnologia Principal: Maven, Java 17, Lombok, Spring Boot 3.5, Docker com o container do
+Banco de dado Mysql 8.
+Base de dados: "bd_paytur"
+Foco Inicial: Estrutura de autenticação com Spring Security para Autenticação, administração de usuarios, permissoes e grupos de permissoes.
+
+Localização do projeto backend:
+/home/pedro/Documentos/peter/ANTIGRAVITE_GOOGLE/projetos-antigravity/JulyTurAdm
+
+-------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+# Relatório técnico — Modelagem de usuários, perfis e permissões com Spring Security
+
+Projeto: `backend-api` · Java 17 · Maven · Spring Boot 3 · MySQL 8 · Docker
+
+O objetivo é estruturar a autenticação e a autorização do sistema `JulyTurAdm`, utilizando o Spring Security 7, com usuários persistidos no banco `bd_paytur`, perfis de acesso (Roles) e permissões granulares (Authorities).
+
+A análise considera o modelo de negócio descrito: o DBA prepara o acesso inicial, o Administrador Master estabelece o acesso do setor de Recursos Humanos (RH), e o RH cadastra os colaboradores e associa seus acessos aos módulos correspondentes, como Contas a Pagar, Cobrança, Contabilidade e Reservas.
+
+Minha recomendação principal: manter as cinco tabelas propostas, corrigir algumas inconsistências no SQL e implementar a autorização em duas camadas: perfis funcionais para agrupar responsabilidades e permissões granulares para determinar as operações permitidas.
+
+Essa estrutura permite evoluir a aplicação sem precisar criar um mecanismo de segurança diferente para cada módulo.
+
+## 1. Arquitetura conceitual
+
+Usuário (`users`)
+
+Identidade, e-mail, senha criptografada e situação da conta
+
+N:N — `users_roles`
+
+Perfil / Role (`roles`)
+
+Agrupa responsabilidades, por exemplo `ROLE_CONTAS_PAGAR`
+
+N:N — `roles_permissions`
+
+Permissão (`permissions`)
+
+Define operações específicas, por exemplo `contas-pagar:UPDATE`
+
+O fluxo de autorização será:
+
+1. O usuário apresenta suas credenciais.
+2. O Spring Security autentica o usuário usando o `UserDetailsService` e um `PasswordEncoder`.
+3. A aplicação carrega os perfis e as permissões associados ao usuário.
+4. O Spring Security cria as `GrantedAuthority` correspondentes.
+5. As regras de segurança verificam se o usuário pode executar a operação solicitada.
+
+Distinção fundamental: autenticação responde quem é o usuário?; autorização responde o que esse usuário pode fazer?
+
+## 2. Análise das cinco tabelas
+
+### 2.1. Tabela `users` — cadastro de usuários
+
+O modelo proposto contém os campos necessários para a identidade e o estado da conta, mas existe uma inconsistência importante no SQL:
+
+```
+`user_name` varchar(255) NOT NULL,
+...
+UNIQUE KEY `UK_users_email` (`email`)
+```
+
+A coluna `email` é referenciada pelo índice, mas não foi declarada na tabela. Como sua intenção é utilizar o e-mail como identificador único de login, recomendo padronizar o nome como `email`, em vez de manter `user_name` representando o mesmo dado.
+
+| Campo        | Recomendação                             |
+| ------------ | ---------------------------------------- |
+| `id`         | Chave primária numérica                  |
+| `name`       | Nome completo do colaborador             |
+| `email`      | Login único, obrigatório                 |
+| `password`   | Hash da senha, nunca senha em texto puro |
+| `enabled`    | Indica se a conta está habilitada        |
+| `created_at` | Data de criação                          |
+| `updated_at` | Data da última alteração                 |
+
+Também recomendo que o e-mail seja normalizado antes da persistência, por exemplo removendo espaços nas extremidades e adotando uma regra consistente de letras minúsculas. A validação da aplicação e a restrição `UNIQUE` no MySQL devem trabalhar em conjunto.
+
+Para o campo `enabled`, a aplicação deverá impedir a autenticação de contas desabilitadas. A exclusão ou o desligamento de colaboradores merece uma política própria; em sistemas administrativos, desabilitar a conta costuma preservar melhor o histórico.
+
+### 2.2. Tabela `roles` — perfis funcionais
+
+Os perfis propostos são adequados para agrupar as responsabilidades dos colaboradores:
+
+- `ROLE_ADMIN`
+- `ROLE_RECURSOS_HUMANOS`
+- `ROLE_CONTAS_PAGAR`
+- `ROLE_COBRANCA`
+- `ROLE_CONTABIL`
+- `ROLE_RESERVAS`
+
+O prefixo `ROLE_` é uma convenção reconhecida pelo Spring Security quando se utiliza `hasRole(...)`. Por exemplo:
+
+```
+@PreAuthorize("hasRole('CONTAS_PAGAR')")
+```
+
+Essa expressão verifica a autoridade `ROLE_CONTAS_PAGAR`.
+
+Já para verificar diretamente uma permissão granular, a aplicação poderá usar:
+
+```
+@PreAuthorize("hasAuthority('contas-pagar:UPDATE')")
+```
+
+Atenção: não se deve incluir `ROLE_` no argumento de `hasRole`, pois o Spring Security acrescenta esse prefixo automaticamente nessa expressão.
+
+Os perfis devem ser nomes estáveis, sem espaços, e únicos no banco.
+
+A descrição amigável, como “Contas a Pagar”, pode ser apresentada na interface sem alterar o identificador técnico.
+
+### 2.3. Tabela `permissions` — permissões granulares
+
+Sua ideia de separar as permissões dos perfis é boa. Ela permite controlar as ações por módulo, sem precisar criar um perfil diferente para cada combinação de operações.
+
+Sugiro padronizar os nomes em letras maiúsculas, mantendo um formato uniforme:
+
+| Módulo           | Inserir                   | Consultar                 | Atualizar                 | Excluir                   |
+| ---------------- | ------------------------- | ------------------------- | ------------------------- | ------------------------- |
+| Administração    | `ADMIN:INSERT`            | `ADMIN:SELECT`            | `ADMIN:UPDATE`            | `ADMIN:DELETE`            |
+| Recursos Humanos | `RECURSOS_HUMANOS:INSERT` | `RECURSOS_HUMANOS:SELECT` | `RECURSOS_HUMANOS:UPDATE` | `RECURSOS_HUMANOS:DELETE` |
+| Contas a Pagar   | `CONTAS_PAGAR:INSERT`     | `CONTAS_PAGAR:SELECT`     | `CONTAS_PAGAR:UPDATE`     | `CONTAS_PAGAR:DELETE`     |
+| Cobrança         | `COBRANCA:INSERT`         | `COBRANCA:SELECT`         | `COBRANCA:UPDATE`         | `COBRANCA:DELETE`         |
+| Contabilidade    | `CONTABIL:INSERT`         | `CONTABIL:SELECT`         | `CONTABIL:UPDATE`         | `CONTABIL:DELETE`         |
+| Reservas         | `RESERVAS:INSERT`         | `RESERVAS:SELECT`         | `RESERVAS:UPDATE`         | `RESERVAS:DELETE`         |
+
+O Spring Security não exige que esses identificadores sejam escritos em maiúsculas.
+
+A padronização é uma decisão de projeto que facilita a manutenção, os testes e a revisão das regras.
+
+Também é importante corrigir um ponto da observação original: espaços em nomes de autoridades não corrompem automaticamente um token.
+Ainda assim, identificadores técnicos sem espaços são mais previsíveis, especialmente quando forem incluídos em JWTs ou utilizados em
+expressões de autorização.
+
+### 2.4. Tabela `users_roles` — associação entre usuários e perfis
+
+A chave primária composta (`user_id`, `role_id`) é apropriada: ela impede que o mesmo perfil seja associado duas vezes ao mesmo usuário.
+
+Exemplo conceitual:
+
+| Usuário                      | Perfil                  |
+| ---------------------------- | ----------------------- |
+| Administrador Master         | `ROLE_ADMIN`            |
+| João Silva Benavides         | `ROLE_RECURSOS_HUMANOS` |
+| Pedro Orlando Yanez Figueroa | `ROLE_CONTAS_PAGAR`     |
+| Marcos Antonio Figueroa      | `ROLE_COBRANCA`         |
+
+Essas associações são ilustrativas; o acesso real deve depender dos perfis e das permissões efetivamente atribuídos.
+
+Recomendo revisar as regras `ON DELETE`. Atualmente, a exclusão de um usuário é restringida enquanto existirem associações, mas a exclusão de um perfil pode apagar as associações desse perfil em `users_roles`. Para um sistema empresarial, eu priorizaria a desativação de usuários e perfis em vez da exclusão física, preservando a rastreabilidade.
+
+### 2.5. Tabela `roles_permissions` — associação entre perfis e permissões
+
+A chave composta (`role_id`, `permission_id`) também está correta.
+
+A principal regra de negócio será: um perfil concede somente as permissões explicitamente associadas a ele.
+
+Por exemplo, um perfil `ROLE_CONTAS_PAGAR` poderá receber:
+
+- `CONTAS_PAGAR:INSERT`
+- `CONTAS_PAGAR:SELECT`
+- `CONTAS_PAGAR:UPDATE`
+
+Se não receber `CONTAS_PAGAR:DELETE`, seus usuários não deverão conseguir excluir registros.
+
+O mesmo perfil pode ser atribuído a vários colaboradores, e uma permissão pode pertencer a vários perfis. Essa flexibilidade é justamente a vantagem do modelo relacional N:N.
+
+## 3. Compatibilidade tecnológica: atenção antes de iniciar
+
+Há um ponto importante no seu planejamento técnico.
+
+Você informou Java 17, Spring Boot 3 e Spring Security 7. Essas versões não formam a combinação padrão compatível: o Spring Security 7 pertence à geração baseada no Spring Framework 7 e no Spring Boot 4.
+
+A documentação oficial da linha 7 pode ser consultada em [Spring Security 7.0 Reference](https://docs.spring.io/spring-security/reference/7.0/index.html?utm_source=chatgpt.com). Para autenticação por banco de dados, consulte também [UserDetailsService — documentação oficial](https://docs.spring.io/spring-security/reference/7.0/servlet/authentication/passwords/user-details-service.html?utm_source=chatgpt.com).&#x20;
+
+
+Minha recomendação é escolher explicitamente uma das duas rotas antes de configurar o `pom.xml`:
+
+- Rota A — permanecer no Spring Boot 3: utilizar a versão do Spring Security gerenciada pelo Spring Boot 3, sem forçar a versão 7 manualmente.
+- Rota B — utilizar Spring Security 7: migrar para Spring Boot 4 e conferir a compatibilidade do projeto com Java 17 e das demais dependências antes de implementar a segurança.
+
+Como você está começando a estrutura de autenticação, a escolha deve ser feita agora para evitar incompatibilidades posteriores com Spring Data JPA, Hibernate, drivers e demais bibliotecas.
+
+## 4. Modelo SQL revisado para o MySQL 8
+
+Abaixo está uma versão inicial corrigida das cinco tabelas. Mantive o modelo relacional original, ajustando o campo de login, a padronização dos nomes e os índices das tabelas associativas.
+
+> Execute este script somente depois de confirmar o estado atual do banco `bd_paytur`. Se as tabelas já existirem, será necessário criar uma migração em vez de executar novamente os comandos `CREATE TABLE`.
+
+```
+USE bd_paytur;
+
+CREATE TABLE users (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    CONSTRAINT UK_users_email UNIQUE (email)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE roles (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+
+    PRIMARY KEY (id),
+    CONSTRAINT UK_roles_name UNIQUE (name)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE permissions (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(80) NOT NULL,
+
+    PRIMARY KEY (id),
+    CONSTRAINT UK_permissions_name UNIQUE (name)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE users_roles (
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+
+    PRIMARY KEY (user_id, role_id),
+    INDEX IX_users_roles_role_id (role_id),
+
+    CONSTRAINT FK_ur_user
+        FOREIGN KEY (user_id)
+        REFERENCES users (id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT FK_ur_role
+        FOREIGN KEY (role_id)
+        REFERENCES roles (id)
+        ON DELETE RESTRICT
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE roles_permissions (
+    role_id BIGINT NOT NULL,
+    permission_id BIGINT NOT NULL,
+
+    PRIMARY KEY (role_id, permission_id),
+    INDEX IX_roles_permissions_permission_id (permission_id),
+
+    CONSTRAINT FK_rp_role
+        FOREIGN KEY (role_id)
+        REFERENCES roles (id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT FK_rp_permission
+        FOREIGN KEY (permission_id)
+        REFERENCES permissions (id)
+        ON DELETE RESTRICT
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+```
+
+### Por que essas alterações?
+
+- `email`: elimina a inconsistência entre `user_name` e `email`.
+- `BOOLEAN`: expressa claramente o estado habilitado/desabilitado; no MySQL, é um alias de `TINYINT(1)`.
+- Índices nas chaves estrangeiras inversas: facilitam consultas que partem de um perfil ou de uma permissão.
+- `ON DELETE RESTRICT`: impede a exclusão física de perfis e permissões enquanto houver associações. É uma política conservadora; os desligamentos devem preferencialmente ser tratados por desativação.
+- `utf8mb4`: permite armazenar nomes com caracteres acentuados.
+
+A chave primária composta nas tabelas de relacionamento continua impedindo associações duplicadas.
+
+### 4.1. Convenção definitiva para as permissões
+
+Sugiro escolher uma única convenção e utilizá-la no banco, no código Java, nos testes e nas futuras declarações de autorização:
+
+```
+ROLE_ADMIN
+ROLE_RECURSOS_HUMANOS
+ROLE_CONTAS_PAGAR
+ROLE_COBRANCA
+ROLE_CONTABIL
+ROLE_RESERVAS
+
+ADMIN:INSERT
+ADMIN:SELECT
+ADMIN:UPDATE
+ADMIN:DELETE
+
+RECURSOS_HUMANOS:INSERT
+RECURSOS_HUMANOS:SELECT
+RECURSOS_HUMANOS:UPDATE
+RECURSOS_HUMANOS:DELETE
+
+CONTAS_PAGAR:INSERT
+CONTAS_PAGAR:SELECT
+CONTAS_PAGAR:UPDATE
+CONTAS_PAGAR:DELETE
+```
+
+O identificador `ROLE_CONTAS_PAGAR` representa um perfil. Já `CONTAS_PAGAR:UPDATE` representa uma autoridade específica.
+
+Essa diferença deve ser mantida em toda a aplicação.
+
+## 5. Como o Spring Security 7 deve interpretar os dados
+
+O Spring Security não transforma automaticamente qualquer estrutura de tabelas em autenticação. Precisaremos implementar a integração entre JPA e a API de segurança.
+
+A documentação oficial descreve o papel do `UserDetailsService` na recuperação de usuário, senha e atributos de autenticação.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://docs.spring.io\&sz=32)
+
+Home+1
+
+
+
+### 5.1. Componentes Java previstos
+
+Entidades JPA
+
+`User`, `Role` e `Permission`, com os relacionamentos N:N correspondentes.
+
+`CustomUserDetailsService`
+
+Busca o usuário pelo e-mail e recupera suas autoridades através dos perfis e permissões.
+
+`PasswordEncoder`
+
+Verifica a senha apresentada usando um hash seguro, como BCrypt, ou o encoder delegador do Spring.
+
+`SecurityFilterChain` e `@EnableMethodSecurity`
+
+Protegem os endpoints HTTP e permitem controlar o acesso nos métodos da aplicação.
+
+### 5.2. Exemplo de autoridade carregada
+
+Considere um colaborador que tenha o perfil `ROLE_CONTAS_PAGAR`, associado às permissões de consulta e atualização.
+
+O `UserDetailsService` deverá fornecer ao Spring Security autoridades equivalentes a:
+
+```
+ROLE_CONTAS_PAGAR
+CONTAS_PAGAR:SELECT
+CONTAS_PAGAR:UPDATE
+```
+
+A primeira permite verificar o perfil; as outras duas permitem verificar as operações específicas.
+
+Por exemplo:
+
+```
+@PreAuthorize("hasAuthority('CONTAS_PAGAR:UPDATE')")
+@PutMapping("/{id}")
+public ResponseEntity<?> atualizar(@PathVariable Long id) {
+    // Implementar a atualização do recurso.
+    return ResponseEntity.noContent().build();
+}
+```
+
+O método acima é apenas ilustrativo. Em uma implementação real, ele deverá receber os dados de atualização, validar o recurso e executar a operação na camada de serviço.
+
+A autorização deverá ser negada se o usuário não tiver a autoridade exigida, mesmo que esteja autenticado.
+
+### 5.3. Uma regra essencial para o carregamento
+
+A associação com um perfil não concede, por si só, todas as permissões possíveis do módulo. O que será carregado dependerá dos registros existentes em `roles_permissions`.
+
+Da mesma forma, a aplicação precisa buscar as permissões de todos os perfis atribuídos ao usuário, e não apenas o primeiro perfil encontrado.
+
+Isso evita que um colaborador com dois perfis tenha parte de suas permissões ignorada.
+
+## 6. Fluxo de implantação dos usuários e responsabilidades
+
+O processo de cadastro precisa de uma regra de segurança especial: o primeiro administrador não pode depender de um endpoint público de cadastro que permita a qualquer pessoa criar uma conta com poderes administrativos.
+
+### Etapa 1 — Preparação pelo DBA
+
+O DBA prepara os dados iniciais:
+
+1. Cria o perfil `ROLE_ADMIN`.
+2. Cria as quatro permissões administrativas.
+3. Associa essas permissões ao perfil `ROLE_ADMIN`.
+4. Cria o usuário inicial Administrador Master, com senha armazenada como hash.
+5. Associa o usuário ao perfil administrativo.
+
+O banco não deve receber a senha em texto puro. O hash deve ser gerado pelo `PasswordEncoder` da aplicação ou por um procedimento controlado que utilize o mesmo algoritmo de codificação.
+
+O usuário Master deve ser criado por um processo de inicialização restrito, executado apenas quando necessário, ou por uma ferramenta administrativa segura. Não recomendo disponibilizar uma rota pública como `/api/users/master`.
+
+### Etapa 2 — Administração de Recursos Humanos
+
+O Administrador Master concede ao responsável de RH o perfil `ROLE_RECURSOS_HUMANOS`, que deverá receber somente as permissões necessárias para a gestão dos colaboradores.
+
+A partir daí, o RH poderá cadastrar usuários comuns e associar os perfis autorizados pela política da empresa.
+
+Importante: o RH não deve receber automaticamente `ROLE_ADMIN`. A capacidade de cadastrar usuários não deve significar capacidade irrestrita de conceder privilégios administrativos.
+
+### Etapa 3 — Contratação para Contas a Pagar
+
+Novo colaborador contratado
+
+O RH registra nome, e-mail e os dados necessários do colaborador.
+
+Atribuição de perfil
+
+O RH atribui `ROLE_CONTAS_PAGAR`, desde que essa operação esteja autorizada pela política de acesso.
+
+Permissões efetivas
+
+O sistema carrega somente as autoridades associadas ao perfil, por exemplo consulta e atualização.
+
+Acesso controlado
+
+O colaborador acessa apenas as funcionalidades permitidas, inclusive respeitando as regras de negócio e o escopo dos dados.
+
+Um ponto adicional: permissões como `CONTAS_PAGAR:SELECT` controlam a operação, mas não garantem, sozinhas, que o usuário veja apenas os registros que lhe competem. Caso haja segregação por filial, empresa ou departamento, será necessário implementar também controles de escopo dos dados.
+
+## 7. Matriz de permissões sugerida
+
+A tabela a seguir representa uma proposta inicial de autorização. As associações efetivas deverão ser definidas e gravadas em `roles_permissions`.
+
+| Perfil                  | Inserir              | Consultar            | Atualizar            | Excluir             |
+| ----------------------- | -------------------- | -------------------- | -------------------- | ------------------- |
+| `ROLE_ADMIN`            | Administração        | Administração        | Administração        | Administração       |
+| `ROLE_RECURSOS_HUMANOS` | Usuários autorizados | Usuários autorizados | Usuários autorizados | Conforme política   |
+| `ROLE_CONTAS_PAGAR`     | Conforme atribuição  | Conforme atribuição  | Conforme atribuição  | Conforme atribuição |
+| `ROLE_COBRANCA`         | Conforme atribuição  | Conforme atribuição  | Conforme atribuição  | Conforme atribuição |
+| `ROLE_CONTABIL`         | Conforme atribuição  | Conforme atribuição  | Conforme atribuição  | Conforme atribuição |
+| `ROLE_RESERVAS`         | Conforme atribuição  | Conforme atribuição  | Conforme atribuição  | Conforme atribuição |
+
+Não recomendo conceder exclusão a todos os perfis por padrão. Em módulos financeiros, operações destrutivas podem exigir restrições adicionais, auditoria ou fluxos de aprovação.
+
+Também vale definir se o Administrador Master será um usuário operacional comum com um perfil especial ou uma identidade de emergência administrativa. Em ambientes empresariais, separar as duas finalidades pode reduzir riscos.
+
+## 8. Organização recomendada do backend
+
+Para o projeto `backend-api`, sugiro uma organização por responsabilidades, evitando concentrar toda a lógica em uma única classe de configuração.
+
+```
+backend-api/
+├── pom.xml
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── .../
+│   │   │       ├── config/
+│   │   │       │   └── SecurityConfig.java
+│   │   │       ├── security/
+│   │   │       │   ├── CustomUserDetailsService.java
+│   │   │       │   └── CustomUserDetails.java
+│   │   │       ├── user/
+│   │   │       │   ├── User.java
+│   │   │       │   ├── UserRepository.java
+│   │   │       │   ├── UserService.java
+│   │   │       │   ├── UserController.java
+│   │   │       │   └── dto/
+│   │   │       ├── role/
+│   │   │       │   ├── Role.java
+│   │   │       │   └── RoleRepository.java
+│   │   │       ├── permission/
+│   │   │       │   ├── Permission.java
+│   │   │       │   └── PermissionRepository.java
+│   │   │       └── ...
+│   │   └── resources/
+│   │       ├── application.yml
+│   │       └── db/
+│   │           └── migration/
+│   └── test/
+│       └── java/
+└── Dockerfile
+```
+
+Essa estrutura é uma proposta, não uma descrição dos arquivos que já existem no diretório informado. Não inspecionei o conteúdo local de `/home/pedro/Documentos/peter/ANTIGRAVITE_GOOGLE/projetos-antigravity/JulyTurAdm`.
+
+Recomendo usar migrações versionadas com Flyway ou Liquibase para controlar a criação das tabelas, índices, perfis e permissões iniciais. Isso torna a implantação reproduzível e reduz o risco de alterações manuais inconsistentes no MySQL.
+
+## 9. Requisitos de segurança que não devem ser esquecidos
+
+Antes de liberar a autenticação para uso real, inclua estes controles:
+
+- Senhas: usar `PasswordEncoder`; nunca armazenar ou registrar senhas em texto puro. A documentação oficial apresenta o encoder delegador como uma opção de configuração.&#x20;
+
+  [image](https://www.google.com/s2/favicons?domain=https://docs.spring.io\&sz=32)
+
+  Home+1
+
+- Cadastro: validar e-mail, dados obrigatórios e duplicidade; utilizar DTOs para impedir que o cliente envie diretamente campos privilegiados, como `enabled`, perfis administrativos ou hashes de senha.
+
+- Autorização: aplicar regras no servidor, não apenas ocultar botões na interface.
+
+- Escalada de privilégios: impedir que usuários comuns se atribuam `ROLE_ADMIN` ou alterem as próprias permissões.
+
+- Transações: garantir que a criação de usuários e a associação dos perfis sejam consistentes.
+
+- Auditoria: registrar quem criou usuários, quem alterou perfis e quem modificou permissões, sem gravar senhas ou tokens completos.
+
+- Segredos: manter senhas do MySQL e chaves de assinatura fora do código-fonte, utilizando variáveis de ambiente ou um gerenciador de segredos.
+
+- Tokens futuros: se adotar JWT, validar assinatura, emissor, audiência e expiração; não tratar o conteúdo do token como prova suficiente de autorização sem validação criptográfica.
+
+O modelo de cinco tabelas é uma boa base para começar, mas o banco de dados não substitui a implementação correta das regras de segurança na aplicação.
+
+## 10. Plano de implementação recomendado
+
+## Checklist de desenvolvimento
+
+0 de 7
+
+Confirmar versões do projeto
+
+Definir Spring Boot 3 com Security compatível ou migrar para Boot 4 e Security 7.
+
+Revisar o esquema do banco
+
+Corrigir email, padronizar nomes e criar migrações versionadas.
+
+Implementar as entidades JPA
+
+Modelar User, Role, Permission e os dois relacionamentos N:N.
+
+Implementar a autenticação
+
+Criar UserDetailsService, PasswordEncoder e SecurityFilterChain.
+
+Implementar a autorização
+
+Carregar roles e permissions e aplicar @EnableMethodSecurity e @PreAuthorize.
+
+Criar a inicialização segura
+
+Provisionar o primeiro administrador e as permissões iniciais sem endpoint público privilegiado.
+
+Testar e auditar
+
+Verificar 401, 403, contas desabilitadas, privilégios indevidos e associações entre perfis e permissões.
+
+## Conclusão
+
+A estrutura de dados proposta atende ao objetivo de administrar usuários, perfis e permissões granulares. A principal decisão arquitetural é manter a separação entre identidade do usuário, perfis funcionais e operações autorizadas.
+
+Antes de escrever as classes Java, a prioridade é resolver a compatibilidade de versões: Java 17 é compatível tanto com Spring Boot 3 quanto com Spring Boot 4, mas a linha 4 utiliza Spring Framework 7. Consulte os requisitos oficiais de [Spring Boot 3.5](https://docs.spring.io/spring-boot/3.5/system-requirements.html?utm_source=chatgpt.com) e [Spring Boot 4.0](https://docs.spring.io/spring-boot/4.0/system-requirements.html?utm_source=chatgpt.com).&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://docs.spring.io\&sz=32)
+
+Home+1
+
+
+
+Minha recomendação para o próximo passo: confirmar se o `pom.xml` atual já utiliza Spring Boot 3 ou se o projeto ainda está sendo criado. A partir dessa decisão, podemos montar a implementação em etapas, começando pelas entidades JPA e pelos repositórios, antes de configurar o `SecurityFilterChain`.
+
+---------------------------------------fim--------------------------------------
+

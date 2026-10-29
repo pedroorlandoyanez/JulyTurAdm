@@ -1,0 +1,92 @@
+﻿
+29/10/2026
+
+---------------------------------------------------------------------------------------------------
+Configurando a versão do Java no projeto backend-api
+---------------------------------------------------------------------------------------------------
+
+Pedro disse:
+
+Abri o novo terminal dentro do VS Code, dentro do projeto "backend-api", executei no terminal o comando:
+"java -version", o resultado foi:
+
+bash:
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ java -version
+openjdk version "21.0.2" 2024-01-16 LTS
+OpenJDK Runtime Environment Temurin-21.0.2+13 (build 21.0.2+13-LTS)
+OpenJDK 64-Bit Server VM Temurin-21.0.2+13 (build 21.0.2+13-LTS, mixed mode, sharing)
+
+---------------------------------------------------------------------------------------------------
+Gemini disse:
+
+Isso aconteceu porque o terminal integrado do VS Code herda por padrão as variáveis de ambiente e o
+comportamento global do seu terminal do sistema (onde o SDKMAN define a versão `21.0.2` como padrão
+global).
+
+Mesmo que o VS Code utilize a versão 17 para compilar o código e para as ferramentas de análise do
+projeto (Graças ao `settings.json`), o comando `java -version` executado diretamente no terminal 
+shell continua apontando para o Java global do SDKMAN.
+
+Para fazer com que o terminal integrado dentro da pasta do projeto `backend-api` utilize automaticamente
+a versão 17 (ou qualquer outra versão específica), você tem duas ótimas alternativas:
+
+Solução 1: Utilizar o recurso de ambiente por projeto do SDKMAN (`.sdkmanrc`)
+
+O SDKMAN permite que você vincule uma versão específica do Java a uma pasta de projeto.
+
+Quando você entra nessa pasta, ele ajusta a versão para aquela sessão do terminal.
+
+1. Navegue pelo terminal integrado até a raiz do seu projeto `backend-api`:
+
+bash:
+cd ~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api
+
+```
+
+2. Crie e configure o arquivo de ambiente do SDKMAN para usar a versão 17:
+
+bash:
+sdk env init
+
+```
+
+3. O comando acima criará um arquivo chamado `.sdkmanrc` na raiz do projeto.
+Abra-o e garanta que ele aponte para a versão 17 instalada:
+
+arquivo .sdkmanrc:
+properties:
+java=17.0.10-tem
+
+```
+
+4. Agora, toda vez que você abrir o terminal nessa pasta ou executar o comando para carregar o
+ambiente do projeto, o SDKMAN ajustará a versão localmente:
+
+bash:
+sdk env
+
+```
+
+Ao rodar `java -version` depois disso no terminal daquele projeto, ele refletirá a versão 17.
+
+---------------------------------------------------------------------------------------------------
+Solução 2: Ajustar o Java global do SDKMAN (Se for focar apenas em projetos Java 17 no momento)
+
+Se no momento você estiver focado apenas em trabalhar com os projetos em Java 17, você pode alterar
+temporariamente o padrão global do SDKMAN no seu terminal:
+
+bash:
+sdk default java 17.0.10-tem
+
+```
+Dessa forma, tanto o VS Code quanto qualquer terminal que você abrir usarão o Java 17 por padrão.
+
+Quando precisar voltar para o Java 21, basta rodar `sdk default java 21.0.2-tem`.
+
+---
+
+Gerou o arquivo `.sdkmanrc` com o comando `sdk env` para testar a troca automática de versão do terminal neste projeto?
+
+-------------------------------------------------fim-----------------------------------------------
+
+

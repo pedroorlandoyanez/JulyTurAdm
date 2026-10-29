@@ -1,0 +1,81 @@
+﻿
+27/10/2026
+
+--------------------------------------------------------------------------------
+Chat-Gpt 3-Caso de uso para adaptar a estrutura de tabelas ao nosso perfil.
+--------------------------------------------------------------------------------
+
+Nome do projeto backend: backend-api
+Tecnologia Principal: Maven, Java 17, Lombok, Spring Boot 3, Docker com o container do
+Banco de dado Mysql 8.
+Base de dados: "bd_paytur"
+Foco Inicial: Estrutura de autenticação com Spring Security para Autenticação, administração de usuarios, permissoes e grupos de permissoes.
+
+Localização do projeto backend:
+/home/pedro/Documentos/peter/ANTIGRAVITE_GOOGLE/projetos-antigravity/JulyTurAdm
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Analise o relato de como o Spring Security deve interpretar os dados das convenção que serão utilizadas
+no banco de dados.
+Segue exemplos das convenção que serão utilizadas no banco de dados e explique como será codificado
+no código Java.
+-Foi definido trabalhar com permissões granulares.
+-Abaixo segue as uma lista de convenções definitiva para as permissões.
+
+registros da tabela roles:
+ADMIN
+RECURSOS_HUMANOS
+CONTAS_PAGAR
+COBRANCA
+CONTABIL
+RESERVAS
+
+registros da tabela permissoes:
+CONTAS_PAGAR:INSERT
+CONTAS_PAGAR:SELECT
+CONTAS_PAGAR:UPDATE
+CONTAS_PAGAR:DELETE
+
+Considere um colaborador que tenha o perfil `CONTAS_PAGAR`, associado às permissões de consulta e atualização.
+
+CONTAS_PAGAR
+CONTAS_PAGAR:INSERT
+CONTAS_PAGAR:SELECT
+CONTAS_PAGAR:UPDATE
+CONTAS_PAGAR:DELETE
+
+A primeira permite verificar o perfil; as outras duas permitem verificar as operações específicas.
+
+Por exemplo:
+
+```
+@PreAuthorize("hasAuthority('CONTAS_PAGAR:UPDATE')")
+@PutMapping("/{id}")
+public ResponseEntity<?> atualizar(@PathVariable Long id) {
+    // Implementar a atualização do recurso.
+    return ResponseEntity.noContent().build();
+}
+```
+
+O método acima é apenas ilustrativo.
+Em uma implementação real, ele deverá receber os dados de atualização, validar o recurso e executar
+a operação na camada de serviço.
+
+A autorização deverá ser negada se o usuário não tiver a autoridade exigida, mesmo que esteja autenticado.
+
+
+2. Uma regra essencial para o carregamento.
+
+A associação com um perfil não concede, por si só, todas as permissões possíveis do módulo.
+
+O que será carregado dependerá dos registros existentes em `roles_permissions`.
+
+Da mesma forma, a aplicação precisa buscar as permissões de todos os perfis atribuídos ao usuário,
+e não apenas o primeiro perfil encontrado.
+
+Isso evita que um colaborador com dois perfis tenha parte de suas permissões ignorada.
+
+-------------------------------------------------fim-----------------------------------------------
+

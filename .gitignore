@@ -1,0 +1,27 @@
+# Segredos e configurações locais
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Java e Maven
+**/target/
+**/build/
+*.class
+*.jar
+*.war
+
+# Logs e arquivos temporários
+*.log
+*.tmp
+*.swp
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Cópias de segurança locais
+*.bak
+*.backup
+

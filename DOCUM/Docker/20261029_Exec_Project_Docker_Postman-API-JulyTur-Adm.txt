@@ -1,0 +1,113 @@
+﻿
+29/10/2026
+
+---------------------------------------------------------------------------------------------------
+Inicializando o container Docker do Mysql, Executando Projecto, Configurar Collection Postman  
+---------------------------------------------------------------------------------------------------
+
+Nome do projeto backend: backend-api
+Tecnologia Principal: Maven, Java 17, Lombok, Spring Boot 3 e Banco de dado Mysql 8
+Base de Dados: `bd_paytur`
+Foco Inicial: Autenticação e administração de recursos operacionais.
+
+Localização do projeto: /home/pedro/Documentos/peter/VsCodeProject/Projetc/JulyTurAdm
+
+pasta do projeto (backend-api):
+
+// versão do Docker
+bash:
+docker --version
+>Docker version 29.9.2, build a82e528
+
+
+
+
+- Arquivo Docker: "docker-compose.yml" gerado pelo agente.
+
+docker-compose.yml:
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-paytur
+    restart: unless-stopped
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bd_paytur
+      MYSQL_USER: paytur_user
+      MYSQL_PASSWORD: paytur_pass
+      TZ: America/Sao_Paulo
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=caching_sha2_password
+    volumes:
+      - paytur_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  paytur_mysql_data:
+    driver: local
+
+---
+
+- Arquivo propriedades dentro do projeto: application.properties
+
+# ===================================================================
+# Configurações Gerais da Aplicação
+# ===================================================================
+spring.application.name=APIJulyTurAdm
+server.port=8081
+
+# ===================================================================
+# Configuração de Conexão com o Banco de Dados MySQL 8 (Docker)
+# Base: bd_paytur
+# ===================================================================
+spring.datasource.url=jdbc:mysql://localhost:3308/bd_paytur?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Sao_Paulo&characterEncoding=UTF-8
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# ===================================================================
+# Configurações do Spring Data JPA / Hibernate
+# ===================================================================
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.highlight_sql=true
+
+# Desativa Open Session In View para evitar consultas N+1 desnecessárias na camada de apresentação
+spring.jpa.open-in-view=false
+
+# Dialeto MySQL 8+
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+
+---
+
+- O client Workbench foi configurado conforme container docker.
+- conectado ao banco bd_paytur
+SUCESSO
+
+---------------------------------------------------------------------------------------------------
+Comandos Maven e Docker:
+
+// compilar a aplicação
+mvn clean compile
+
+// aplicação rodando
+mvn spring-boot:run 
+
+// inicializar o container docker
+docker compose up -d
+
+
+-------------------------------------------------fim-----------------------------------------------
+
+

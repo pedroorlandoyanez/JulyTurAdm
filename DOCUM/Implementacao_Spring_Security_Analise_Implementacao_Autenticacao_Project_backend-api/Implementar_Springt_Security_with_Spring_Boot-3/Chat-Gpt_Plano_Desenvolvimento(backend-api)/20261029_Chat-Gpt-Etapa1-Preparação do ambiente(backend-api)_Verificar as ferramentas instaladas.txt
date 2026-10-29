@@ -1,0 +1,700 @@
+﻿
+29/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Plano de Desenvolvimento `backend-api`
+---------------------------------------------------------------------------------------------------
+
+Pedro disse:
+---------------------------------------------------------------------------------------------------
+Verificar as ferramentas instaladas:
+
+Abra o Terminal do Linux Mint ou o terminal integrado do VS Code. Copie e execute os comandos abaixo, um de cada vez.
+
+Passo A — Verificar Java 17
+
+java -version
+
+javac -version
+
+Passo B — Verificar Maven
+
+mvn -version
+
+Confirme se o Maven está instalado e se utiliza o Java 17.
+
+Passo C — Verificar Docker e MySQL
+
+docker --version
+
+docker compose version
+
+docker ps
+
+O último comando mostra os containers em execução.
+Se aparecer uma mensagem de erro, não altere nada ainda; precisamos identificar a causa.
+
+
+Passo D — Verificar Git e VS Code
+
+git --version
+
+code --version
+
+Se algum comando não for reconhecido, anote qual deles falhou.
+
+Passo E — Conferir o sistema operacional
+
+
+cat /etc/os-release
+
+E:
+
+uname -r
+
+---------------------------------------------------------------------------------------------------
+Como me enviar os resultados
+
+Execute os comandos e copie as saídas para esta conversa. Pode enviar tudo de uma vez, mesmo que 
+algum comando apresente erro.
+
+Resultados do seu ambiente Linux
+
+Analisar resultados e continuar
+
+Importante: por enquanto, não instale nem atualize nada.
+
+Primeiro vamos confirmar o estado atual do ambiente; depois avançaremos para a verificação do 
+projeto Maven e do banco `bd_paytur`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Diretorio do projeto: /home/pedro/Documentos/peter/VsCodeProject/Projetc/JulyTurAdm/backend-api
+pasta do projeto: backend-api
+Conforme orientações, entrei na pasta do projeto e executei o VS Code, abri um novo terminal no VS Code,
+para este projeto, estou utilizando o recurso de ambiente por projeto do SDKMAN (.sdkmanrc), onde configurei
+o arquivo de ambiente do SDKMAN para usar a versão 17, referente a os container docker, já existem instancias
+sendo executadas, porem, é melhor criar uma nova instancia docker do Mysql, para não ter conflictos de base
+de dados, segue o estado atual do ambiente:
+//SDKMAN
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sdk env
+
+//java -version
+Using java version 17.0.10-tem in this shell.
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ java -version
+openjdk version "17.0.10" 2024-01-16
+OpenJDK Runtime Environment Temurin-17.0.10+7 (build 17.0.10+7)
+OpenJDK 64-Bit Server VM Temurin-17.0.10+7 (build 17.0.10+7, mixed mode, sharing)
+
+//javac -version
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ javac -version
+javac 17.0.10
+
+//mvn -version
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -version
+Apache Maven 3.8.7
+Maven home: /usr/share/maven
+Java version: 17.0.10, vendor: Eclipse Adoptium, runtime: /home/pedro/.sdkman/candidates/java/17.0.10-tem
+Default locale: pt_BR, platform encoding: UTF-8
+OS name: "linux", version: "7.0.0-42-generic", arch: "amd64", family: "unix"
+
+//docker --version
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker --version
+Docker version 29.9.2, build a82e528
+
+//docker compose version
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose version
+Docker Compose version v5.6.1
+
+//docker ps
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker ps
+CONTAINER ID   IMAGE       COMMAND                  CREATED       STATUS                 PORTS                                                   NAMES
+75a6f8515643   mysql:8.0   "docker-entrypoint.s…"   5 days ago    Up 3 hours (healthy)   33060/tcp, 0.0.0.0:3308->3306/tcp, [::]:3308->3306/tcp   mysql-paytur
+00fddc3b5846   mysql:8.0   "docker-entrypoint.s…"   5 weeks ago   Up 3 hours             33060/tcp, 0.0.0.0:3307->3306/tcp, [::]:3307->3306/tcp   mysql_standalone
+
+//git --version
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ git --version
+git version 2.43.0
+pedro@pedro-MS-7A15:~
+
+//code --version
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ code --version
+1.144.0
+2c33b50b16c472efe58357d1d2a8a5414bc23fbf
+x64
+
+//cat /etc/os-release
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat /etc/os-release
+NAME="Linux Mint"
+VERSION="22.3 (Zena)"
+ID=linuxmint
+ID_LIKE="ubuntu debian"
+PRETTY_NAME="Linux Mint 22.3"
+VERSION_ID="22.3"
+HOME_URL="https://www.linuxmint.com/"
+SUPPORT_URL="https://forums.linuxmint.com/"
+BUG_REPORT_URL="http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/"
+PRIVACY_POLICY_URL="https://www.linuxmint.com/"
+VERSION_CODENAME=zena
+UBUNTU_CODENAME=noble
+
+//uname -r
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ uname -r
+7.0.0-42-generic
+pedro@pedro-MS-7A1
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente. Com os resultados que você enviou, já podemos considerar a primeira parte da preparação do
+ambiente praticamente validada.
+
+Você está utilizando o SDKMAN para selecionar o Java por projeto, o que é uma boa prática para evitar
+que outros projetos Java sejam afetados.
+
+1.1 — Resultado da verificação
+
+Java / JDK
+
+17.0.10 Temurin
+
+OK
+
+SDKMAN
+
+Ambiente do projeto selecionado
+
+OK
+
+Maven
+
+3.8.7 usando Java 17
+
+OK
+
+Docker
+
+29.9.2
+
+OK
+
+Docker Compose
+
+5.6.1
+
+OK
+
+Git
+
+2.43.0
+
+OK
+
+VS Code
+
+1.144.0
+
+OK
+
+Sistema operacional
+
+Linux Mint 22.3
+
+OK
+
+Atenção a um detalhe: o terminal mostra o caminho `Projects/JulyTurAdm/backend-api`, enquanto você
+também mencionou `Projetc/JulyTurAdm`.
+
+Vamos confirmar o caminho real antes de criar arquivos ou configurações.
+
+Sobre criar outro container MySQL:
+
+Você já tem dois containers MySQL 8 em execução:
+
+| Container          | Porta no computador |
+| ------------------ | ------------------- |
+| `mysql-paytur`     | `3308`              |
+| `mysql_standalone` | `3307`              |
+
+Minha recomendação é criar um terceiro container dedicado ao `backend-api`, se o objetivo for isolar
+completamente o banco `bd_paytur` dos outros projetos.
+
+Não precisamos parar nem modificar os containers existentes.
+
+O isolamento será feito com:
+
+- Um nome exclusivo, por exemplo `mysql-julituradm`.
+- Uma porta exclusiva no computador, por exemplo `3309`.
+- Um banco `bd_paytur` dentro do novo container.
+- Um usuário próprio para a aplicação, sem utilizar o usuário `root` no Spring Boot.
+- Um volume persistente, para que os dados não sejam perdidos quando o container for recriado.
+
+A porta `3309` é uma sugestão; vamos verificar se está disponível antes de usá-la.
+
+Próxima ação — confirmar o diretório e a porta
+
+No terminal integrado do VS Code, execute estes comandos:
+
+```
+1. Confirmar o diretório atual
+pwd
+
+2. Conferir os arquivos do projeto
+ls -la
+
+3. Verificar se o pom.xml está na pasta atual:
+
+if [ -f pom.xml ]; then
+  echo "OK: pom.xml encontrado"
+else
+  echo "ATENÇÃO: pom.xml não encontrado nesta pasta"
+fi
+
+# 4. Verificar se a porta 3309 já está ocupada
+if ss -ltn | grep -q ':3309 '; then
+  echo "ATENÇÃO: porta 3309 em uso"
+else
+  echo "OK: nenhuma porta TCP 3309 em escuta"
+fi
+
+# 5. Ver os containers e as portas atuais
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}'
+```
+
+A verificação da porta é uma primeira checagem; se não houver um serviço escutando, ainda confirmaremos
+a disponibilidade antes de criar o container.
+
+Envie-me o resultado desses comandos.
+
+Com isso, vamos preparar o `compose.yaml` exclusivo do projeto, sem interferir nos containers
+`mysql-paytur` e `mysql_standalone`.
+
+Importante: não execute `docker rm`, `docker stop` nem comandos para apagar volumes.
+
+Não precisamos remover nem interromper os bancos existentes.
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+confirmando o caminho real do projeto, antes de criar arquivos ou configurações.
+/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api
+
+Estou enviando o resultado dos comandos:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ ls -la
+
+if [ -f pom.xml ]; then
+  echo "OK: pom.xml encontrado"
+else
+  echo "ATENÇÃO: pom.xml não encontrado"
+fi
+
+if ss -ltn | grep -q ':3309 '; then
+  echo "ATENÇÃO: porta 3309 em uso"
+else
+  echo "OK: nenhuma porta TCP 3309 em escuta"
+fi
+
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}'
+total 20
+drwxrwxr-x 3 pedro pedro 4096 out 29 11:51 .
+drwxrwxr-x 5 pedro pedro 4096 out 23 13:26 ..
+-rw-r--r-- 1 pedro pedro  449 out 23 20:06 .gitignore
+-rw-rw-r-- 1 pedro pedro  112 out 29 11:52 .sdkmanrc
+drwxrwxr-x 2 pedro pedro 4096 out 29 10:50 .vscode
+ATENÇÃO: pom.xml não encontrado
+OK: nenhuma porta TCP 3309 em escuta
+NAMES              IMAGE       PORTS                                                    STATUS
+mysql-paytur       mysql:8.0   33060/tcp, 0.0.0.0:3308->3306/tcp, [::]:3308->3306/tcp   Up 4 hours (healthy)
+mysql_standalone   mysql:8.0   33060/tcp, 0.0.0.0:3307->3306/tcp, [::]:3307->3306/tcp   Up 4 hours
+
+---
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. Agora temos uma informação importante: a pasta `backend-api` ainda não contém um projeto Maven.
+
+Ela possui apenas o `.gitignore`, o `.sdkmanrc` e a pasta `.vscode`.
+
+Isso não é um erro. Significa que precisamos preparar a estrutura inicial da aplicação antes de 
+onfigurar a conexão com o banco.
+
+Situação atual
+
+| Item                        | Resultado                                |
+| --------------------------- | ---------------------------------------- |
+| Diretório do projeto        | Confirmado                               |
+| Java 17 pelo SDKMAN         | OK                                       |
+| Maven, Docker e VS Code     | OK                                       |
+| Porta `3309`                | Sem serviço TCP em escuta na verificação |
+| `pom.xml`                   | Ainda não existe                         |
+| Containers MySQL existentes | Permanecerão intactos                    |
+
+Minha recomendação é criar um projeto Spring Boot 3 com Java 17, Maven e as dependências iniciais
+necessárias.
+
+Vamos manter a versão do Spring Security gerenciada pelo Spring Boot, sem forçar a versão 7 neste 
+momento.
+
+Antes de gerar os arquivos, vamos confirmar o conteúdo do `.sdkmanrc` e do `.gitignore` para preservar
+suas configurações atuais.
+
+1.2 — Conferir as configurações existentes
+
+Execute estes dois comandos no terminal:
+
+```
+cat .sdkmanrc
+```
+
+```
+cat .gitignore
+```
+
+O primeiro permite confirmar a versão do Java definida para o projeto.
+
+O segundo evita que a nova estrutura ignore arquivos importantes ou passe a versionar arquivos que
+não devem entrar no Git.
+
+Depois, vamos criar a estrutura Maven com estas dependências iniciais:
+
+- Spring Web
+- Spring Data JPA
+- Spring Security
+- MySQL Connector/J
+- Lombok
+- Validation
+
+Ainda não crie o `pom.xml` manualmente nem inicie o container MySQL.
+
+Primeiro vamos conferir as configurações existentes; em seguida, prepararemos os arquivos de forma
+consistente, incluindo o `compose.yaml` e as configurações de conexão, sem sobrescrever nada 
+inadvertidamente.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Execute estes dois comandos no terminal:
+
+cat .sdkmanrc e cat .gitignore
+
+---
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat .sdkmanrc
+# Enable auto-env through the sdkman_auto_env config
+# Add key=value pairs of SDKs to use below
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat .gitignore$ cat .gitignore
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-ci
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbproject/load-path.properties
+/nbproject/genfiles.properties
+
+### VS Code ###
+.vscode/
+
+### Logs e Arquivos Temporários ###
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo! Agora temos as informações necessárias para avançar com segurança na preparação do `backend-api`.
+
+## 1. Análise das configurações atuais
+
+Arquivo `.sdkmanrc`
+
+O arquivo existe, mas ainda não define uma versão do Java. Mesmo assim, seu terminal já está usando o Java 17.0.10 Temurin.
+
+Recomendação: configurar explicitamente o Java 17 para este projeto, depois de confirmar a configuração do SDKMAN.
+
+Arquivo `.gitignore`
+
+Está adequado como ponto de partida. Ele já ignora `target/`, configurações de IDE e arquivos temporários. Vamos preservar essas regras e acrescentar apenas o que for necessário.
+
+Banco MySQL
+
+Vamos manter os containers existentes intactos e preparar um container independente chamado `mysql-julituradm`, usando a porta `3309` no computador e `3306` dentro do container.
+
+## 2. Próximo passo: confirmar a configuração do SDKMAN
+
+No terminal, execute estes comandos, um de cada vez:
+
+```
+sdk current java
+```
+
+```
+cat ~/.sdkman/etc/config | grep sdkman_auto_env
+```
+
+O primeiro confirma a versão ativa do Java. O segundo verifica se o SDKMAN está configurado para reconhecer automaticamente o arquivo `.sdkmanrc`.
+
+Em seguida, confirme se a porta `3309` continua livre:
+
+```
+if ss -ltn | grep -q ':3309 '; then
+    echo "ATENÇÃO: a porta 3309 está ocupada"
+else
+    echo "OK: a porta 3309 está livre"
+fi
+```
+
+Por enquanto, não execute comandos para criar ou remover containers e não altere os arquivos existentes.
+
+## 3. Estrutura que vamos preparar
+
+Depois dessas verificações, avançaremos gradualmente para esta organização:
+
+```
+backend-api/
+├── .gitignore
+├── .sdkmanrc
+├── pom.xml
+├── compose.yaml
+├── .env
+├── .env.example
+├── mvnw
+├── .mvn/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/julyturadm/
+│   │   └── resources/
+│   │       └── application.yml
+│   └── test/
+└── README.md
+```
+
+O projeto será baseado em Java 17, Spring Boot 3, Maven e MySQL 8, com as dependências iniciais de Spring Web, Spring Data JPA, Spring Security, Validation, Lombok e MySQL Connector/J.
+
+Também vamos proteger as credenciais do banco: o arquivo `.env` ficará fora do versionamento Git, enquanto `.env.example` documentará as variáveis necessárias sem expor senhas reais.
+
+Envie as saídas dos três comandos. A partir delas, seguiremos para a criação dos arquivos, sem sobrescrever suas configurações inadvertidamente.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sdk current java
+Current default java version 21.0.2-tem
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat ~/.sdkman/etc/config | grep sdkman_auto_env
+sdkman_auto_env=false
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ if ss -ltn | grep -q ':3309 '; then
+    echo "ATENÇÃO: a porta 3309 está ocupada"
+else
+    echo "OK: a porta 3309 está livre"
+fi
+OK: a porta 3309 está livre
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. As verificações revelaram um detalhe importante: o SDKMAN tem Java 21 como versão padrão,
+mas o projeto precisa trabalhar com Java 17, conforme nosso planejamento.
+
+1. O que descobrimos
+
+| Verificação           | Resultado                                 | Próxima ação                           |
+| --------------------- | ----------------------------------------- | -------------------------------------- |
+| Java padrão do SDKMAN | 21.0.2-tem                                | Manter como padrão global por enquanto |
+| Java 17               | Já identificado anteriormente no ambiente | Confirmar que continua instalado       |
+| Auto-env do SDKMAN    | Desativado                                | Ativar para reconhecer o `.sdkmanrc`   |
+| Porta `3309`          | Livre                                     | Disponível para o novo MySQL           |
+
+Não precisamos alterar o Java padrão do seu Linux. Vamos configurar o Java 17 somente para o `backend-api`, preservando os demais projetos.
+
+## 2. Próximo passo: confirmar a instalação do Java 17
+
+No terminal, ainda dentro de `backend-api`, execute:
+
+```
+ls -d ~/.sdkman/candidates/java/17*
+```
+
+Esse comando apenas consulta os diretórios instalados; não modifica nada.
+
+- Se aparecer `17.0.10-tem`, poderemos configurar essa versão no projeto.
+- Se não aparecer, verificaremos quais versões do Java estão instaladas antes de prosseguir.
+
+## 3. Depois, ativaremos o reconhecimento automático
+
+O SDKMAN está com `sdkman_auto_env=false`. Quando confirmarmos a instalação do Java 17, alteraremos essa configuração para `true`, preservando uma cópia de segurança do arquivo original. Assim, o SDKMAN poderá reconhecer o `.sdkmanrc` ao entrar no diretório do projeto.
+
+Importante: por enquanto, não altere o arquivo de configuração global nem instale outra versão do Java.
+
+Execute somente o comando de verificação e envie o resultado. Vamos concluir essa etapa antes de criar o `pom.xml` e o `compose.yaml`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ ls -d ~/.sdkman/candidates/java/17*
+/home/pedro/.sdkman/candidates/java/17.0.10-tem
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente! Confirmamos que o Java 17.0.10-tem está instalado. Podemos configurar o `backend-api` 
+para usar essa versão sem alterar o Java padrão dos demais projetos.
+
+Vamos fazer isso em duas pequenas etapas.
+
+Etapa 1 — Configurar o Java 17 no projeto
+
+No terminal, execute este comando para atualizar o `.sdkmanrc`:
+
+```
+printf 'java=17.0.10-tem\n' > .sdkmanrc
+```
+
+Esse comando substitui o conteúdo atual do `.sdkmanrc`, que contém apenas comentários.
+
+Como já verificamos seu conteúdo, não há configurações de SDK adicionais a preservar nesse arquivo.
+
+Agora, confirme o resultado:
+
+```
+cat .sdkmanrc
+```
+
+A saída esperada é:
+
+```
+java=17.0.10-tem
+```
+
+Etapa 2 — Ativar o reconhecimento automático do SDKMAN
+
+Ainda não execute esta etapa. Primeiro, envie o resultado da Etapa 1.
+
+Depois, faremos uma cópia de segurança da configuração global e habilitaremos `sdkman_auto_env`,
+para que o SDKMAN reconheça a versão definida pelo projeto ao entrar no diretório.
+
+Nosso objetivo: o `backend-api` utilizará Java 17, enquanto o Java 21 continuará sendo o padrão global.
+
+Não vamos alterar os containers MySQL existentes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf 'java=17.0.10-tem\n' > .sdkmanrc
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat .sdkmanrc
+java=17.0.10-tem
+pedro@pedro-MS-7A15
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! A configuração local do projeto está correta:
+
+```
+java=17.0.10-tem
+```
+
+Agora vamos habilitar o reconhecimento automático do SDKMAN, preservando a configuração global original.
+
+Etapa 2 — Fazer backup e ativar o SDKMAN Auto-Env
+
+Execute este bloco no terminal:
+
+```
+cp ~/.sdkman/etc/config ~/.sdkman/etc/config.backup-$(date +%Y%m%d-%H%M%S)
+sed -i 's/^sdkman_auto_env=false$/sdkman_auto_env=true/' ~/.sdkman/etc/config
+grep '^sdkman_auto_env=' ~/.sdkman/etc/config
+```
+
+O último comando deverá mostrar:
+
+```
+sdkman_auto_env=true
+```
+
+Isso habilita o reconhecimento automático do `.sdkmanrc` ao entrar nos diretórios dos projetos.
+O backup permite restaurar a configuração anterior, se necessário.
+
+Em seguida, valide o Java do projeto
+
+Como a configuração automática pode depender do shell e de como você entrou no diretório, execute:
+
+```
+sdk env
+java -version
+javac -version
+```
+
+Esperamos que os comandos de versão mostrem Java e compilador `17.0.10`.
+
+Envie a saída desses comandos antes de prosseguirmos. Depois, verificaremos o Maven e prepararemos o `pom.xml` do Spring Boot, mantendo o Java 17 como versão do projeto.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cp ~/.sdkman/etc/config ~/.sdkman/etc/config.backup-$(date +%Y%m%d-%H%M%S)
+sed -i 's/^sdkman_auto_env=false$/sdkman_auto_env=true/' ~/.sdkman/etc/config
+grep '^sdkman_auto_env=' ~/.sdkman/etc/config
+sdkman_auto_env=true
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sdk env
+java -version
+javac -version
+
+Using java version 17.0.10-tem in this shell.
+openjdk version "17.0.10" 2024-01-16
+OpenJDK Runtime Environment Temurin-17.0.10+7 (build 17.0.10+7)
+OpenJDK 64-Bit Server VM Temurin-17.0.10+7 (build 17.0.10+7, mixed mode, sharing)
+javac 17.0.10
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente! Etapa concluída com sucesso. O backend-api já está utilizando o Java 17.0.10-tem, e a configuração anterior do SDKMAN foi preservada em um backup.
+Java do projeto
+17.0.10-tem
+Confirmado por java -version e javac -version.
+
+
+
+SDKMAN Auto-Env
+
+Ativado e reconhecendo o .sdkmanrc.
+
+
+
+Configuração anterior
+
+Backup criado antes da alteração.
+
+Próxima etapa — Verificar o Maven e o Git, continua no arquivo[ ]  
+
+-------------------------------------------------fim-----------------------------------------------
+
+
