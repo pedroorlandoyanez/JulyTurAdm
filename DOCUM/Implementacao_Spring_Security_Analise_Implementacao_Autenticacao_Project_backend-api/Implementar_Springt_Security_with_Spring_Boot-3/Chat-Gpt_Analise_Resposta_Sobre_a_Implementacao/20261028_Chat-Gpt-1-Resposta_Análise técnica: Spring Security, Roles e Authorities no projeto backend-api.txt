@@ -32,7 +32,10 @@ A distinção é importante:
 
 Tabela `roles`
 
+`ADM`
 `CONTAS_PAGAR`
+`RECURSOS_HUMANOS`
+`CONTABILIDADE`
 
 Identifica o grupo de responsabilidades atribuído ao colaborador.
 
@@ -40,9 +43,10 @@ Identifica o grupo de responsabilidades atribuído ao colaborador.
 
 Tabela `permissions`
 
-`CONTAS_PAGAR:SELECT`
-
+`CONTAS_PAGAR:INSERT`
 `CONTAS_PAGAR:UPDATE`
+`CONTAS_PAGAR:SELECT`
+`CONTAS_PAGAR:DELETE`
 
 Determinam quais operações específicas podem ser executadas.
 
@@ -53,8 +57,10 @@ Objetos carregados na autenticação
 
 `CONTAS_PAGAR`
 
-`CONTAS_PAGAR:SELECT`
+`CONTAS_PAGAR:INSERT`
 `CONTAS_PAGAR:UPDATE`
+`CONTAS_PAGAR:SELECT`
+`CONTAS_PAGAR:DELETE`
 ...
 
 São as autoridades que o Spring Security consulta durante a autorização.
@@ -90,8 +96,10 @@ Tabela `roles_permissions`
 
 | `role_id` | `permission_id` | Permissão             |
 | --------- | --------------- | --------------------- |
-| 3         | 8               | `CONTAS_PAGAR:SELECT` |
+| 3         | 8               | `CONTAS_PAGAR:INSERT` |
 | 3         | 9               | `CONTAS_PAGAR:UPDATE` |
+| 3         | 10              | `CONTAS_PAGAR:SELECT` |
+| 3         | 11              | `CONTAS_PAGAR:DELETE` |
 
 Nesse cenário, o colaborador não tem permissão para inserir ou excluir registros.
 
@@ -99,8 +107,11 @@ Após a autenticação, as autoridades efetivas serão:
 
 ```
 CONTAS_PAGAR
-CONTAS_PAGAR:SELECT
+CONTAS_PAGAR:INSERT
 CONTAS_PAGAR:UPDATE
+CONTAS_PAGAR:SELECT
+CONTAS_PAGAR:DELETE
+
 ```
 
 O resultado esperado é:
@@ -110,7 +121,7 @@ O resultado esperado é:
 | Verificar o perfil `CONTAS_PAGAR` | Permitido |
 | Consultar contas a pagar          | Permitido |
 | Atualizar uma conta a pagar       | Permitido |
-| Inserir uma conta a pagar         | Negado    |
+| Inserir uma conta a pagar         | Permitido |
 | Excluir uma conta a pagar         | Negado    |
 
 Isso depende de as associações estarem corretamente gravadas em `roles_permissions` e de a 

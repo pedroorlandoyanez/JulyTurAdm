@@ -202,6 +202,7 @@ Mantive o modelo relacional original, ajustando o campo de login, a padronizaç�
 das tabelas associativas.
 
 > Execute este script somente depois de confirmar o estado atual do banco `bd_paytur`.
+
 Se as tabelas já existirem, será necessário criar uma migração em vez de executar novamente os comandos `CREATE TABLE`.
 
 ```
@@ -222,7 +223,6 @@ CREATE TABLE users (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_0900_ai_ci;
-
 
 CREATE TABLE roles (
     id BIGINT NOT NULL AUTO_INCREMENT,

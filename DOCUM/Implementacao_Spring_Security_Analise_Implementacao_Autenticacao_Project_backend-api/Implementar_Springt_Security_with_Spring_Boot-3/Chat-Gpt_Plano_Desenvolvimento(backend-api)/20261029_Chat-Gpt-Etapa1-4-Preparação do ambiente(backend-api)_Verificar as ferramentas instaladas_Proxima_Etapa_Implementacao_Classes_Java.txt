@@ -1,0 +1,1144 @@
+﻿
+28/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Próxima etapa criar a classe principal, JulyTurAdmApplication.java 
+---------------------------------------------------------------------------------------------------
+
+Chat-Gpt disse:
+
+O resultado mostra duas situações importantes:
+
+1. `pom.xml` aparece como `??` — o Git reconhece o arquivo novo, mas ele ainda não está versionado. Isso é normal.
+2. Os documentos em `DOCUM/` aparecem como `D` e `??` — há arquivos antigos que o Git considera removidos e novos arquivos que considera não rastreados. Isso pode ocorrer quando você renomeia ou reorganiza documentos, como parte das suas atualizações.
+
+Não vamos restaurar, excluir nem adicionar esses documentos ao Git agora. Vamos respeitar seu trabalho de organização.
+
+Próxima etapa — criar a classe principal
+
+Vamos avançar no backend sem mexer em `DOCUM`.
+
+No terminal, confirme que está em `backend-api` e execute este comando para criar a estrutura inicial de pacotes:
+
+```
+mkdir -p src/main/java/com/julyturadm
+```
+
+Depois, crie o arquivo:
+
+`src/main/java/com/julyturadm/JulyTurAdmApplication.java`
+
+No VS Code, cole e salve este código:
+
+```
+package com.julyturadm;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class JulyTurAdmApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(JulyTurAdmApplication.class, args);
+    }
+}
+```
+
+Essa é a classe de entrada da aplicação Spring Boot.
+
+A anotação `@SpringBootApplication` habilita a configuração automática e a descoberta dos componentes
+que colocaremos abaixo do pacote `com.julyturadm`.
+
+Quando terminar, não execute outros comandos ainda.
+
+Avise-me para verificarmos o arquivo e, em seguida, testar a compilação com `mvn compile`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn compile
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/main/resources
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/main/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 1 source file with javac [debug parameters release 17] to target/classes
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.553 s
+[INFO] Finished at: 2026-10-29T16:52:40-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente! O resultado confirma que o backend `JulyTurAdm` compilou com sucesso usando Java 17.
+
+O trecho mais importante é:
+
+```
+Compiling 1 source file with javac [debug parameters release 17]
+BUILD SUCCESS
+```
+
+Isso confirma que o Maven encontrou e compilou a classe `JulyTurAdmApplication.java`.
+
+A mensagem sobre `src/main/resources` não é um erro: essa pasta ainda não existe. Vamos criá-la quando configurarmos a aplicação.
+
+Próxima etapa — organizar os pacotes do backend.
+
+Antes de implementar autenticação, vamos preparar uma estrutura que facilite a manutenção do sistema.
+
+Proponho esta organização inicial:
+
+```
+backend-api/
+└── src/
+    └── main/
+        ├── java/
+        │   └── com/
+        │       └── julyturadm/
+        │           ├── JulyTurAdmApplication.java
+        │           ├── config/
+        │           ├── security/
+        │           ├── user/
+        │           ├── role/
+        │           ├── permission/
+        │           └── common/
+        └── resources/
+            └── application.yml
+```
+
+- `config`: configurações gerais.
+- `security`: autenticação, autorização e JWT.
+- `user`: usuários e serviços relacionados.
+- `role`: grupos de permissões.
+- `permission`: permissões por módulo e operação.
+- `common`: componentes compartilhados.
+
+Por enquanto, vamos apenas criar as pastas, sem implementar classes adicionais.
+
+Execute no terminal, dentro de `backend-api`:
+
+```
+mkdir -p src/main/java/com/julyturadm/{config,security,user,role,permission,common}
+mkdir -p src/main/resources
+```
+
+Depois, execute:
+
+```
+find src -type d | sort
+```
+
+Envie o resultado.
+
+Vamos conferir a estrutura antes de configurar o `application.yml` e preparar a conexão com o MySQL
+isolado do projeto.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mkdir -p src/main/java/com/julyturadm/{config,security,user,role,permission,common}
+mkdir -p src/main/resources
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src -type d | sort
+src
+src/main
+src/main/java
+src/main/java/com
+src/main/java/com/julyturadm
+src/main/java/com/julyturadm/common
+src/main/java/com/julyturadm/config
+src/main/java/com/julyturadm/permission
+src/main/java/com/julyturadm/role
+src/main/java/com/julyturadm/security
+src/main/java/com/julyturadm/user
+src/main/resources
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! A estrutura de diretórios foi criada corretamente.
+
+Agora temos uma base organizada para desenvolver a API do `JulyTurAdm`.
+
+Antes de conectar ao banco de dados, vamos preparar a configuração da aplicação.
+
+Ainda não iniciaremos nem modificaremos nenhum contêiner MySQL.
+
+Etapa seguinte — criar o `application.yml`
+
+Esse arquivo será responsável por configurar o nome da aplicação, a porta HTTP e, posteriormente, a 
+conexão com o MySQL.
+
+No VS Code, crie o arquivo:
+
+`backend-api/src/main/resources/application.yml`
+
+Insira este conteúdo:
+
+```
+
+spring:
+  application:
+    name: julyturadm-backend
+
+server:
+  port: 8080
+
+```
+
+Salve o arquivo.
+
+Por que começar assim?
+
+- `spring.application.name`: identifica a aplicação.
+- `server.port`: define a porta HTTP da API.
+- Ainda não configuramos usuário ou senha do banco de dados, evitando colocar credenciais diretamente no código versionado.
+
+Quando chegarmos à conexão com o MySQL, usaremos variáveis de ambiente e um arquivo `.env` local protegido pelo `.gitignore`.
+
+Verificação:
+
+Depois de salvar o arquivo, execute no terminal, dentro de `backend-api`:
+
+```
+cat src/main/resources/application.yml
+```
+
+Envie a saída para confirmarmos o conteúdo antes de avançar.
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/resources/application.yml
+
+spring:
+  application:
+    name: julyturadm-backend
+
+server:
+  port: 8080
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! O `application.yml` está correto e a configuração inicial da aplicação está pronta.
+
+Agora vamos confirmar que o backend continua compilando com a nova estrutura. Ainda não precisamos conectar o banco de dados.
+
+## Etapa seguinte — compilar novamente
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+mvn compile
+```
+
+O resultado esperado é:
+
+```
+BUILD SUCCESS
+```
+
+Envie a saída do comando. Depois, vamos preparar a primeira execução do Spring Boot e verificar se a API inicia na porta `8080`, antes de avançarmos para a configuração isolada do MySQL.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+BUILD SUCCESS
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo! Compilação confirmada com sucesso.
+
+O projeto `JulyTurAdm` continua compilando com Java 17 e Maven.
+
+Agora vamos verificar se a aplicação consegue iniciar.
+
+Ainda não configuramos o banco de dados; porém, como as dependências JPA e MySQL já estão no `pom.xml`,
+o Spring Boot pode tentar configurar a conexão automaticamente e falhar se não houver uma URL de banco
+definida.
+
+Para evitar esse problema neste teste, vamos primeiro observar o comportamento real.
+
+Próxima etapa — iniciar a aplicação.
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+mvn spring-boot:run
+```
+
+Aguarde o resultado e procure uma mensagem semelhante a:
+
+```
+Started JulyTurAdmApplication
+```
+
+Se aparecer um erro relacionado ao `DataSource`, ao MySQL ou à URL JDBC, não se preocupe e não altere
+nada ainda. Envie as últimas linhas do terminal para analisarmos.
+
+Para interromper a execução depois do teste, use `Ctrl + C`.
+
+Não execute outros comandos nesse mesmo terminal enquanto a aplicação estiver iniciando.
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn spring-boot:run
+
+2026-10-29T17:05:19.148-03:00  INFO 88177 --- [julyturadm-backend] [           main] com.julyturadm.JulyTurAdmApplication     : Starting JulyTurAdmApplication using Java 17.0.10 with PID 88177 (/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/classes started by pedro in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api)
+2026-10-29T17:05:19.154-03:00  INFO 88177 --- [julyturadm-backend] [           main] com.julyturadm.JulyTurAdmApplication     : No active profile set, falling back to 1 default profile: "default"
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo! Até aqui, o Spring Boot reconheceu corretamente a aplicação e está usando o Java 17.0.10.
+
+O log confirma:
+
+- Aplicação: `JulyTurAdmApplication`
+- Nome configurado: `julyturadm-backend`
+- Java: `17.0.10`
+- Perfil ativo: `default`
+
+Atenção: ainda não apareceu a mensagem final `Started JulyTurAdmApplication`, então não podemos 
+confirmar que a inicialização terminou.
+
+Próximo passo
+
+Deixe o comando `mvn spring-boot:run` executando e aguarde alguns segundos.
+
+Se aparecerem novas mensagens, envie as últimas linhas do terminal.
+
+Se não aparecer nada depois de aproximadamente 10 segundos, diga-me também.
+
+Não pressione `Ctrl + C` ainda.
+
+Vamos confirmar se a aplicação iniciou ou se encontrou algum problema de configuração do banco de dados.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Estou enviando as últimas linhas do terminal:"
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Failed to configure a DataSource: 'url' attribute is not specified and no embedded datasource could be configured.
+
+Reason: Failed to determine a suitable driver class
+
+
+Action:
+
+Consider the following:
+        If you want an embedded database (H2, HSQL or Derby), please put it on the classpath.
+        If you have database settings to be loaded from a particular profile you may need to activate it (no profiles are currently active).
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.159 s
+[INFO] Finished at: 2026-10-29T17:05:22-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.7:run (default-cli) on project backend-api: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException"
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Muito bem.
+
+Agora identificamos exatamente o motivo da falha.
+
+Não é um erro na classe Java nem na compilação. É uma configuração que ainda não fizemos.
+
+1. Por que a aplicação não iniciou?
+
+A mensagem principal é:
+
+```
+Failed to configure a DataSource:
+'url' attribute is not specified
+```
+
+No `pom.xml`, incluímos o Spring Data JPA e o driver MySQL.
+
+Por isso, o Spring Boot tenta preparar uma conexão com o banco de dados durante a inicialização.
+
+Porém, ainda não configuramos a URL JDBC, o usuário e a senha do banco.
+
+A compilação continua válida; o que falhou foi a inicialização da aplicação.
+
+2. Qual é a solução recomendada?
+
+Para o `JulyTurAdm`, recomendo configurar o MySQL de forma isolada, sem interferir nos outros bancos que você já utiliza.
+
+Nossa configuração planejada será:
+
+| Parâmetro      | Valor                                      |
+| -------------- | ------------------------------------------ |
+| Contêiner novo | `mysql-julituradm`                         |
+| Porta no Linux | `3309`                                     |
+| Banco          | `bd_paytur`                                |
+| Persistência   | Volume Docker exclusivo                    |
+| Credenciais    | Variáveis de ambiente, sem senha no código |
+
+Não vamos iniciar esse contêiner ainda.
+
+Primeiro, precisamos verificar o estado atual do Docker e confirmar que a porta continua disponível.
+
+3. Próximo passo — verificar o Docker
+
+No terminal, execute estes dois comandos, um de cada vez:
+
+```
+docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
+```
+
+Depois:
+
+```
+ss -ltn | grep ':3309'
+```
+
+O primeiro comando lista os contêineres em execução; o segundo verifica se existe algum processo escutando na porta `3309`.
+
+Envie os resultados antes de prosseguirmos. Não pare, remova nem altere os contêineres existentes.
+
+Vamos preparar a configuração do MySQL com segurança e só então conectar o backend.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
+NAMES              PORTS                                                    STATUS
+mysql-paytur       33060/tcp, 0.0.0.0:3308->3306/tcp, [::]:3308->3306/tcp   Up 8 hours (healthy)
+mysql_standalone   33060/tcp, 0.0.0.0:3307->3306/tcp, [::]:3307->3306/tcp   Up 8 hours
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ ss -ltn | grep ':3309'
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Os resultados confirmam que podemos preparar o ambiente do `JulyTurAdm` sem interferir nos bancos existentes.
+
+- `mysql-paytur`: continua ativo na porta `3308`.
+- `mysql_standalone`: continua ativo na porta `3307`.
+- Porta `3309`: não há processo escutando, conforme a verificação realizada.
+
+Vamos manter os dois contêineres existentes intactos.
+
+Próxima etapa — preparar as credenciais do novo banco
+
+Antes de criar o contêiner, vamos definir uma configuração segura.
+
+O banco será exclusivo do projeto `JulyTurAdm`, com volume persistente e credenciais separadas.
+
+Criaremos estes arquivos na raiz do projeto:
+
+```
+JulyTurAdm/
+├── .env                 # credenciais locais, não versionadas
+├── .env.example         # modelo sem senhas reais
+├── compose.yaml         # configuração do contêiner
+├── backend-api/
+└── DOCUM/
+```
+
+O arquivo `.gitignore` da raiz já contém regras para ignorar `.env` e suas variantes, permitindo
+manter as credenciais fora do Git.
+
+Primeiro, uma verificação importante
+
+Precisamos confirmar se o Docker Compose reconhece a versão instalada e se estamos na raiz correta
+do projeto.
+
+No terminal, execute:
+
+```
+cd /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+```
+
+Depois:
+
+```
+docker compose version
+```
+
+E, por último:
+
+```
+git check-ignore .env
+```
+
+Envie as saídas. O último comando deve indicar que `.env` será ignorado pelo Git.
+
+Se não indicar, ajustaremos isso antes de gravar qualquer credencial.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cd /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+Restored java version to 21.0.2-tem (default)
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose version
+Docker Compose version v5.6.1
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ git check-ignore .env
+.env
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! As três verificações estão corretas.
+
+- Docker Compose: versão `v5.6.1`.
+
+- Git: confirmou que `.env` será ignorado, portanto as credenciais locais não serão incluídas 
+  acidentalmente em commits.
+
+- SDKMAN: ao sair de `backend-api` e voltar à raiz, restaurou o Java padrão `21.0.2-tem`.
+  Isso é esperado, pois o arquivo `.sdkmanrc` está dentro de `backend-api`. Quando voltarmos a essa pasta, o Java 17 será ativado novamente.
+
+Próxima etapa — criar o modelo de configuração do MySQL
+
+Vamos preparar os arquivos, mas ainda não iniciaremos o contêiner.
+
+Primeiro, crie o arquivo `.env.example` na raiz de `JulyTurAdm`, com este conteúdo:
+
+```
+MYSQL_DATABASE=bd_paytur
+MYSQL_USER=julituradm_app
+MYSQL_PASSWORD=SUBSTITUIR_POR_SENHA_FORTE
+MYSQL_ROOT_PASSWORD=SUBSTITUIR_POR_OUTRA_SENHA_FORTE
+MYSQL_PORT=3309
+```
+
+Esse arquivo é apenas um modelo: os dois valores `SUBSTITUIR_...` não são senhas reais. Não os utilize para iniciar o banco.
+
+Depois, crie o arquivo `.env` na mesma pasta.
+
+Para evitar que senhas reais apareçam no histórico do terminal, vamos gerar valores aleatórios
+diretamente no arquivo usando Python.
+
+Execute somente este comando na raiz do projeto:
+
+```
+python3 -c 'import secrets; from pathlib import Path; p=Path(".env"); p.write_text("MYSQL_DATABASE=bd_paytur\nMYSQL_USER=julituradm_app\nMYSQL_PASSWORD="+secrets.token_urlsafe(32)+"\nMYSQL_ROOT_PASSWORD="+secrets.token_urlsafe(32)+"\nMYSQL_PORT=3309\n"); p.chmod(0o600); print(".env criado com permissões 600; valores não exibidos.")'
+```
+
+O comando gera duas senhas diferentes e limita o acesso ao arquivo ao seu usuário.
+
+Depois de executar, não mostre o conteúdo do `.env` nem o copie para o chat.
+
+Informe apenas se o comando terminou com a mensagem de sucesso.
+
+Em seguida, vamos revisar o `compose.yaml` antes de criar qualquer contêiner.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+arquivo .env criados e atualizado conforme valores.
+arquivo .env.example criado e atualizado conforme valores via comando python.
+SUCESSO.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! Os nomes dos arquivos estão corretos e as permissões estão adequadas.
+
+Arquivo	Situação
+.env	Protegido  Permissões 600, acessível apenas pelo seu usuário
+.env.example	Correto  Modelo de configuração, sem credenciais reais
+
+Agora vamos criar a configuração do Docker Compose. Ela será isolada dos contêineres mysql-paytur e mysql_standalone.
+Etapa seguinte — criar compose.yaml
+
+Na raiz de JulyTurAdm, crie o arquivo compose.yaml com este conteúdo:
+
+services:
+  mysql-julituradm:
+    image: mysql:8.0
+    container_name: mysql-julituradm
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Defina MYSQL_DATABASE no .env}
+      MYSQL_USER: ${MYSQL_USER:?Defina MYSQL_USER no .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no .env}
+
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3309}:3306"
+
+    volumes:
+      - mysql_julituradm_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -h
+        - 127.0.0.1
+        - -uroot
+        - "-p$${MYSQL_ROOT_PASSWORD}"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  mysql_julituradm_data:
+    name: mysql_julituradm_data
+
+
+
+Por que essa configuração?
+- 127.0.0.1:3309: restringe a publicação da porta à própria máquina, sem expor o MySQL diretamente à rede.
+- mysql_julituradm: nome exclusivo do contêiner.
+- mysql_julituradm_data: volume exclusivo para preservar os dados mesmo se o contêiner for recriado.
+- healthcheck: permite verificar quando o MySQL estiver pronto.
+- As senhas são lidas do .env, não escritas no compose.yaml.
+
+Importante: o MySQL utiliza as variáveis de inicialização principalmente quando o diretório de dados está vazio.
+
+Alterar senhas no .env posteriormente não altera automaticamente as senhas de um banco já inicializado.
+
+Antes de iniciar o contêiner
+
+Salve o arquivo e execute somente:
+
+docker compose config --quiet
+
+Esse comando valida a configuração sem iniciar o banco.
+
+Não use docker compose up ainda.
+
+Envie o resultado e confirmaremos se está tudo pronto para a próxima etapa.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ vi compose.yaml
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose config --quiet
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Excelente! A validação do `compose.yaml` terminou sem apresentar erros.
+
+Isso significa que o Docker Compose conseguiu interpretar a configuração e resolver as variáveis
+do `.env`.
+
+Ainda não iniciamos o contêiner MySQL. Primeiro, vamos conferir o plano de execução para garantir 
+que somente o novo serviço será criado.
+
+Próxima etapa — revisar o plano do Docker Compose
+
+Na raiz de `JulyTurAdm`, execute:
+
+```
+docker compose config --services
+```
+
+O resultado esperado é:
+
+```
+mysql-julituradm
+```
+
+Depois execute:
+
+```
+docker compose ps
+```
+
+Esse segundo comando mostra os serviços já criados para este projeto Compose. Como ainda não iniciamos o banco, esperamos que não haja nenhum contêiner listado por esse projeto.
+
+Envie as duas saídas. Assim confirmaremos que o Compose está apontando exclusivamente para `mysql-julituradm`, sem interferir nos contêineres existentes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose config --services
+mysql-julituradm
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose ps
+NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Perfeito! A revisão confirmou que o Docker Compose está preparado corretamente.
+
+- `docker compose config --services` listou somente `mysql-julituradm`.
+- `docker compose ps` confirmou que ainda não existe nenhum contêiner iniciado por essa configuração.
+- Os contêineres antigos não fazem parte deste projeto Compose.
+
+Próxima etapa — iniciar o MySQL exclusivo do JulyTurAdm
+
+Agora podemos criar e iniciar o novo contêiner, mantendo os dois bancos existentes intactos.
+
+Execute, na raiz do projeto:
+
+```
+docker compose up -d
+```
+
+Esse comando criará o contêiner `mysql-julituradm` e o volume persistente `mysql_julituradm_data`, se ainda não existirem.
+
+Depois, execute:
+
+```
+docker compose ps
+```
+
+Envie a saída. Vamos verificar o estado do contêiner e se o MySQL ficou saudável antes de configurar a conexão no Spring Boot.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose up -d
+[+] up 3/3
+ ✔ Network julyturadm_default   Created                                                                     1.7s
+ ✔ Volume mysql_julituradm_data Created                                                                     0.7s
+ ✔ Container mysql-julituradm   Started                                                                     6.5s
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose ps
+NAME               IMAGE       COMMAND                  SERVICE            CREATED          STATUS                             PORTS
+mysql-julituradm   mysql:8.0   "docker-entrypoint.s…"   mysql-julituradm   25 seconds ago   Up 19 seconds (health: starting)   33060/tcp, 127.0.0.1:3309->3306/tcp
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ 
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Excelente! O contêiner `mysql-julituradm` foi criado e iniciado corretamente.
+
+A rede e o volume exclusivos também foram criados.
+
+O estado atual é `health: starting`, o que significa que o MySQL ainda está inicializando.
+
+Isso é normal nos primeiros segundos.
+
+Próxima etapa — confirmar que o MySQL está saudável
+
+Na raiz do projeto `JulyTurAdm`, execute:
+
+```
+docker compose ps
+```
+
+Aguarde alguns segundos antes de executar, se necessário. O resultado esperado é semelhante a:
+
+```
+mysql-julituradm   mysql:8.0   ...   Up ... (healthy)
+```
+
+Quando aparecer `healthy`, teremos confirmado que o banco está pronto para receber conexões.
+
+Não altere nem reinicie os outros contêineres. Envie a nova saída para verificarmos o estado do MySQL antes de configurar o Spring Boot.
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose ps
+NAME               IMAGE       COMMAND                  SERVICE            CREATED         STATUS                     PORTS
+mysql-julituradm   mysql:8.0   "docker-entrypoint.s…"   mysql-julituradm   2 minutes ago   Up 2 minutes (unhealthy)   33060/tcp, 127.0.0.1:3309->3306/tcp
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+O contêiner foi iniciado, mas temos um problema que precisamos investigar: o estado mudou para `unhealthy`.
+
+Isso significa que a verificação automática de saúde do MySQL falhou; ainda não devemos configurar
+o Spring Boot para depender desse banco.
+
+Não vamos apagar o contêiner nem o volume `mysql_julituradm_data`.
+Primeiro, vamos identificar a causa.
+
+Pode ser a inicialização do MySQL ou a configuração do `healthcheck`.
+
+Etapa 1 — consultar os registros do MySQL
+
+Na raiz do projeto `JulyTurAdm`, execute:
+
+```
+docker compose logs --tail=80 mysql-julituradm
+```
+
+Esse comando apenas consulta os registros; não modifica o banco nem seus dados.
+
+Envie a saída, mas oculte qualquer senha ou informação sensível, caso apareça.
+
+Com essas mensagens, poderemos decidir o próximo passo com segurança.
+
+O estado `unhealthy` não significa, por si só, que os dados foram perdidos.
+
+O Docker marca um contêiner assim quando as verificações de saúde falham repetidamente.&#x20;
+
+---
+[image](https://www.google.com/s2/favicons?domain=https://docs.docker.com\&sz=32)
+
+Docker Docs
+---
+
+Por enquanto, não execute `docker compose down -v`, pois a opção `-v` pode remover o volume 
+persistente do projeto. Vamos analisar os logs primeiro.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose logs --tail=80 mysql-julituradm
+mysql-julituradm  | 2026-10-29 20:49:07+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 8.0.46-1.el9 started.
+mysql-julituradm  | 2026-10-29 20:49:08+00:00 [Note] [Entrypoint]: Switching to dedicated user 'mysql'
+mysql-julituradm  | 2026-10-29 20:49:08+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 8.0.46-1.el9 started.
+mysql-julituradm  | 2026-10-29 20:49:08+00:00 [Note] [Entrypoint]: Initializing database files
+mysql-julituradm  | 2026-10-29T20:49:08.433184Z 0 [Warning] [MY-011068] [Server] The syntax '--skip-host-cache' is deprecated and will be removed in a future release. Please use SET GLOBAL host_cache_size=0 instead.
+mysql-julituradm  | 2026-10-29T20:49:08.472235Z 0 [System] [MY-013169] [Server] /usr/sbin/mysqld (mysqld 8.0.46) initializing of server in progress as process 80
+mysql-julituradm  | 2026-10-29T20:49:08.670579Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+mysql-julituradm  | 2026-10-29T20:49:27.784949Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+mysql-julituradm  | 2026-10-29T20:50:05.169382Z 6 [Warning] [MY-010453] [Server] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
+mysql-julituradm  | 2026-10-29 20:51:21+00:00 [Note] [Entrypoint]: Database files initialized
+mysql-julituradm  | 2026-10-29 20:51:21+00:00 [Note] [Entrypoint]: Starting temporary server
+mysql-julituradm  | 2026-10-29T20:51:21.479591Z 0 [Warning] [MY-011068] [Server] The syntax '--skip-host-cache' is deprecated and will be removed in a future release. Please use SET GLOBAL host_cache_size=0 instead.
+mysql-julituradm  | 2026-10-29T20:51:21.481312Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.46) starting as process 220
+mysql-julituradm  | 2026-10-29T20:51:21.658147Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+mysql-julituradm  | 2026-10-29T20:51:24.668986Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+mysql-julituradm  | 2026-10-29T20:51:28.572168Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+mysql-julituradm  | 2026-10-29T20:51:28.572211Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+mysql-julituradm  | 2026-10-29T20:51:28.608896Z 0 [Warning] [MY-011810] [Server] Insecure configuration for --pid-file: Location '/var/run/mysqld' in the path is accessible to all OS users. Consider choosing a different directory.
+mysql-julituradm  | 2026-10-29T20:51:28.624016Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Socket: /var/run/mysqld/mysqlx.sock
+mysql-julituradm  | 2026-10-29T20:51:28.624085Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.46'  socket: '/var/run/mysqld/mysqld.sock'  port: 0  MySQL Community Server - GPL.
+mysql-julituradm  | 2026-10-29 20:51:28+00:00 [Note] [Entrypoint]: Temporary server started.
+mysql-julituradm  | '/var/lib/mysql/mysql.sock' -> '/var/run/mysqld/mysqld.sock'
+mysql-julituradm  | Warning: Unable to load '/usr/share/zoneinfo/iso3166.tab' as time zone. Skipping it.
+mysql-julituradm  | Warning: Unable to load '/usr/share/zoneinfo/leap-seconds.list' as time zone. Skipping it.
+mysql-julituradm  | Warning: Unable to load '/usr/share/zoneinfo/leapseconds' as time zone. Skipping it.
+mysql-julituradm  | Warning: Unable to load '/usr/share/zoneinfo/tzdata.zi' as time zone. Skipping it.
+mysql-julituradm  | Warning: Unable to load '/usr/share/zoneinfo/zone.tab' as time zone. Skipping it.
+mysql-julituradm  | Warning: Unable to load '/usr/share/zoneinfo/zone1970.tab' as time zone. Skipping it.
+mysql-julituradm  | 2026-10-29 20:51:42+00:00 [Note] [Entrypoint]: Creating database bd_paytur
+mysql-julituradm  | 2026-10-29 20:51:42+00:00 [Note] [Entrypoint]: Creating user julituradm_app
+mysql-julituradm  | 2026-10-29 20:51:42+00:00 [Note] [Entrypoint]: Giving user julituradm_app access to schema bd_paytur
+mysql-julituradm  | 
+mysql-julituradm  | 2026-10-29 20:51:43+00:00 [Note] [Entrypoint]: Stopping temporary server
+mysql-julituradm  | 2026-10-29T20:51:43.259379Z 13 [System] [MY-013172] [Server] Received SHUTDOWN from user root. Shutting down mysqld (Version: 8.0.46).
+mysql-julituradm  | 2026-10-29T20:52:05.410487Z 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.0.46)  MySQL Community Server - GPL.
+mysql-julituradm  | 2026-10-29 20:52:06+00:00 [Note] [Entrypoint]: Temporary server stopped
+mysql-julituradm  | 
+mysql-julituradm  | 2026-10-29 20:52:06+00:00 [Note] [Entrypoint]: MySQL init process done. Ready for start up.
+mysql-julituradm  | 
+mysql-julituradm  | 2026-10-29T20:52:06.553262Z 0 [Warning] [MY-011068] [Server] The syntax '--skip-host-cache' is deprecated and will be removed in a future release. Please use SET GLOBAL host_cache_size=0 instead.
+mysql-julituradm  | 2026-10-29T20:52:06.554910Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.46) starting as process 1
+mysql-julituradm  | 2026-10-29T20:52:06.561295Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+mysql-julituradm  | 2026-10-29T20:52:08.386883Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+mysql-julituradm  | 2026-10-29T20:52:10.538074Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+mysql-julituradm  | 2026-10-29T20:52:10.538110Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+mysql-julituradm  | 2026-10-29T20:52:10.633592Z 0 [Warning] [MY-011810] [Server] Insecure configuration for --pid-file: Location '/var/run/mysqld' in the path is accessible to all OS users. Consider choosing a different directory.
+mysql-julituradm  | 2026-10-29T20:52:10.677297Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /var/run/mysqld/mysqlx.sock
+mysql-julituradm  | 2026-10-29T20:52:10.677420Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.46'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server - GPL.
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeP
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Os logs mostram que o MySQL inicializou o banco `bd_paytur` e criou o usuário `julituradm_app`.
+
+No final, também confirmou:
+
+```
+MySQL Community Server - GPL.
+ready for connections.
+port: 3306
+```
+
+Portanto, o servidor MySQL parece estar funcionando dentro do contêiner.
+O problema pode estar especificamente no `healthcheck` que configuramos no `compose.yaml`, e não
+no banco em si.
+
+Há um detalhe importante: durante a inicialização, o log registra a criação temporária do usuário `root`
+sem senha no servidor de inicialização.
+
+Isso faz parte do processo de inicialização da imagem oficial; não prova que o servidor final
+esteja sem senha.
+
+Vamos verificar o resultado real da checagem de saúde antes de alterar qualquer configuração.
+
+Próxima etapa — identificar a falha do `healthcheck`
+
+Execute este comando na raiz do projeto:
+
+```
+docker inspect --format '{{range .State.Health.Log}}{{println "ExitCode:" .ExitCode "Saída:" .Output}}{{end}}' mysql-julituradm
+```
+
+Ele mostrará os resultados das verificações de saúde anteriores, sem exibir as senhas do `.env`.
+
+Envie a saída.
+
+Se o erro for de autenticação ou de parâmetros do `mysqladmin`, corrigiremos somente o `healthcheck`,
+preservando o banco, o volume e os demais contêineres.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker inspect --format '{{range .State.Health.Log}}{{println "ExitCode:" .ExitCode "Saída:" .Output}}{{end}}' mysql-julituradm
+ExitCode: 0 Saída: mysqladmin: [Warning] Using a password on the command line interface can be insecure.
+mysqladmin: connect to server at '127.0.0.1' failed
+error: 'Access denied for user 'root'@'127.0.0.1' (using password: YES)'
+
+ExitCode: 0 Saída: mysqladmin: [Warning] Using a password on the command line interface can be insecure.
+mysqladmin: connect to server at '127.0.0.1' failed
+error: 'Access denied for user 'root'@'127.0.0.1' (using password: YES)'
+
+ExitCode: 0 Saída: mysqladmin: [Warning] Using a password on the command line interface can be insecure.
+mysqladmin: connect to server at '127.0.0.1' failed
+error: 'Access denied for user 'root'@'127.0.0.1' (using password: YES)'
+
+ExitCode: 0 Saída: mysqladmin: [Warning] Using a password on the command line interface can be insecure.
+mysqladmin: connect to server at '127.0.0.1' failed
+error: 'Access denied for user 'root'@'127.0.0.1' (using password: YES)'
+
+ExitCode: 0 Saída: mysqladmin: [Warning] Using a password on the command line interface can be insecure.
+mysqladmin: connect to server at '127.0.0.1' failed
+error: 'Access denied for user 'root'@'127.0.0.1' (using password: YES)'
+
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Ótimo. O resultado confirmou que o `mysql-julituradm` está falhando na autenticação do usuário `root` durante o healthcheck. Isso explica o estado `unhealthy`, mas não significa necessariamente que o servidor MySQL esteja parado.
+
+Vamos corrigir somente o `healthcheck`, preservando o banco de dados, o volume e os outros containers MySQL.
+
+## Etapa 1 — Corrigir o `compose.yaml`
+
+No terminal, abra o arquivo:
+
+```
+nano compose.yaml
+```
+
+Localize a seção `healthcheck:` e substitua somente essa seção pelo bloco abaixo:
+
+```
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}"'
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+```
+
+A alteração de `CMD` para `CMD-SHELL` permite que a variável `MYSQL_ROOT_PASSWORD` seja expandida corretamente dentro do container, sem revelar a senha no terminal.
+
+Para salvar no Nano:
+
+1. `Ctrl + O`
+2. `Enter`
+3. `Ctrl + X`
+
+Importante: não altere o restante do arquivo e não execute `docker compose down -v`, pois não queremos remover volumes.
+
+Quando terminar, execute apenas este comando e envie o resultado:
+
+```
+docker compose config --quiet && echo "Configuração válida"
+```
+
+Depois verificaremos o container e o estado do banco.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose config --quiet && echo "Configuração válida"
+Configuração válida
+
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Perfeito! A configuração do `compose.yaml` está válida. Agora vamos aplicar a alteração e verificar se o MySQL fica saudável, sem remover o volume de dados.
+
+Etapa 2 — Aplicar a configuração
+
+Execute:
+
+```
+docker compose up -d
+```
+
+Esse comando aplica a configuração atualizada. O volume `mysql_julituradm_data` será preservado.
+
+Em seguida, execute:
+
+```
+docker compose ps
+```
+
+Envie o resultado. Vamos verificar se o container `mysql-julituradm` aparece como `healthy` antes de avançar para a conexão do Spring Boot.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose up -d
+[+] up 1/1
+ ✔ Container mysql-julituradm Started                                                                       6.7s
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose ps
+NAME               IMAGE       COMMAND                  SERVICE            CREATED          STATUS                    PORTS
+mysql-julituradm   mysql:8.0   "docker-entrypoint.s…"   mysql-julituradm   26 seconds ago   Up 20 seconds (healthy)   33060/tcp, 127.0.0.1:3309->3306/tcp
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Excelente! O container `mysql-julituradm` agora está `healthy`.
+
+Isso confirma que o healthcheck conseguiu validar a disponibilidade do MySQL.
+
+Etapa 3 — Validar o acesso ao banco `bd_paytur`
+
+Vamos confirmar se o usuário da aplicação consegue acessar o banco.
+
+Não precisamos exibir nem copiar nenhuma senha.
+
+Execute este comando na raiz do projeto:
+
+```
+docker compose exec mysql-julituradm sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT DATABASE() AS banco, CURRENT_USER() AS usuario;"'
+```
+
+O comando usa as variáveis já configuradas no container e deve retornar o banco e o usuário autenticado.
+
+Envie a saída do terminal. Se funcionar, passaremos à configuração do `application.yml` para 
+conectar o Spring Boot ao MySQL na porta `3309`, mantendo os outros containers intactos.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose exec mysql-julituradm sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT DATABASE() AS banco, CURRENT_USER() AS usuario;"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
++-----------+------------------+
+| banco     | usuario          |
++-----------+------------------+
+| bd_paytur | julituradm_app@% |
++-----------+------------------+
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Perfeito! A conexão foi validada com sucesso.
+
+Nosso banco de dados está pronto para integrar com o Spring Boot.
+
+O resultado confirmou:
+
+- Banco: `bd_paytur`
+- Usuário da aplicação: `julituradm_app`
+- Autenticação: funcionando.
+- Container: `mysql-julituradm` saudável.
+- Porta publicada: `127.0.0.1:3309`.
+- Isolamento: os outros containers MySQL permanecem intactos.
+
+Etapa 4 — Configurar o Spring Boot
+
+Agora vamos configurar a aplicação para usar esse banco, sem colocar senhas diretamente no arquivo YAML.
+
+Abra o arquivo:
+
+```
+cd backend-api
+nano src/main/resources/application.yml
+```
+
+Substitua o conteúdo atual por:
+
+```
+spring:
+  application:
+    name: julyturadm-backend
+
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3309/bd_paytur
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+server:
+  port: 8080
+```
+
+Por que `ddl-auto: none`? Para impedir que o Hibernate crie, altere ou remova tabelas automaticamente
+enquanto estamos preparando a estrutura do projeto.
+
+Salve com `Ctrl + O`, pressione `Enter` e saia com `Ctrl + X`.
+
+Ainda não inicie a aplicação: o Spring Boot precisa receber as variáveis `MYSQL_USER` e `MYSQL_PASSWORD`
+do arquivo `.env`, que está na raiz do projeto, e não diretamente dentro de `backend-api`.
+
+Quando terminar de salvar, avise-me. Vamos configurar essa leitura de variáveis com segurança antes
+de testar a aplicação.
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+-------------------------------------------------fim-----------------------------------------------
+
+

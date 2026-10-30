@@ -1,0 +1,277 @@
+﻿
+30/10/2026
+
+Localização do projeto: /home/pedro/Documentos/peter/VsCodeProject/Projetc/JulyTurAdm
+
+Nome do projeto: backend-api
+
+--------------------------------------------------------------------------------
+Passo a Passo para Atualizar o Projeto AndesTur no GitHub
+--------------------------------------------------------------------------------
+
+Preciso aprender a como atualizar meu projetos no GitHub. Já tenho meu perfil no
+Github. Foi criado o repositorio AndesTur como privado, necessito fazer upload 
+atualizar as analises do projeto, base de dados, arquivos, pastas, o projeto 
+andesTur em Java. Crie um relatorio profissional, um paso a paso para concretizar
+está tarefa.
+
+--------------------------------------------------------------------------------
+Git hub disse:
+
+Recomendações para subir as atualizações para o repositorio da plataforma gitHub.
+
+... or push an existing repository from the command line
+(ou faça o push e saia do repositorio a partir da linha de comentario)
+
+bash:
+git remote add origin https://github.com/pedroorlandoyanez/JulyTurAdm.git
+git branch -M main
+git push -u origin main
+
+--------------------------------------------------------------------------------
+Pedro disse que sigamos esta receita em 30/10/2026:
+
+Identificação
+-------------
+Meu perfil na WEB: https://github.com/pedroorlandoyanez/JulyTurAdm
+
+Conta ba plataforma:
+
+E-Mail..: pedroorlandoyanez@gmail.com
+Password: [*******]
+
+---
+
+bash:
+git init
+git add .
+git commit -m "30-11-2026,Atualizando Projeto backend, API da JulyturAdm - Hystory, Project Spring-Boot-Docker Mysql"
+git push -u origin master
+
+Username for [pedroorlandoyanez]
+Password for [Digite aqui um token valido]
+
+git status
+
+---
+
+--------------------------------------------------------------------------------
+Gemini disse:
+
+A melhor forma de gerenciar seu projeto no GitHub é através da ferramenta de 
+linha de comando Git.
+
+Isso te dará mais controle e é a forma padrão e mais profissional de trabalhar 
+com controle de versão.
+
+Relatório Profissional: Passo a Passo para Atualizar o Projeto AndesTur no GitHub
+
+Este guia detalhado irá te conduzir pelo processo de sincronizar seu projeto local
+(em sua máquina) com o repositório remoto no GitHub.
+
+Pré-requisitos:
+
+- Git instalado: Certifique-se de que o Git esteja instalado em sua máquina.
+Você pode verificar abrindo o terminal e digitando `git --version`.
+
+Se não estiver instalado, baixe-o do [site oficial do Git](https://git-scm.com/downloads).
+
+- Projeto local: O projeto AndesTur em Java deve estar salvo em uma pasta em sua máquina.
+
+- Repositório remoto: O repositório AndesTur já deve ter sido criado no GitHub.
+
+
+Identificação
+-------------
+
+https://github.com/login
+
+Meu perfil na WEB: https://github.com/pedroorlandoyanez
+
+E-Mail..: pedroorlandoyanez@gmail.com
+
+Password: [*******]
+
+---
+
+Passo a Passo Detalhado
+-----------------------
+
+Passo 1: Abrir o Terminal ou Prompt de Comando
+
+Localização do projeto: /home/pedro/Documentos/peter/VsCodeProject/Projetc/JulyTurAdm
+
+Navegue até a pasta do seu projeto local usando o terminal. Use o comando `cd` (change directory).
+
+bash:
+
+cd /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+
+--------------------------------------------------------------------------------
+Passo 2: Inicializar o Repositório Git Local (se ainda não o fez)
+
+Se esta for a primeira vez que você está conectando seu projeto local ao GitHub,
+você precisa inicializar o Git na pasta.
+
+bash:
+git init
+
+// Mensagem diz que o repositorio está vazio ou não existe, portanto o Git Cria
+um novo repositorio vazio.
+Repositório vazio Git inicializado em  /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/.git/
+
+OU
+
+// Mensagem que diz que o repositorio existe.
+Reinitialized existing Git repository in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/.git/
+
+
+--------------------------------------------------------------------------------
+Passo 3: Conectar o Repositório Local ao Repositório Remoto
+
+Você precisa informar ao seu Git local a URL do repositório remoto no GitHub.
+
+bash:
+git remote add origin https://github.com/pedroorlandoyanez/JulyTurAdm.git
+
+
+- `git remote add origin`: Este comando cria um atalho chamado `origin` para a 
+URL do seu repositório remoto.
+
+
+- `https://github.com/[SeuUsuario]/AndesTur.git`: Substitua `SeuUsuario` pelo seu 
+nome de usuário do GitHub.
+
+* Você pode encontrar a URL do seu repositório clicando em "Code" na página do seu repositório no GitHub e copiando o link HTTPS.
+
+* fatal: remote origin already exists.
+
+--------------------------------------------------------------------------------
+Passo 4: Preparar os Arquivos para o Commit
+
+Antes de enviar as mudanças, você precisa "preparar" (stage) os arquivos que foram modificados, criados ou deletados.
+
+- Para adicionar todos os arquivos modificados de uma vez:
+
+bash:
+
+git add .
+
+
+- Para adicionar arquivos específicos (recomendado para commits mais organizados):
+
+bash:
+    git add nome-do-arquivo.java
+    git add pasta/outro-arquivo.txt
+
+    
+ - Dica: Use `git status` a qualquer momento para ver quais arquivos estão prontos 
+   para o commit (em verde) e quais ainda não foram adicionados (em vermelho).
+
+--------------------------------------------------------------------------------
+Passo 5: Criar o Commit
+
+Um commit é um instantâneo das suas mudanças.
+
+É como um ponto de salvamento.
+
+Cada commit deve ter uma mensagem clara e concisa que descreva as mudanças feitas.
+
+bash:
+
+git commit -m "30-11-2026,Atualizando Projeto JulyTurADM - API-Julytur-Adm - Hystory, Project Spring-Boot-Docker Mysql"
+
+ - `-m`: A flag para adicionar a mensagem do commit. Mantenha as mensagens descritivas para facilitar o histórico do projeto.
+ 
+ - Exemplos de boas mensagens: "Adicionando funcionalidade de login", "Corrigindo bug na tela de cadastro", "Refatorando código de conexão com o banco".
+
+--------------------------------------------------------------------------------
+Passo 6: Enviar as Mudanças para o GitHub
+
+Agora é o momento de "empurrar" (push) as mudanças do seu repositório local para
+o repositório remoto no GitHub.
+
+bash:
+
+'git push -u origin master'
+
+
+ - `git push`: O comando para enviar as alterações.
+
+ - `-u origin main`: Esta parte define que o branch local (`main`) deve ser rastreado
+     pelo branch remoto (`main`) no `origin`.
+     Este comando só precisa ser executado na primeira vez.
+
+ - `main`: Este é o nome do branch principal. No passado, era comum usar `master`.
+           Verifique qual o nome do branch principal do seu repositório no GitHub.
+
+ - Autenticação: O GitHub solicitará seu nome de usuário e token de acesso pessoal.
+
+OBS: Nunca use sua senha\! Se você ainda não configurou um token de acesso:
+
+---
+
+userName: pedroorlandoyanez@gmail.com
+
+password: "Digite o token atualizado"
+
+
+--------------------------------------------------------------------------------
+Resumo dos Comandos:
+--------------------
+Localização do projeto: /home/pedro/Documentos/peter/VsCodeProject/Projetc/JulyTurAdm
+
+Para uma atualização futura do seu projeto, você só precisará seguir os passos 4 a 6.
+
+1.Navegue até a pasta do projeto:
+
+bash:
+cd /home/pedro/Documentos/peter/VsCodeProject/Projetc/JulyTurAdm
+
+
+2.Adicione os arquivos modificados:
+
+bash:
+git add .
+
+
+3.Crie o commit com uma mensagem descritiva:
+
+bash:
+git commit -m "30-11-2026,Atualizando Projeto backend, API da JulyturAdm - Hystory, Project Spring-Boot-Docker Mysql"
+
+
+4.Envie as mudanças para o GitHub:
+
+bash:
+git push -u origin master
+
+bash:
+'git status'
+
+Seguindo este fluxo de trabalho, você garantirá que seu projeto AndesTur esteja
+sempre atualizado no GitHub de forma profissional e organizada.
+
+Como verificar o que foi adicionado:
+------------------------------------
+
+Para ter certeza de que o comando funcionou, você pode usar o comando `git status`.
+
+bash:
+
+'git status'
+
+O que o comando `git status` irá te mostrar:"
+
+ - Arquivos em verde: Serão os arquivos que você acabou de adicionar com o `git add'.
+   Isso significa que eles estão "preparados" (staged) e prontos para o próximo passo.
+
+ - Arquivos em vermelho: Serão os arquivos que foram modificados, mas que você 
+   ainda não adicionou à área de preparação.
+
+O fato de não ter retornado nenhum erro e de ter demorado um tempo (uns 30 segundos)
+é um bom sinal, pois indica que o Git estava processando e rastreando os arquivos do seu projeto.
+
+--------------------------------------fim---------------------------------------
+
+

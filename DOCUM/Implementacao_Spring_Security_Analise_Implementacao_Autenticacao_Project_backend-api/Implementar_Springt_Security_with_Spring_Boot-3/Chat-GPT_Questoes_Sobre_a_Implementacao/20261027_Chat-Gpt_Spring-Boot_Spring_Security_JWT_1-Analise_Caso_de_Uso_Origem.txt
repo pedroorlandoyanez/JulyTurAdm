@@ -293,12 +293,12 @@ A chave primária composta nas tabelas de relacionamento continua impedindo asso
 Sugiro escolher uma única convenção e utilizá-la no banco, no código Java, nos testes e nas futuras declarações de autorização:
 
 ```
-ROLE_ADMIN
-ROLE_RECURSOS_HUMANOS
-ROLE_CONTAS_PAGAR
-ROLE_COBRANCA
-ROLE_CONTABIL
-ROLE_RESERVAS
+ADMIN
+RECURSOS_HUMANOS
+CONTAS_PAGAR
+COBRANCA
+CONTABIL
+RESERVAS
 
 ADMIN:INSERT
 ADMIN:SELECT

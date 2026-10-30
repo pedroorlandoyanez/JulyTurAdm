@@ -12,11 +12,19 @@ pedroorlandoyanez@gmail.com
 Workspace.: APIJulyTurAdm
 Collection: Collection_Backend_APIJulyTurAdm
 
-Acesse a minha conta na plataforma Postman, acesse a workspace "APIJulyTurAdm", entrei na collection "Collection_Backend_APIJulyTurAdm".
+https://go.postman.co/workspace/4f16a6eb-5883-4ebe-83ce-a0c7f7ae0f0e
+
+Acesse a minha conta na plataforma Postman, acesse a workspace "APIJulyTurAdm", entrei na collection
+"Collection_Backend_APIJulyTurAdm".
+
 Dentro da collection foram criados 3 endpoints (Permissões,Grupos e Usuários):
--Cada cabeçalho de cada endpoint foi configurado com os valores:
-Key: Content-Type e Value: application/json
-Cada Corpo da Requisição de cada endpoint foi configurado com a opção raw (em formato texto puro) e o JSON enviado pelo Gemini.
+
+- Cada cabeçalho de cada endpoint foi configurado com os valores:
+  Key: Content-Type e Value: application/json
+
+- Cada Corpo da Requisição de cada endpoint foi configurado com a opção raw (em formato texto puro) e o
+  JSON enviado pelo Gemini.
+
 Cada requisição na collection foi salva.
 
 
@@ -81,9 +89,6 @@ Estrutura de metodos:
         +-- queryAll_usuarios (request)
         +-- update_usuario (request)
         +-- delete_usuario (request)
-
-
-SUCESSO.
 
 -------------------------------------------------fim-----------------------------------------------
 

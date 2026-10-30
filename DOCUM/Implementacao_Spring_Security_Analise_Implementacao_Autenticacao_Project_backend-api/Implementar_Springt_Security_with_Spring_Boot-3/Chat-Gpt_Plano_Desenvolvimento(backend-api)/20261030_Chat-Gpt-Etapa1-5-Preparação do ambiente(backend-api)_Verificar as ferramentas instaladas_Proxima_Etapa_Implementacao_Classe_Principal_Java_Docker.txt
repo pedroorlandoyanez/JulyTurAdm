@@ -1,0 +1,1010 @@
+﻿
+30/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1 - Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
+                   Etapa Implementacao Docker e Instanciando o Mysql
+---------------------------------------------------------------------------------------------------
+
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose exec mysql-julituradm sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT DATABASE() AS banco, CURRENT_USER() AS usuario;"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
++-----------+------------------+
+| banco     | usuario          |
++-----------+------------------+
+| bd_paytur | julituradm_app@% |
++-----------+------------------+
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Perfeito! A conexão foi validada com sucesso.
+
+Nosso banco de dados está pronto para integrar com o Spring Boot.
+
+O resultado confirmou:
+
+- Banco: `bd_paytur`
+- Usuário da aplicação: `julituradm_app`
+- Autenticação: funcionando.
+- Container: `mysql-julituradm` saudável.
+- Porta publicada: `127.0.0.1:3309`.
+- Isolamento: os outros containers MySQL permanecem intactos.
+
+Etapa 4 — Configurar o Spring Boot
+
+Agora vamos configurar a aplicação para usar esse banco, sem colocar senhas diretamente no arquivo YAML.
+
+Abra o arquivo:
+
+```
+cd backend-api
+nano src/main/resources/application.yml
+```
+
+Substitua o conteúdo atual por:
+
+```
+spring:
+  application:
+    name: julyturadm-backend
+
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3309/bd_paytur
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+server:
+  port: 8080
+```
+
+Por que `ddl-auto: none`? Para impedir que o Hibernate crie, altere ou remova tabelas automaticamente
+enquanto estamos preparando a estrutura do projeto.
+
+Salve com `Ctrl + O`, pressione `Enter` e saia com `Ctrl + X`.
+
+Ainda não inicie a aplicação: o Spring Boot precisa receber as variáveis `MYSQL_USER` e `MYSQL_PASSWORD`
+do arquivo `.env`, que está na raiz do projeto, e não diretamente dentro de `backend-api`.
+
+Quando terminar de salvar, avise-me. Vamos configurar essa leitura de variáveis com segurança antes
+de testar a aplicação.
+
+---------------------------- Continuação da implementação -----------------------------------------
+
+🔔 Lembrete: retomar o desenvolvimento do backend-api / JulyTurAdm
+
+Vamos continuar do ponto em que paramos, sem repetir as etapas já concluídas.
+
+📍 Último progresso confirmado
+
+- ✅ Projeto `JulyTurAdm` com repositório Git configurado.
+- ✅ Backend `backend-api` criado com Java 17 e Spring Boot 3.5.7.
+- ✅ Dependências Spring Web, Security, Data JPA, Validation e MySQL configuradas no Maven.
+- ✅ Container `mysql-julituradm` funcionando e com estado `healthy`.
+- ✅ Banco `bd_paytur` acessível pelo usuário `julituradm_app`.
+- ✅ MySQL isolado na porta `3309`, sem interferir nos outros containers.
+- 🔄 Configuração do `application.yml` iniciada, mas ainda sem confirmação de que foi salva.
+
+▶️ Próxima etapa: preparar a conexão Spring Boot + MySQL
+
+1. Confirmar a configuração do `application.yml`.
+
+No terminal:
+
+```bash
+cd ~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api
+cat src/main/resources/application.yml
+```
+
+Verifique se contém a configuração de conexão com o MySQL e se a senha é obtida por variável de 
+ambiente, nunca escrita diretamente no YAML.
+
+2. Preparar o carregamento das variáveis do arquivo `.env`, localizado na raiz do projeto,
+sem revelar suas credenciais.
+
+3. Iniciar o Spring Boot e validar a conexão.**
+
+Depois que o ambiente estiver confirmado, seguiremos o plano de desenvolvimento:
+
+1. Modelagem JPA e entidades.
+2. Autenticação com Spring Security.
+3. Autorização granular por grupos, permissões e usuários.
+4. Administração Master/RH.
+5. Testes automatizados e validação de segurança.
+
+Objetivo imediato: concluir a preparação do ambiente e validar a conexão com o banco antes de 
+avançar para a modelagem JPA.
+
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ cd ~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api
+cat src/main/resources/application.yml
+
+spring:
+  application:
+    name: julyturadm-backend
+
+server:
+  port: 8080
+==== INTERNET NOT REACHABLE! ===================================================
+
+ Some functionality is disabled or only partially available.
+ If this persists, please enable the offline mode:
+
+   $ sdk offline
+
+================================================================================
+
+
+Using java version 17.0.10-tem in this shell.
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Perfeito. Agora temos uma confirmação importante: o arquivo `application.yml` do projeto `backend-api`
+contém apenas o nome da aplicação e a porta `8080`.
+
+Ainda não configuramos a conexão com o MySQL.
+
+A mensagem do SDKMAN sobre a internet é um aviso separado.
+
+Como o Java 17.0.10-tem já está selecionado, podemos continuar verificando o ambiente local antes de
+tentar baixar dependências.
+
+Etapa 1 — Verificar o ambiente atual
+
+Na pasta `backend-api`, execute os comandos abaixo, um por vez.
+
+1. Verificar a estrutura do projeto e os arquivos de configuração:
+
+```
+ls -la
+find .. -maxdepth 2 -type f \
+  \( -name ".env" -o -name "compose.yaml" \
+     -o -name "docker-compose.yml" -o -name "pom.xml" \)
+```
+
+2. Verificar as dependências e versões configuradas no Maven:
+
+```
+grep -nE 'spring-boot|mysql-connector|java.version|<artifactId>' pom.xml
+```
+
+3. Confirmar se o container MySQL está funcionando:
+
+```
+docker compose ps
+```
+
+Execute esse último comando na pasta que contém o arquivo `compose.yaml` ou `docker-compose.yml`. Se não souber qual é, use o resultado do primeiro comando para localizar a pasta correta.
+
+## Etapa 2 — Próximo passo
+
+Com os resultados, vamos verificar:
+
+- Se o arquivo `.env` existe e como as variáveis estão organizadas.
+- Se o driver JDBC do MySQL está declarado no `pom.xml`.
+- Se o banco `bd_paytur` e o usuário da aplicação estão disponíveis.
+- Como configurar o `application.yml` para receber as credenciais por variáveis de ambiente, sem expor senhas.
+
+Importante: não envie o conteúdo completo do `.env`, pois ele pode conter senhas. Se precisar mostrar sua configuração, apresente somente os nomes das variáveis, ocultando seus valores.
+
+Depois de confirmar esses pontos, iniciaremos a aplicação Spring Boot e validaremos a conexão com o MySQL antes de avançar para a modelagem JPA, a autenticação e as permissões granulares.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+dro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ pwd
+/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ ls -la
+find .. -maxdepth 2 -type f \
+  \( -name ".env" -o -name "compose.yaml" \
+     -o -name "docker-compose.yml" -o -name "pom.xml" \)
+total 32
+drwxrwxr-x 5 pedro pedro 4096 out 29 16:45 .
+drwxrwxr-x 6 pedro pedro 4096 out 30 09:23 ..
+-rw-r--r-- 1 pedro pedro  449 out 23 20:06 .gitignore
+-rw-rw-r-- 1 pedro pedro 2812 out 29 16:30 pom.xml
+-rw-rw-r-- 1 pedro pedro   17 out 29 13:31 .sdkmanrc
+drwxrwxr-x 3 pedro pedro 4096 out 29 16:43 src
+drwxrwxr-x 7 pedro pedro 4096 out 29 16:52 target
+drwxrwxr-x 2 pedro pedro 4096 out 29 10:50 .vscode
+../compose.yaml
+../.env
+../backend-api/pom.xml
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -nE 'spring-boot|mysql-connector|java.version|<artifactId>' pom.xml
+10:        <artifactId>spring-boot-starter-parent</artifactId>
+16:    <artifactId>backend-api</artifactId>
+23:        <java.version>17</java.version>
+31:            <artifactId>spring-boot-starter-web</artifactId>
+37:            <artifactId>spring-boot-starter-security</artifactId>
+43:            <artifactId>spring-boot-starter-data-jpa</artifactId>
+49:            <artifactId>spring-boot-starter-validation</artifactId>
+55:            <artifactId>mysql-connector-j</artifactId>
+62:            <artifactId>lombok</artifactId>
+69:            <artifactId>spring-boot-starter-test</artifactId>
+76:            <artifactId>spring-security-test</artifactId>
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose ps
+NAME               IMAGE       COMMAND                  SERVICE            CREATED        STATUS                    PORTS
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Ótimo. Os resultados já permitem identificar três pontos importantes do projeto `JulyTurAdm`.
+
+1. Diagnóstico do ambiente
+
+| Item                  | Resultado                                                     |
+| --------------------- | ------------------------------------------------------------- |
+| Projeto backend       | `backend-api`                                                 |
+| Java                  | 17                                                            |
+| Spring Boot           | Parent Maven configurado; precisamos confirmar a versão exata |
+| Spring Data JPA       | Dependência presente                                          |
+| Spring Security       | Dependência presente                                          |
+| Driver MySQL          | `mysql-connector-j` declarado                                 |
+| Arquivo `.env`        | Existe na raiz do projeto                                     |
+| `compose.yaml`        | Existe na raiz do projeto                                     |
+| Containers do Compose | Nenhum container listado pelo comando executado nessa pasta   |
+
+Atenção: o último resultado não prova que o MySQL esteja parado.
+
+Como você executou `docker compose ps` dentro de `backend-api`, o Docker Compose pode não ter
+encontrado a configuração principal do projeto.
+
+O arquivo está um nível acima, na pasta `JulyTurAdm`.
+
+Vamos trabalhar a partir dessa pasta para manter a configuração centralizada e evitar alterações
+desnecessárias.
+
+2. Próxima verificação — execute estes comandos
+
+Passo A — entrar na raiz do projeto e verificar os containers:
+
+```
+cd ~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+
+docker compose ps -a
+```
+
+O parâmetro `-a` mostra também os containers parados.
+
+Passo B — verificar os serviços declarados no Compose:
+
+```
+docker compose config --services
+```
+
+Isso nos ajudará a confirmar o nome do serviço MySQL e o nome do serviço backend, caso ambos
+estejam definidos no arquivo.
+
+Passo C — conferir os nomes das variáveis do `.env` sem revelar os valores:
+
+```
+grep -nE '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' .env \
+  | sed -E 's/=.*/=<valor oculto>/'
+```
+
+Esse comando oculta os valores depois do sinal `=`. Não publique o conteúdo completo do `.env`.
+
+Passo D — confirmar a versão exata do Spring Boot:
+
+```
+grep -n -A 4 '<parent>' backend-api/pom.xml
+```
+
+3. O que faremos com os resultados
+
+Com essas quatro verificações, poderemos configurar a conexão usando os nomes reais das variáveis
+já existentes, sem inventar configurações ou substituir suas credenciais.
+
+A sequência será:
+
+1. Confirmar que o MySQL está ativo.
+2. Configurar `backend-api/src/main/resources/application.yml`.
+3. Carregar as variáveis de ambiente de maneira segura.
+4. Executar a aplicação e validar a conexão JDBC.
+5. Só então iniciar a modelagem das entidades JPA.
+
+Por enquanto, não altere o `pom.xml`, o `.env` nem o `compose.yaml`.
+
+Envie os resultados dos quatro passos e continuaremos a partir do estado real do projeto.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ pwd
+/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose ps -a
+NAME               IMAGE       COMMAND                  SERVICE            CREATED        STATUS                    PORTS
+mysql-julituradm   mysql:8.0   "docker-entrypoint.s…"   mysql-julituradm   16 hours ago   Up 44 minutes (healthy)   33060/tcp, 127.0.0.1:3309->3306/tcp
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose config --services
+mysql-julituradm
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ grep -nE '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' .env \
+  | sed -E 's/=.*/=<valor oculto>/'
+1:MYSQL_DATABASE=<valor oculto>
+2:MYSQL_USER=<valor oculto>
+3:MYSQL_PASSWORD=<valor oculto>
+4:MYSQL_ROOT_PASSWORD=<valor oculto>
+5:MYSQL_PORT=<valor oculto>
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ grep -n -A 4 '<parent>' backend-api/pom.xml
+8:    <parent>
+9-        <groupId>org.springframework.boot</groupId>
+10-        <artifactId>spring-boot-starter-parent</artifactId>
+11-        <version>3.5.7</version>
+12-        <relativePath/>
+
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Excelente! Agora temos um diagnóstico mais preciso do ambiente `JulyTurAdm`.
+
+1. Estado confirmado
+
+MySQL 8.0
+
+Container `mysql-julituradm` está ativo e saudável (`healthy`).
+
+Spring Boot 3.5.7
+
+Versão confirmada no `pom.xml`; Java 17 configurado.
+
+Variáveis de ambiente
+
+O `.env` contém as cinco variáveis esperadas para o MySQL.
+
+Backend
+
+Ainda precisamos configurar e testar a conexão JDBC.
+
+O Compose atual declara somente o serviço MySQL.
+
+A porta publicada é `127.0.0.1:3309`, encaminhada para a porta `3306` do container.
+
+Portanto, para a aplicação Spring Boot executada diretamente no Linux Mint,
+o endereço esperado é `localhost:3309`.
+
+2. Próxima etapa — validar o acesso ao banco
+
+Na raiz do projeto, execute este comando:
+
+```
+docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" \
+-e "SELECT DATABASE() AS banco, CURRENT_USER() AS usuario, VERSION() AS versao;"'
+```
+
+Esse teste utiliza as próprias variáveis do container e não precisa mostrar a senha.
+
+Ele confirma se o banco e o usuário da aplicação conseguem se conectar.
+
+3. Configurar o `application.yml`
+
+Depois de validar o banco, abra o arquivo:
+
+```
+cd backend-api
+nano src/main/resources/application.yml
+```
+
+Substitua o conteúdo atual por esta configuração inicial:
+
+```
+spring:
+  application:
+    name: julyturadm-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/${MYSQL_DATABASE}
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+server:
+  port: 8080
+```
+
+Salve no Nano com `Ctrl+O`, pressione `Enter` e saia com `Ctrl+X`.
+
+Por que `ddl-auto: none`? Nesta fase, queremos evitar que o Hibernate crie ou altere tabelas 
+automaticamente antes de definirmos o modelo JPA.
+
+Mais adiante, decidiremos como gerenciar o esquema do banco.
+
+Atenção: o arquivo `.env` não é carregado automaticamente
+
+O Spring Boot não importa o arquivo `.env` por padrão, o `.env` da raiz do projeto.
+
+Portanto, ainda precisamos disponibilizar as variáveis ao processo Java antes de iniciar a aplicação.
+
+Não coloque as senhas diretamente no YAML.
+
+4. O que preciso que você me envie agora
+
+Primeiro, execute apenas o teste SQL da seção 2 e envie o resultado.
+
+Se ele funcionar, avançaremos para carregar as variáveis de ambiente e iniciar o Spring Boot.
+
+Assim, validaremos cada etapa sem confundir problemas de credenciais, configuração JDBC ou dependências Maven.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ pwd
+/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" \
+-e "SELECT DATABASE() AS banco, CURRENT_USER() AS usuario, VERSION() AS versao;"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
++-----------+------------------+--------+
+| banco     | usuario          | versao |
++-----------+------------------+--------+
+| bd_paytur | julituradm_app@% | 8.0.46 |
++-----------+------------------+--------+
+
+---------------------------------------------------------------------------------------------------
+Gpt-Gpt disse:
+
+Excelente! O resultado confirma que o banco `bd_paytur` está acessível e que o usuário `julituradm_app`
+consegue se autenticar no MySQL 8.0.46.
+
+Conexão MySQL validada
+
+Banco de dados
+
+`bd_paytur`
+
+Usuário
+
+`julituradm_app`
+
+Versão MySQL
+
+8.0.46
+
+Porta local
+
+3309
+
+A advertência sobre a senha na linha de comando é apenas um aviso de segurança do cliente MySQL;
+a consulta foi executada com sucesso.
+
+Próxima etapa — configurar o Spring Boot
+
+Agora precisamos disponibilizar as variáveis do `.env` para o processo Java.
+
+Como o arquivo está na raiz do projeto, recomendo começar com uma solução simples, sem instalar
+dependências adicionais.
+
+1. Verificar se você já alterou o `application.yml`
+
+Na pasta `JulyTurAdm`, execute:
+
+```
+cat backend-api/src/main/resources/application.yml
+```
+
+Se já tiver aplicado a configuração que sugeri na mensagem anterior, não precisa alterá-la novamente.
+
+2. Carregar as variáveis e testar a aplicação
+
+Na raiz `JulyTurAdm`, execute:
+
+```
+set -a
+source .env
+set +a
+```
+
+Esse procedimento exporta as variáveis do `.env` para o shell atual.
+
+Use-o somente se o arquivo tiver atribuições simples compatíveis com Bash, sem comandos ou conteúdo
+não confiável.
+
+Em seguida, entre no backend:
+
+```
+cd backend-api
+```
+
+E inicie a aplicação:
+
+```
+./mvnw spring-boot:run  //ERROR
+mvn spring-boot-run //OK
+
+```
+
+
+Se o projeto não tiver o Maven Wrapper (`mvnw`), verifique se o Maven está instalado com `mvn -version` e use `mvn spring-boot:run`.
+
+O Spring Boot deverá iniciar na porta `8080`.
+
+Se aparecer um erro, envie as últimas linhas do log, ocultando eventuais credenciais.
+
+Importante: se você ainda não modificou o `application.yml`, faça isso antes de iniciar a aplicação.
+
+Nosso objetivo é confirmar a conexão JDBC primeiro; depois passaremos à modelagem JPA, sem criar 
+tabelas prematuramente.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -version
+Apache Maven 3.8.7
+Maven home: /usr/share/maven
+Java version: 17.0.10, vendor: Eclipse Adoptium, runtime: /home/pedro/.sdkman/candidates/java/17.0.10-tem
+Default locale: pt_BR, platform encoding: UTF-8
+OS name: "linux", version: "7.0.0-42-generic", arch: "amd64", family: "unix"
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn spring-boot:run
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot-maven-plugin:3.5.7:run (default-cli) > test-compile @ backend-api >>>
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot-maven-plugin:3.5.7:run (default-cli) < test-compile @ backend-api <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot-maven-plugin:3.5.7:run (default-cli) @ backend-api ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-10-30T10:08:33.937-03:00  INFO 35072 --- [julyturadm-backend] [           main] com.julyturadm.JulyTurAdmApplication     : Starting JulyTurAdmApplication using Java 17.0.10 with PID 35072 (/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/classes started by pedro in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api)
+2026-10-30T10:08:33.947-03:00  INFO 35072 --- [julyturadm-backend] [           main] com.julyturadm.JulyTurAdmApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-10-30T10:08:36.514-03:00  INFO 35072 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-10-30T10:08:36.546-03:00  INFO 35072 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 11 ms. Found 0 JPA repository interfaces.
+2026-10-30T10:08:37.271-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-10-30T10:08:37.289-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-30T10:08:37.290-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.48]
+2026-10-30T10:08:37.405-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-30T10:08:37.406-03:00  INFO 35072 --- [julyturadm-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3226 ms
+2026-10-30T10:08:37.814-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-10-30T10:08:37.914-03:00  INFO 35072 --- [julyturadm-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-10-30T10:08:37.964-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-10-30T10:08:38.292-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-10-30T10:08:38.344-03:00  INFO 35072 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-30T10:08:38.858-03:00  INFO 35072 --- [julyturadm-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@1850f2da
+2026-10-30T10:08:38.860-03:00  INFO 35072 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-30T10:08:38.996-03:00  INFO 35072 --- [julyturadm-backend] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.0.46
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-10-30T10:08:39.268-03:00  INFO 35072 --- [julyturadm-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-10-30T10:08:39.273-03:00  INFO 35072 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-10-30T10:08:39.717-03:00  WARN 35072 --- [julyturadm-backend] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 1eae1a83-92fd-4126-88d4-6a01042eef17
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-10-30T10:08:39.723-03:00  INFO 35072 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-10-30T10:08:39.872-03:00  WARN 35072 --- [julyturadm-backend] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-10-30T10:08:39.874-03:00  INFO 35072 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-10-30T10:08:39.881-03:00  INFO 35072 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-10-30T10:08:39.889-03:00  INFO 35072 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2026-10-30T10:08:39.934-03:00  INFO 35072 --- [julyturadm-backend] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-10-30T10:08:39.946-03:00 ERROR 35072 --- [julyturadm-backend] [           main] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+	at org.springframework.context.support.DefaultLifecycleProcessor.doStart(DefaultLifecycleProcessor.java:408) ~[spring-context-6.2.12.jar:6.2.12]
+	at org.springframework.context.support.DefaultLifecycleProcessor.doStart(DefaultLifecycleProcessor.java:394) ~[spring-context-6.2.12.jar:6.2.12]
+	at org.springframework.context.support.DefaultLifecycleProcessor$LifecycleGroup.start(DefaultLifecycleProcessor.java:586) ~[spring-context-6.2.12.jar:6.2.12]
+	at java.base/java.lang.Iterable.forEach(Iterable.java:75) ~[na:na]
+	at org.springframework.context.support.DefaultLifecycleProcessor.startBeans(DefaultLifecycleProcessor.java:364) ~[spring-context-6.2.12.jar:6.2.12]
+	at org.springframework.context.support.DefaultLifecycleProcessor.onRefresh(DefaultLifecycleProcessor.java:310) ~[spring-context-6.2.12.jar:6.2.12]
+	at org.springframework.context.support.AbstractApplicationContext.finishRefresh(AbstractApplicationContext.java:1009) ~[spring-context-6.2.12.jar:6.2.12]
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:630) ~[spring-context-6.2.12.jar:6.2.12]
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350) ~[spring-boot-3.5.7.jar:3.5.7]
+	at com.julyturadm.JulyTurAdmApplication.main(JulyTurAdmApplication.java:10) ~[classes/:na]
+Caused by: org.springframework.boot.web.server.WebServerException: Unable to start embedded Tomcat server
+	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.start(TomcatWebServer.java:251) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.boot.web.servlet.context.WebServerStartStopLifecycle.start(WebServerStartStopLifecycle.java:44) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.context.support.DefaultLifecycleProcessor.doStart(DefaultLifecycleProcessor.java:405) ~[spring-context-6.2.12.jar:6.2.12]
+	... 14 common frames omitted
+Caused by: java.lang.IllegalArgumentException: standardService.connector.startFailed
+	at org.apache.catalina.core.StandardService.addConnector(StandardService.java:220) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.addPreviouslyRemovedConnectors(TomcatWebServer.java:310) ~[spring-boot-3.5.7.jar:3.5.7]
+	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.start(TomcatWebServer.java:236) ~[spring-boot-3.5.7.jar:3.5.7]
+	... 16 common frames omitted
+Caused by: org.apache.catalina.LifecycleException: Protocol handler start failed
+	at org.apache.catalina.connector.Connector.startInternal(Connector.java:1104) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.apache.catalina.core.StandardService.addConnector(StandardService.java:217) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	... 18 common frames omitted
+Caused by: java.net.BindException: Endereço já em uso
+	at java.base/sun.nio.ch.Net.bind0(Native Method) ~[na:na]
+	at java.base/sun.nio.ch.Net.bind(Net.java:555) ~[na:na]
+	at java.base/sun.nio.ch.ServerSocketChannelImpl.netBind(ServerSocketChannelImpl.java:337) ~[na:na]
+	at java.base/sun.nio.ch.ServerSocketChannelImpl.bind(ServerSocketChannelImpl.java:294) ~[na:na]
+	at org.apache.tomcat.util.net.NioEndpoint.initServerSocket(NioEndpoint.java:264) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.apache.tomcat.util.net.NioEndpoint.bind(NioEndpoint.java:219) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.apache.tomcat.util.net.AbstractEndpoint.bindWithCleanup(AbstractEndpoint.java:1398) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.apache.tomcat.util.net.AbstractEndpoint.start(AbstractEndpoint.java:1481) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.apache.coyote.AbstractProtocol.start(AbstractProtocol.java:644) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	at org.apache.catalina.connector.Connector.startInternal(Connector.java:1101) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
+	... 20 common frames omitted
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  13.521 s
+[INFO] Finished at: 2026-10-30T10:08:39-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.7:run (default-cli) on project backend-api: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+A boa notícia é que a conexão entre o Spring Boot e o MySQL foi estabelecida com sucesso. O log comprova que o HikariCP abriu uma conexão e que o Hibernate identificou o MySQL 8.0.46 e inicializou o `EntityManagerFactory`.
+
+O erro que impediu a aplicação de iniciar é outro:
+
+```
+Caused by: java.net.BindException: Endereço já em uso
+```
+
+Isso significa que a porta HTTP `8080` já está ocupada por outro processo. Não é um erro de credenciais do MySQL, nem de compilação do Java.
+
+Também apareceu uma senha de segurança gerada automaticamente pelo Spring Security. Ela é temporária, destinada ao desenvolvimento; configuraremos a autenticação própria do projeto posteriormente.
+
+## Próxima etapa — descobrir quem está usando a porta 8080
+
+Não encerre nenhum processo ainda. Vamos identificar primeiro o que está ocupando a porta, para não interromper outro projeto Java que esteja em execução.
+
+No terminal do Linux Mint, execute:
+
+```
+sudo ss -ltnp 'sport = :8080'
+
+//Testar tambem a porta 8081
+sudo ss -ltnp 'sport = :8081'
+
+```
+
+Se preferir uma segunda forma de consulta:
+
+```
+sudo lsof -iTCP:8080 -sTCP:LISTEN -n -P
+```
+
+Se o comando `lsof` não estiver instalado, utilize apenas o primeiro.
+
+Como vamos resolver
+
+- Se for outro Spring Boot: identificaremos qual aplicação está rodando antes de decidir se devemos pará-la.
+- Se for um container Docker: verificaremos qual serviço publicou a porta.
+- Se você precisar manter o outro projeto ativo: podemos configurar o `backend-api` para usar temporariamente a porta `8081`.
+
+Minha recomendação é manter a porta `8080` se ela já for utilizada por outro projeto importante e usar `8081` para o `JulyTurAdm` durante o desenvolvimento.
+
+Envie a saída do comando `sudo ss -ltnp 'sport = :8080'`. A partir dela, indicarei o próximo comando específico, sem interromper serviços desnecessariamente.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Configurar o `backend-api` para usar temporariamente a porta `8081`.
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sudo ss -ltnp 'sport = :8080'
+[sudo] senha para pedro:           
+State         Recv-Q        Send-Q               Local Address:Port               Peer Address:Port       Process       
+LISTEN        0             100                              *:8080                          *:*           users:(("java",pid=1202,fd=39))
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sudo ss -ltnp 'sport = :8081'
+State        Recv-Q        Send-Q               Local Address:Port               Peer Address:Port       Process    
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Confirmamos que:
+
+- Porta `8080`: ocupada pelo processo Java PID `1202`.
+- Porta `8081`: livre.
+- Não precisamos interromper o outro projeto.
+
+Vamos configurar o `JulyTurAdm` para utilizar temporariamente a porta `8081`.
+
+## 1. Alterar o application.yml
+
+Na pasta `backend-api`, execute:
+
+```
+nano src/main/resources/application.yml
+```
+
+Deixe o arquivo assim:
+
+```
+spring:
+  application:
+    name: julyturadm-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/${MYSQL_DATABASE}
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+server:
+  port: 8081
+```
+
+Salve com `Ctrl+O`, `Enter` e saia com `Ctrl+X`.
+
+2. Carregar as variáveis do ambiente
+
+Na raiz `JulyTurAdm`, execute:
+
+```
+cd ~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+
+set -a
+source .env
+set +a
+```
+
+Depois:
+
+```
+cd backend-api
+```
+
+## 3. Iniciar o backend
+
+```
+mvn spring-boot:run
+```
+
+4. Resultado esperado
+
+Procure estas mensagens no console:
+
+```
+Tomcat initialized with port 8081 (http)
+
+HikariPool-1 - Start completed.
+
+Initialized JPA EntityManagerFactory
+
+Tomcat started on port 8081 (http)
+
+Started JulyTurAdmApplication
+```
+
+Objetivo
+
+&#x20;Aplicação iniciada sem conflito com a porta 8080.
+
+5. Testar o servidor.
+
+Abra outro terminal e execute:
+
+```
+curl -i http://localhost:8081/
+```
+
+Como o Spring Security ainda está na configuração padrão, provavelmente receberá `401 Unauthorized`.
+
+Isso não significa que o servidor esteja com defeito: significa que a requisição foi interceptada
+pela segurança padrão.
+
+Próxima etapa do projeto: depois de confirmar a inicialização na porta 8081, vamos começar a modelagem
+JPA do sistema de usuários, grupos de permissões e permissões individuais, preparando a arquitetura
+para os perfis Master e RH.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ pwd
+/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ set -a
+source .env
+set +a
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ cd backend-api/
+
+Using java version 17.0.10-tem in this shell.
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn spring-boot:run
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot-maven-plugin:3.5.7:run (default-cli) > test-compile @ backend-api >>>
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot-maven-plugin:3.5.7:run (default-cli) < test-compile @ backend-api <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot-maven-plugin:3.5.7:run (default-cli) @ backend-api ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-10-30T10:23:40.754-03:00  INFO 42690 --- [julyturadm-backend] [           main] com.julyturadm.JulyTurAdmApplication     : Starting JulyTurAdmApplication using Java 17.0.10 with PID 42690 (/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/classes started by pedro in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api)
+2026-10-30T10:23:40.758-03:00  INFO 42690 --- [julyturadm-backend] [           main] com.julyturadm.JulyTurAdmApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-10-30T10:23:41.521-03:00  INFO 42690 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-10-30T10:23:41.540-03:00  INFO 42690 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 11 ms. Found 0 JPA repository interfaces.
+2026-10-30T10:23:41.949-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8081 (http)
+2026-10-30T10:23:41.962-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-30T10:23:41.962-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.48]
+2026-10-30T10:23:42.012-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-30T10:23:42.013-03:00  INFO 42690 --- [julyturadm-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1197 ms
+2026-10-30T10:23:42.148-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-10-30T10:23:42.185-03:00  INFO 42690 --- [julyturadm-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-10-30T10:23:42.211-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-10-30T10:23:42.414-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-10-30T10:23:42.436-03:00  INFO 42690 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-30T10:23:42.700-03:00  INFO 42690 --- [julyturadm-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@6e517c9e
+2026-10-30T10:23:42.702-03:00  INFO 42690 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-30T10:23:42.770-03:00  INFO 42690 --- [julyturadm-backend] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.0.46
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-10-30T10:23:43.042-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-10-30T10:23:43.047-03:00  INFO 42690 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-10-30T10:23:43.410-03:00  WARN 42690 --- [julyturadm-backend] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 940ae009-7889-4d83-9661-813364a48755
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-10-30T10:23:43.418-03:00  INFO 42690 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-10-30T10:23:43.562-03:00  INFO 42690 --- [julyturadm-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8081 (http) with context path '/'
+2026-10-30T10:23:43.574-03:00  INFO 42690 --- [julyturadm-backend] [           main] com.julyturadm.JulyTurAdmApplication     : Started JulyTurAdmApplication in 3.233 seconds (process running for 3.5)
+2026-10-30T10:26:44.209-03:00  INFO 42690 --- [julyturadm-backend] [nio-8081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-30T10:26:44.210-03:00  INFO 42690 --- [julyturadm-backend] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-30T10:26:44.211-03:00  INFO 42690 --- [julyturadm-backend] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ curl -i http://localhost:8081/
+HTTP/1.1 401 
+Set-Cookie: JSESSIONID=23BA4284BE9BF37D860F5F84611529C9; Path=/; HttpOnly
+WWW-Authenticate: Basic realm="Realm"
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Length: 0
+Date: Fri, 30 Oct 2026 13:26:44 GMT
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Backend iniciado com sucesso
+
+Excelente! Conseguimos superar o conflito de portas e validar a inicialização completa do `JulyTurAdm`.
+
+O resultado mais importante está nesta mensagem:
+
+```
+Tomcat started on port 8081 (http)
+Started JulyTurAdmApplication
+```
+
+E também:
+
+```
+HikariPool-1 - Start completed.
+Initialized JPA EntityManagerFactory
+```
+
+Isso confirma três pontos fundamentais:
+
+1. O Spring Boot 3.5.7 iniciou corretamente com Java 17.
+2. O Hibernate conseguiu estabelecer a conexão com o MySQL 8.0.46.
+3. O servidor Tomcat está funcionando na porta `8081`.
+
+1. Interpretando o HTTP 401
+
+Seu teste retornou:
+
+```
+HTTP/1.1 401
+WWW-Authenticate: Basic realm="Realm"
+```
+
+Isso é esperado neste momento.
+
+O Spring Security está utilizando a configuração automática, que exige autenticação HTTP Basic.
+
+Como ainda não criamos nossos usuários e regras de autorização, a requisição anônima foi recusada.
+
+Portanto, HTTP 401 neste teste não representa falha do backend.
+
+Próxima fase — modelagem JPA, continua no arquivo []
+
+-------------------------------------------------fim-----------------------------------------------
+
+

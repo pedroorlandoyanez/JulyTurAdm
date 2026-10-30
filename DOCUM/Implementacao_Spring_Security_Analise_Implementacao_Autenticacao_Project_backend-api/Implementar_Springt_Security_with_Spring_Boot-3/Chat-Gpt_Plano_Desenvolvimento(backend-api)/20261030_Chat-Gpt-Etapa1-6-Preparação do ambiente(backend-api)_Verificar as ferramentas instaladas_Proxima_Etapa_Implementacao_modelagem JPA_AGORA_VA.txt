@@ -1,0 +1,967 @@
+﻿
+30/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1 - Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
+                   Etapa Implementacao a modelagem JPA (AGORA VAI).
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Vamos descartar a proposta do documento de 30/10/2026 como referência para a modelagem.
+
+Não utilizaremos `PermissionGroup`.
+
+A referência oficial para esta etapa será exclusivamente o modelo de cinco tabelas apresentado
+em “2. Modelo que devemos preservar”:
+
+- `users`
+- `roles`
+- `permissions`
+- `users_roles`
+- `roles_permissions`
+
+A entidade `Role` representará o perfil ou grupo de autorização, como MASTER, RH, FINANCEIRO e OPERACIONAL.
+
+1. Mapeamento conceitual JPA
+
+Minha proposta é representar as cinco tabelas por cinco classes Java.
+
+As duas tabelas intermediárias também terão entidades próprias, porque precisamos preservar suas
+chaves primárias compostas e suas restrições.
+
+| Tabela MySQL        | Classe JPA       | Responsabilidade                     |
+| ------------------- | ---------------- | ------------------------------------ |
+| `users`             | `User`           | Dados e credenciais do usuário       |
+| `roles`             | `Role`           | Perfis de autorização                |
+| `permissions`       | `Permission`     | Autorizações individuais             |
+| `users_roles`       | `UserRole`       | Associação entre usuários e perfis   |
+| `roles_permissions` | `RolePermission` | Associação entre perfis e permissões |
+
+Importante: não criaremos uma sexta tabela. `UserRole` e `RolePermission` são classes que representam
+as duas tabelas de associação já previstas.
+
+2. Relacionamentos entre as entidades
+
+User
+
+1 usuário pode possuir vários perfis.
+
+UserRole
+
+Tabela associativa com a chave composta `user_id + role_id`.
+
+Role
+
+1 perfil pode pertencer a vários usuários e possuir várias permissões.
+
+RolePermission
+
+Tabela associativa com a chave composta `role_id + permission_id`.
+
+Permission
+
+Permissões granulares do sistema.
+
+Na implementação, utilizaremos:
+
+- `@Entity` para mapear as cinco entidades.
+- `@Table` para indicar os nomes das tabelas.
+- `@EmbeddedId` para as chaves compostas.
+- `@MapsId` para associar as chaves das entidades relacionadas.
+- `@ManyToOne` nas entidades intermediárias.
+- `@OneToMany` nas entidades principais, quando necessário.
+
+Essa abordagem mantém as tabelas intermediárias explícitas e facilita futuras operações administrativas.
+
+3. Estrutura inicial dos pacotes Java
+
+Sugiro esta organização:
+
+```
+com.julyturadm
+│
+├── JulyTurAdmApplication.java
+│
+├── domain
+│   └── entity
+│       ├── User.java
+│       ├── Role.java
+│       ├── Permission.java
+│       ├── UserRole.java
+│       ├── RolePermission.java
+│       │
+│       └── id
+│           ├── UserRoleId.java
+│           └── RolePermissionId.java
+│
+├── repository
+│
+├── service
+│
+└── security
+```
+
+As classes de identificação composta (`UserRoleId` e `RolePermissionId`) serão objetos Java auxiliares, não tabelas adicionais.
+
+4. Próxima fase — especificação técnica
+
+Agora vamos seguir a sequência que você solicitou:
+
+1. Modelo definitivo das cinco tabelas: definir atributos, tipos SQL e restrições.
+2. Chaves primárias e estrangeiras: definir os identificadores e as regras de integridade.
+3. Relacionamentos JPA: especificar cardinalidade, carregamento e chaves compostas.
+4. Implementação das entidades Java: criar as classes com os mapeamentos definidos.
+5. Repositories: preparar as interfaces de acesso aos dados.
+6. Autenticação e autorização: integrar as entidades com Spring Security, Roles e Authorities.
+
+Uma decisão importante antes de codificar
+
+Precisamos confirmar os atributos e tipos de cada tabela nos documentos de análise anteriores, 
+especialmente no documento geral e no documento sobre Roles e Authorities.
+
+Envie primeiro o conteúdo do documento de análise geral (`JWT_5-Analise_Total`).
+
+Assim, poderemos definir os atributos e as regras sem inventar campos ou contrariar decisões já documentadas.
+
+Não vamos executar alterações no MySQL nem gerar classes Java antes de fechar essa especificação.&#x20;
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Foi enviado o arquivo: [20261027_Chat-Gpt_Spring-Boot_Spring_Security_JWT_5-Analise_Total_Antes_de_Gerar_Projeto (backend-api)]
+ 
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Recebi o documento “20261027_Chat-Gpt_Spring-Boot_Spring_Security_JWT_5-Analise_Total_Antes_de_Gerar_Projeto”.
+Ele contém as definições necessárias para avançarmos no mapeamento JPA das cinco tabelas.
+
+Vou respeitar o conteúdo desse documento como referência, sem recuperar a proposta `PermissionGroup` de 30/10/2026.
+
+Há uma decisão tecnológica expressa no documento que também devemos preservar: Spring Boot 3,
+Java 17 e a versão do Spring Security gerenciada pelo Spring Boot, sem forçar manualmente o Spring Security 7.
+
+Texto colado.txt
+
+1. Modelo relacional: atributos definitivos conforme o SQL do documento
+
+O documento apresenta o seguinte modelo SQL revisado. Esta é a base que usaremos para mapear as entidades.
+
+| Tabela              | Campo           | Tipo MySQL   | Regra                     |
+| ------------------- | --------------- | ------------ | ------------------------- |
+| `users`             | `id`            | BIGINT       | PK, AUTO_INCREMENT        |
+|                     | `name`          | VARCHAR(100) | NOT NULL                  |
+|                     | `email`         | VARCHAR(255) | NOT NULL, UNIQUE          |
+|                     | `password`      | VARCHAR(255) | NOT NULL                  |
+|                     | `enabled`       | BOOLEAN      | NOT NULL, DEFAULT TRUE    |
+|                     | `created_at`    | TIMESTAMP    | DEFAULT CURRENT_TIMESTAMP |
+|                     | `updated_at`    | TIMESTAMP    | Atualização automática    |
+| `roles`             | `id`            | BIGINT       | PK, AUTO_INCREMENT        |
+|                     | `name`          | VARCHAR(50)  | NOT NULL, UNIQUE          |
+| `permissions`       | `id`            | BIGINT       | PK, AUTO_INCREMENT        |
+|                     | `name`          | VARCHAR(80)  | NOT NULL, UNIQUE          |
+| `users_roles`       | `user_id`       | BIGINT       | PK composta, FK           |
+|                     | `role_id`       | BIGINT       | PK composta, FK           |
+| `roles_permissions` | `role_id`       | BIGINT       | PK composta, FK           |
+|                     | `permission_id` | BIGINT       | PK composta, FK           |
+
+Observação: no SQL apresentado, `roles` e `permissions` não possuem campo `description`.
+
+Portanto, não vou acrescentá-lo às entidades nesta etapa.
+
+---
+
+Texto colado.txt
+
+2. Mapeamento das cinco entidades JPA
+
+A estrutura Java ficará assim:
+
+| Classe Java      | Tabela              | Identificador      |
+| ---------------- | ------------------- | ------------------ |
+| `User`           | `users`             | `Long id`          |
+| `Role`           | `roles`             | `Long id`          |
+| `Permission`     | `permissions`       | `Long id`          |
+| `UserRole`       | `users_roles`       | `UserRoleId`       |
+| `RolePermission` | `roles_permissions` | `RolePermissionId` |
+
+As duas classes de chave composta serão auxiliares:
+
+- `UserRoleId`: `userId` + `roleId`.
+- `RolePermissionId`: `roleId` + `permissionId`.
+
+### Entidade User
+
+Mapeamento esperado:
+
+```
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 255)
+    private String email;
+
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @Column(nullable = false)
+    private Boolean enabled;
+
+    // createdAt e updatedAt
+}
+```
+
+Os campos de auditoria deverão ser mapeados para `LocalDateTime` ou outro tipo temporal compatível. Como o SQL define atualização automática pelo MySQL, precisamos evitar que o Hibernate e o banco disputem a responsabilidade por atualizar `updated_at`.
+
+### Entidade Role
+
+```
+@Entity
+@Table(name = "roles")
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+}
+```
+
+### Entidade Permission
+
+```
+@Entity
+@Table(name = "permissions")
+public class Permission {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 80)
+    private String name;
+}
+```
+
+### Entidades intermediárias
+
+`UserRole` deverá utilizar:
+
+- `@EmbeddedId`
+- `@MapsId("userId")`
+- `@MapsId("roleId")`
+- Dois relacionamentos `@ManyToOne`
+
+`RolePermission` seguirá a mesma estratégia:
+
+- `@EmbeddedId`
+- `@MapsId("roleId")`
+- `@MapsId("permissionId")`
+- Dois relacionamentos `@ManyToOne`
+
+Essa estrutura representa diretamente as chaves compostas definidas no SQL, sem criar identificadores artificiais nas tabelas associativas.
+
+## 3. Convenções de Roles e Authorities
+
+O documento estabelece uma distinção essencial.
+
+Roles armazenadas na tabela `roles`:
+
+```
+ADMIN
+RECURSOS_HUMANOS
+CONTAS_PAGAR
+COBRANCA
+CONTABIL
+RESERVAS
+```
+
+Permissions armazenadas na tabela `permissions`:
+
+```
+CONTAS_PAGAR:INSERT
+CONTAS_PAGAR:SELECT
+CONTAS_PAGAR:UPDATE
+CONTAS_PAGAR:DELETE
+```
+
+Na integração com Spring Security:
+
+| Origem     | Valor no banco        | Authority em tempo de execução |
+| ---------- | --------------------- | ------------------------------ |
+| Role       | `ADMIN`               | `ROLE_ADMIN`                   |
+| Role       | `CONTAS_PAGAR`        | `ROLE_CONTAS_PAGAR`            |
+| Permission | `CONTAS_PAGAR:UPDATE` | `CONTAS_PAGAR:UPDATE`          |
+
+O prefixo `ROLE_` será acrescentado pelo código Java, sem alterar o conteúdo armazenado no banco.
+
+Para verificar permissões granulares, o documento estabelece o uso de `hasAuthority`, por exemplo:
+
+```
+@PreAuthorize("hasAuthority('CONTAS_PAGAR:UPDATE')")
+```
+
+A aplicação deverá carregar as permissões de todos os perfis atribuídos ao usuário, não apenas do primeiro perfil.&#x20;
+
+Texto colado.txt
+
+
+
+## 4. Regras de integridade e segurança
+
+Vamos preservar as seguintes regras:
+
+1. E-mail único por usuário.
+2. Senha armazenada somente como hash.
+3. Usuário desabilitado não poderá autenticar.
+4. Chaves compostas nas tabelas associativas.
+5. `ON DELETE RESTRICT` nas chaves estrangeiras.
+6. Desativação preferencialmente em vez de exclusão física.
+7. Nenhum perfil receberá permissões automaticamente: somente as associações registradas em `roles_permissions` concederão acesso.
+8. RH não receberá automaticamente o perfil administrativo `ADMIN`.
+9. A criação do primeiro administrador deverá ocorrer por procedimento restrito, nunca por endpoint público de cadastro.&#x20;
+
+   Texto colado.txt
+
+
+
+## 5. Estrutura de diretórios proposta
+
+Esta será a estrutura inicial do pacote de entidades:
+
+```
+backend-api/
+└── src/main/java/com/julyturadm/
+    │
+    ├── JulyTurAdmApplication.java
+    │
+    ├── domain/
+    │   └── entity/
+    │       ├── User.java
+    │       ├── Role.java
+    │       ├── Permission.java
+    │       │
+    │       ├── UserRole.java
+    │       ├── RolePermission.java
+    │       │
+    │       └── id/
+    │           ├── UserRoleId.java
+    │           └── RolePermissionId.java
+    │
+    ├── repository/
+    │
+    ├── service/
+    │
+    └── security/
+```
+
+## 6. Próxima etapa: fechar as decisões JPA
+
+Antes de escrever os arquivos Java, precisamos confirmar três pontos de implementação:
+
+1\. Carregamento dos relacionamentos
+
+`LAZY` — carregar os relacionamentos somente quando necessários (recomendado).
+
+`EAGER` — carregar os relacionamentos automaticamente.
+
+2\. Auditoria de `created_at` e `updated_at`
+
+MySQL — manter os valores padrão e a atualização automática definidos no SQL.
+
+JPA — controlar os campos pela aplicação Java.
+
+3\. Relacionamentos das tabelas intermediárias
+
+Entidades explícitas `UserRole` e `RolePermission`, com chaves compostas (`@EmbeddedId` e `@MapsId`).
+
+Relacionamentos N:N diretos com `@ManyToMany`.
+
+Confirmar decisões JPA
+
+Minha recomendação técnica é `LAZY`, auditoria controlada pelo MySQL e entidades intermediárias explícitas com chaves compostas. Isso mantém o mapeamento alinhado ao SQL já documentado e oferece maior controle sobre as associações.
+
+Depois dessa confirmação, avançaremos para a criação das classes JPA, uma etapa de cada vez, sem alterar prematuramente o banco `bd_paytur`.
+
+Confirmar decisões JPA ?
+SIM
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. As três decisões estão confirmadas para o `JulyTurAdm`:
+
+Carregamento JPA
+
+LAZY
+
+Auditoria
+
+MySQL
+
+Relacionamentos
+
+Explícitos
+
+Vamos avançar em duas fases: primeiro fechar a especificação técnica; depois implementar as classes
+Java.
+
+Fase 1 — Especificação técnica JPA
+
+1. Decisões de mapeamento
+
+| Item                        | Decisão                                          |
+| --------------------------- | ------------------------------------------------ |
+| Estratégia de identificação | `BIGINT AUTO_INCREMENT` nas entidades principais |
+| Chaves das associações      | Chaves primárias compostas                       |
+| Relacionamentos             | Entidades `UserRole` e `RolePermission`          |
+| Carregamento                | `FetchType.LAZY`                                 |
+| Exclusão em cascata         | Não utilizar `CascadeType.REMOVE`                |
+| Exclusão de associações     | Não utilizar `orphanRemoval` nesta etapa         |
+| Auditoria                   | Gerenciada pelo MySQL                            |
+| Datas Java                  | `LocalDateTime`                                  |
+| Nome das tabelas            | Preservar os nomes SQL existentes                |
+| DDL do Hibernate            | `ddl-auto: none`                                 |
+
+Por que não usar `@ManyToMany` diretamente?
+
+Porque as duas tabelas associativas têm chaves compostas e representam relações importantes para a
+segurança.
+
+Com entidades explícitas, teremos controle sobre a criação e remoção de associações e poderemos 
+acrescentar regras de negócio futuramente sem reformular o modelo.
+
+2. Relacionamentos e cardinalidade
+
+| Entidade     | Relacionamento   | Cardinalidade |
+| ------------ | ---------------- | ------------- |
+| `User`       | `UserRole`       | 1:N           |
+| `Role`       | `UserRole`       | 1:N           |
+| `Role`       | `RolePermission` | 1:N           |
+| `Permission` | `RolePermission` | 1:N           |
+
+Os relacionamentos `@ManyToOne` das classes intermediárias apontarão para as entidades principais.
+
+As coleções inversas serão `@OneToMany(mappedBy = ...)`, sempre com carregamento `LAZY`.
+
+## 3. Auditoria MySQL
+
+Na entidade `User`, os campos:
+
+- `created_at`: preenchido pelo `DEFAULT CURRENT_TIMESTAMP`.
+- `updated_at`: preenchido e atualizado automaticamente pelo MySQL.
+
+No JPA, usaremos:
+
+```
+@Column(
+    name = "created_at",
+    insertable = false,
+    updatable = false
+)
+private LocalDateTime createdAt;
+
+@Column(
+    name = "updated_at",
+    insertable = false,
+    updatable = false
+)
+private LocalDateTime updatedAt;
+```
+
+Assim, o Hibernate não tentará controlar esses campos.
+
+Após uma atualização, o objeto Java que já está em memória poderá precisar de `refresh()` para
+refletir o novo valor de `updated_at`.
+
+4. Organização das classes
+
+Vamos criar sete arquivos Java: cinco entidades e duas classes auxiliares para as chaves compostas.
+
+```
+com/julyturadm/
+├── domain/
+│   └── entity/
+│       ├── User.java
+│       ├── Role.java
+│       ├── Permission.java
+│       ├── UserRole.java
+│       ├── RolePermission.java
+│       └── id/
+│           ├── UserRoleId.java
+│           └── RolePermissionId.java
+```
+
+Usaremos Lombok para getters e setters, mas não usaremos `@Data` nas entidades JPA.
+`@Data` gera `equals`, `hashCode` e `toString` envolvendo relacionamentos, o que pode causar
+recursão, carregamento inesperado e problemas com proxies do Hibernate.
+
+Fase 2 — Implementação
+
+Etapa 1. Criar os diretórios
+
+Na raiz `JulyTurAdm`, abra outro terminal, sem encerrar o servidor Spring Boot, e execute:
+
+```
+mkdir -p backend-api/src/main/java/com/julyturadm/domain/entity/id
+```
+
+Etapa 2. Criar a entidade User
+
+Arquivo:
+
+`backend-api/src/main/java/com/julyturadm/domain/entity/User.java`
+
+Conteúdo:
+
+```
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 255)
+    private String email;
+
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @Column(nullable = false)
+    private Boolean enabled = true;
+
+    @Column(
+        name = "created_at",
+        insertable = false,
+        updatable = false
+    )
+    private LocalDateTime createdAt;
+
+    @Column(
+        name = "updated_at",
+        insertable = false,
+        updatable = false
+    )
+    private LocalDateTime updatedAt;
+
+    @OneToMany(
+        mappedBy = "user",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+}
+```
+
+Observações técnicas:
+
+- `GenerationType.IDENTITY` corresponde ao `AUTO_INCREMENT` do MySQL.
+- `enabled` começa como `true`.
+- `createdAt` e `updatedAt` são controlados pelo banco.
+- `userRoles` representa a associação entre usuário e perfil.
+- Não há exclusão em cascata.
+
+Etapa 3. Criar a entidade Role
+
+Arquivo: `domain/entity/Role.java`
+
+```
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+}
+```
+
+Etapa 4. Criar a entidade Permission
+
+Arquivo: `domain/entity/Permission.java`
+
+```
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Permission {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 80)
+    private String name;
+
+    @OneToMany(
+        mappedBy = "permission",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+}
+```
+
+Até aqui temos as três entidades principais. Agora vamos representar as duas tabelas associativas com suas chaves compostas.
+
+Etapa 5. Criar UserRoleId
+
+Arquivo: `domain/entity/id/UserRoleId.java`
+
+```
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserRoleId implements Serializable {
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "role_id")
+    private Long roleId;
+}
+```
+
+Essa classe representa a chave primária composta:
+
+```
+users_roles
+------------
+user_id  PK, FK
+role_id  PK, FK
+```
+
+## Etapa 6. Criar UserRole
+
+Arquivo: `domain/entity/UserRole.java`
+
+```
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.UserRoleId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "users_roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class UserRole {
+
+    @EmbeddedId
+    private UserRoleId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("userId")
+    @JoinColumn(
+        name = "user_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_user")
+    )
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_role")
+    )
+    private Role role;
+}
+```
+
+O `@MapsId` informa ao Hibernate que os campos `userId` e `roleId` da chave composta correspondem
+aos identificadores das entidades relacionadas.
+
+Etapa 7. Criar RolePermissionId
+
+Arquivo: `domain/entity/id/RolePermissionId.java`
+
+```
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class RolePermissionId implements Serializable {
+
+    @Column(name = "role_id")
+    private Long roleId;
+
+    @Column(name = "permission_id")
+    private Long permissionId;
+}
+```
+
+## Etapa 8. Criar RolePermission
+
+Arquivo: `domain/entity/RolePermission.java`
+
+```
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    @EmbeddedId
+    private RolePermissionId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_role")
+    )
+    private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(
+        name = "permission_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_permission")
+    )
+    private Permission permission;
+}
+```
+
+5. Resultado esperado da estrutura
+
+Depois de criar os sete arquivos, execute na raiz do projeto:
+
+```
+find backend-api/src/main/java/com/julyturadm -type f -print | sort
+```
+
+O resultado deverá conter:
+
+```
+backend-api/src/main/java/com/julyturadm/JulyTurAdmApplication.java
+backend-api/src/main/java/com/julyturadm/domain/entity/Permission.java
+backend-api/src/main/java/com/julyturadm/domain/entity/Role.java
+backend-api/src/main/java/com/julyturadm/domain/entity/RolePermission.java
+backend-api/src/main/java/com/julyturadm/domain/entity/User.java
+backend-api/src/main/java/com/julyturadm/domain/entity/UserRole.java
+backend-api/src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+backend-api/src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java
+```
+
+6. Primeira validação de compilação
+
+Execute:
+
+```
+cd backend-api
+mvn clean compile
+```
+
+Resultado esperado
+
+```
+BUILD SUCCESS
+```
+
+Se houver erros, envie o resultado completo.
+
+Não tente corrigir alterando dependências ou versões antes de analisarmos a mensagem.
+
+Atenção: essa compilação valida o código Java, mas ainda não comprova que as cinco tabelas existentes
+no MySQL correspondem ao mapeamento.
+
+Também não executamos SQL nem alteramos o banco.
+
+Como `ddl-auto: none`, o Hibernate não criará tabelas automaticamente.
+
+7. Próxima etapa após a compilação
+
+A sequência será:
+
+1. Revisar os mapeamentos e as chaves compostas.
+2. Criar os cinco repositories Spring Data JPA.
+3. Criar consultas para carregar todos os Roles e Authorities de um usuário.
+4. Testar a leitura dos relacionamentos com MySQL.
+5. Integrar a camada de autenticação do Spring Security.
+
+Sua próxima ação: crie os sete arquivos e execute `mvn clean compile`.
+
+Envie o resultado para avançarmos aos repositories.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+-------------------------------------------------fim-----------------------------------------------
+

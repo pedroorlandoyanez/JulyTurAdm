@@ -1,0 +1,415 @@
+﻿
+30/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1 - Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
+                   Etapa Implementacao a modelagem JPA.
+---------------------------------------------------------------------------------------------------
+
+2. Próxima fase — modelagem JPA.
+
+Vamos iniciar a estrutura de autorização do sistema, mas antes precisamos definir corretamente o 
+relacionamento entre usuários, grupos e permissões.
+
+Minha proposta inicial de arquitetura:
+
+Modelo de autorização.
+
+USUÁRIO (User)
+
+Identificação, login, senha, situação e dados pessoais
+
+Relacionamento N:N
+
+GRUPO DE PERMISSÕES (PermissionGroup)
+
+Conjunto de permissões atribuído aos usuários
+
+Relacionamento N:N
+
+PERMISSÃO (Permission)
+
+Autorizações individuais e granulares
+
+Exemplos de grupos:
+
+- MASTER: administração global.
+- RH: administração de recursos humanos.
+- FINANCEIRO: acesso às operações financeiras.
+- OPERACIONAL: acesso às operações administrativas.
+
+Exemplos de permissões individuais:
+
+- `USER_CREATE`
+- `USER_READ`
+- `USER_UPDATE`
+- `USER_DELETE`
+- `GROUP_MANAGE`
+- `PERMISSION_ASSIGN`
+- `EMPLOYEE_READ`
+- `EMPLOYEE_UPDATE`
+
+O modelo deverá permitir que um usuário pertença a vários grupos e que cada grupo possua várias permissões.
+Também precisamos definir cuidadosamente como serão tratadas as permissões especiais do MASTER.
+
+3. Antes de criar as entidades
+
+Quero verificar a estrutura atual do código para respeitar o que já existe.
+
+Na raiz `JulyTurAdm`, abra outro terminal (não encerre o servidor) e execute:
+
+```
+find backend-api/src/main/java -type f -print
+```
+
+Depois:
+
+```
+git status --short
+```
+
+E:
+
+```
+find backend-api/src/main/resources -maxdepth 2 -type f -print
+```
+
+4. Nossa sequência de implementação
+
+| Etapa | Desenvolvimento                          |
+| ----- | ---------------------------------------- |
+| 1     | Modelagem das entidades JPA              |
+| 2     | Relacionamentos e tabelas intermediárias |
+| 3     | Repositories e serviços                  |
+| 4     | Autenticação Spring Security             |
+| 5     | Autorização granular                     |
+| 6     | Administração MASTER/RH                  |
+| 7     | Testes automatizados                     |
+
+Ambiente validado
+
+Minha recomendação: não começar criando classes Java aleatoriamente.
+
+Primeiro vamos fechar o modelo relacional, as responsabilidades de cada entidade e as regras de segurança.
+
+Isso evita retrabalho quando chegarmos à implementação do Spring Security.
+
+Envie os três resultados e começaremos a construção da primeira camada JPA do `JulyTurAdm`.&#x20;
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ find backend-api/src/main/java -type f -print
+backend-api/src/main/java/com/julyturadm/JulyTurAdmApplication.java
+
+dro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ git status --short
+ M DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-GPT_Questoes_Sobre_a_Implementacao/20261027_Chat-Gpt_Spring-Boot_Spring_Security_JWT_1-Analise_Caso_de_Uso_Origem.txt
+ M "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-GPT_Questoes_Sobre_a_Implementacao/20261027_Chat-Gpt_Spring-Boot_Spring_Security_JWT_5-Analise_Total_Antes_de_Gerar_Projeto (backend-api).txt"
+ M "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Analise_Resposta_Sobre_a_Implementacao/20261028_Chat-Gpt-1-Resposta_An\303\241lise t\303\251cnica: Spring Security, Roles e Authorities no projeto backend-api.txt"
+ D "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas.txt"
+ D "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Verificar_Maven_e_Git.txt"
+ D "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-Prepara\303\247\303\243o do ambiente:backend-api.txt"
+?? .env.example
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-1-Prepara\303\247\303\243o do ambiente:backend-api.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-2-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-3-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Verificar_Git_Maven_Pom.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-4-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_Classes_Java.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261030_Chat-Gpt-Etapa1-5-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_Classe_Principal_Java_Docker.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261030_Chat-Gpt-Etapa1-5-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA.txt"
+?? backend-api/pom.xml
+?? backend-api/src/
+?? compose.yaml
+
+dro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ find backend-api/src/main/resources -maxdepth 2 -type f -print
+backend-api/src/main/resources/application.yml
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Agora temos uma visão real da estrutura do `backend-api`.
+
+Minha avaliação é que estamos no momento ideal para iniciar a modelagem JPA, mas existe um cuidado
+importante: não devemos perder o histórico de decisões técnicas que você já documentou.
+
+1. Diagnóstico da estrutura atual
+
+O backend ainda está praticamente vazio:
+
+```
+backend-api/
+├── pom.xml
+└── src/
+    └── main/
+        ├── java/
+        │   └── com/julyturadm/
+        │       └── JulyTurAdmApplication.java
+        └── resources/
+            └── application.yml
+```
+
+Isso é positivo: não temos entidades ou serviços antigos que precisem ser migrados.
+
+Situação do Git
+
+Seu `git status` merece atenção:
+
+- Existem documentos técnicos modificados.
+- Existem documentos antigos removidos.
+- Existem novos documentos ainda não rastreados.
+- O `pom.xml`, código Java e `compose.yaml` aparecem como arquivos não rastreados.
+
+Não execute `git add`, `git commit`, `git reset` ou `git clean` agora. Precisamos preservar as alterações e entender o que foi intencional.
+
+## 2. Uma decisão anterior importante que precisamos preservar
+
+Recuperei o histórico das decisões técnicas do projeto. Existe uma definição anterior que altera nossa proposta inicial.
+
+Você já havia definido uma estrutura de cinco tabelas, e não seis:
+
+| Tabela              | Responsabilidade                         |
+| ------------------- | ---------------------------------------- |
+| `users`             | Usuários do sistema                      |
+| `roles`             | Perfis ou grupos de autorização          |
+| `permissions`       | Permissões individuais                   |
+| `users_roles`       | Associação N:N entre usuários e perfis   |
+| `roles_permissions` | Associação N:N entre perfis e permissões |
+
+Portanto, vamos utilizar a nomenclatura `Role` para representar os grupos de autorização, respeitando as decisões anteriores.
+
+Outras regras já estabelecidas:
+
+- E-mail único para cada usuário.
+- Senha armazenada exclusivamente com hash.
+- Campo `enabled` para ativar ou desativar usuários.
+- Relacionamentos N:N com chaves primárias compostas.
+- Restrições `ON DELETE RESTRICT`.
+- Preferência por desativação em vez de exclusão física.
+- Roles armazenadas no banco sem o prefixo `ROLE_`.
+- Permissões granulares, por exemplo `CONTAS_PAGAR:SELECT` e `CONTAS_PAGAR:UPDATE`.
+- Utilização de `@EnableMethodSecurity` e `@PreAuthorize`.
+- MASTER com provisionamento restrito.
+- RH sem privilégios de administrador global.
+
+A estratégia definitiva de JWT ainda precisa respeitar a análise anterior, sem antecipar uma decisão que não foi fechada.&#x20;
+
+3. Arquitetura que vamos implementar
+
+JulyTurAdm — Modelo de autorização
+
+USERS
+
+id · name · email · password · enabled
+
+users_roles
+
+ROLES
+
+id · name · description
+
+roles_permissions
+
+PERMISSIONS
+
+id · name · description
+
+Essa estrutura permite que o usuário tenha múltiplos perfis e que cada perfil tenha diversas permissões.
+
+4. Antes de criar as classes Java
+
+Quero aproveitar seus documentos técnicos para evitar divergências entre a implementação e o planejamento já realizado.
+
+Execute na raiz `JulyTurAdm`:
+
+```
+find DOCUM -type f -iname '*modelagem*JPA*' -print
+```
+
+Depois, localize o documento de análise geral:
+
+```
+find DOCUM -type f -iname '*Analise_Total*' -print
+```
+
+E o documento de análise de Roles e Authorities:
+
+```
+find DOCUM -type f -iname '*Roles*Authorities*' -print
+```
+
+Envie os caminhos encontrados e o conteúdo do documento de modelagem JPA:
+
+```
+cat "$(find DOCUM -type f -iname '*modelagem*JPA*' -print -quit)"
+```
+
+## 5. Nosso próximo marco
+
+
+
+Ambiente concluído
+
+Modelagem em preparação
+
+
+
+Vamos seguir esta ordem:
+
+1. Consolidar o modelo relacional das cinco tabelas.
+2. Definir atributos, tipos SQL e restrições.
+3. Definir os relacionamentos JPA e as chaves compostas.
+4. Implementar as entidades Java.
+5. Implementar os repositories.
+6. Preparar autenticação e autorização granular.
+
+Minha orientação: não vamos gerar ZIP, criar classes ou executar alterações no banco ainda. Primeiro fecharemos o modelo definitivo, aproveitando o trabalho de análise que você já realizou.
+
+Assim teremos uma implementação coerente com o planejamento original do `backend-api`, sem retrabalho nas próximas etapas.
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+dro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ pwd
+/home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ find DOCUM -type f -iname '*modelagem*JPA*' -print
+DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261030_Chat-Gpt-Etapa1-5-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA.txt
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ find DOCUM -type f -iname '*Analise_Total*' -print
+DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-GPT_Questoes_Sobre_a_Implementacao/20261027_Chat-Gpt_Spring-Boot_Spring_Security_JWT_5-Analise_Total_Antes_de_Gerar_Projeto (backend-api).txt
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ find DOCUM -type f -iname '*Roles*Authorities*' -print
+DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Analise_Resposta_Sobre_a_Implementacao/20261028_Chat-Gpt-1-Resposta_Análise técnica: Spring Security, Roles e Authorities no projeto backend-api.txt
+
+dro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ cat "$(find DOCUM -type f -iname '*modelagem*JPA*' -print -quit)"
+
+30/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1 - Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
+                   Etapa Implementacao a modelagem JPA.
+---------------------------------------------------------------------------------------------------
+
+2. Próxima fase — modelagem JPA.
+
+Vamos iniciar a estrutura de autorização do sistema, mas antes precisamos definir corretamente o 
+relacionamento entre usuários, grupos e permissões.
+
+Minha proposta inicial de arquitetura:
+
+Modelo de autorização.
+
+USUÁRIO (User)
+
+Identificação, login, senha, situação e dados pessoais
+
+Relacionamento N:N
+
+GRUPO DE PERMISSÕES (PermissionGroup)
+
+Conjunto de permissões atribuído aos usuários
+
+Relacionamento N:N
+
+PERMISSÃO (Permission)
+
+Autorizações individuais e granulares
+
+Exemplos de grupos:
+
+- MASTER: administração global.
+- RH: administração de recursos humanos.
+- FINANCEIRO: acesso às operações financeiras.
+- OPERACIONAL: acesso às operações administrativas.
+
+Exemplos de permissões individuais:
+
+- `USER_CREATE`
+- `USER_READ`
+- `USER_UPDATE`
+- `USER_DELETE`
+- `GROUP_MANAGE`
+- `PERMISSION_ASSIGN`
+- `EMPLOYEE_READ`
+- `EMPLOYEE_UPDATE`
+
+O modelo deverá permitir que um usuário pertença a vários grupos e que cada grupo possua várias permissões.
+Também precisamos definir cuidadosamente como serão tratadas as permissões especiais do MASTER.
+
+3. Antes de criar as entidades
+
+Quero verificar a estrutura atual do código para respeitar o que já existe.
+
+Na raiz `JulyTurAdm`, abra outro terminal (não encerre o servidor) e execute:
+
+```
+find backend-api/src/main/java -type f -print
+```
+
+Depois:
+
+```
+git status --short
+```
+
+E:
+
+```
+find backend-api/src/main/resources -maxdepth 2 -type f -print
+```
+
+4. Nossa sequência de implementação
+
+| Etapa | Desenvolvimento                          |
+| ----- | ---------------------------------------- |
+| 1     | Modelagem das entidades JPA              |
+| 2     | Relacionamentos e tabelas intermediárias |
+| 3     | Repositories e serviços                  |
+| 4     | Autenticação Spring Security             |
+| 5     | Autorização granular                     |
+| 6     | Administração MASTER/RH                  |
+| 7     | Testes automatizados                     |
+
+Ambiente validado
+
+Minha recomendação: não começar criando classes Java aleatoriamente.
+
+Primeiro vamos fechar o modelo relacional, as responsabilidades de cada entidade e as regras de segurança.
+
+Isso evita retrabalho quando chegarmos à implementação do Spring Security.
+
+Envie os três resultados e começaremos a construção da primeira camada JPA do `JulyTurAdm`.&#x20;
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ find backend-api/src/main/java -type f -print
+backend-api/src/main/java/com/julyturadm/JulyTurAdmApplication.java
+
+dro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ git status --short
+ M DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-GPT_Questoes_Sobre_a_Implementacao/20261027_Chat-Gpt_Spring-Boot_Spring_Security_JWT_1-Analise_Caso_de_Uso_Origem.txt
+ M "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-GPT_Questoes_Sobre_a_Implementacao/20261027_Chat-Gpt_Spring-Boot_Spring_Security_JWT_5-Analise_Total_Antes_de_Gerar_Projeto (backend-api).txt"
+ M "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Analise_Resposta_Sobre_a_Implementacao/20261028_Chat-Gpt-1-Resposta_An\303\241lise t\303\251cnica: Spring Security, Roles e Authorities no projeto backend-api.txt"
+ D "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas.txt"
+ D "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Verificar_Maven_e_Git.txt"
+ D "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-Prepara\303\247\303\243o do ambiente:backend-api.txt"
+?? .env.example
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-1-Prepara\303\247\303\243o do ambiente:backend-api.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-2-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-3-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Verificar_Git_Maven_Pom.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261029_Chat-Gpt-Etapa1-4-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_Classes_Java.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261030_Chat-Gpt-Etapa1-5-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_Classe_Principal_Java_Docker.txt"
+?? "DOCUM/Implementacao_Spring_Security_Analise_Implementacao_Autenticacao_Project_backend-api/Implementar_Springt_Security_with_Spring_Boot-3/Chat-Gpt_Plano_Desenvolvimento(backend-api)/20261030_Chat-Gpt-Etapa1-5-Prepara\303\247\303\243o do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA.txt"
+?? backend-api/pom.xml
+?? backend-api/src/
+?? compose.yaml
+
+dro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm$ find backend-api/src/main/resources -maxdepth 2 -type f -print
+backend-api/src/main/resources/application.yml
+
+---
+
+OBS: Apos verificar os documentos do projeto chegamos a um resultado.
+
+Continua no arquivo: [20261030_Chat-Gpt-Etapa1-6-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA_AGORA_VA]
+ 
+-------------------------------------------------fim-----------------------------------------------
+

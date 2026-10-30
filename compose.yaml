@@ -1,0 +1,31 @@
+services:
+  mysql-julituradm:
+    image: mysql:8.0
+    container_name: mysql-julituradm
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Defina MYSQL_DATABASE no .env}
+      MYSQL_USER: ${MYSQL_USER:?Defina MYSQL_USER no .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no .env}
+
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3309}:3306"
+
+    volumes:
+      - mysql_julituradm_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}"'
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  mysql_julituradm_data:
+    name: mysql_julituradm_data
+
