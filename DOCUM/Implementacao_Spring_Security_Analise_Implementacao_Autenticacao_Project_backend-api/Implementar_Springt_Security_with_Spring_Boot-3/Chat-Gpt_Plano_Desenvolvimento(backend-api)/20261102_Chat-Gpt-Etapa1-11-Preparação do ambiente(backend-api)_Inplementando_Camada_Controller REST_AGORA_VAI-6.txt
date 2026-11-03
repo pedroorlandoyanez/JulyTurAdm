@@ -1,0 +1,733 @@
+﻿
+02/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1 - Etapa1-11-Preparação do ambiente(backend-api) Implementando Camada Controller-REST
+                   AGORA_VAI-6
+---------------------------------------------------------------------------------------------------
+
+Implementando tratamento global e exceções, depois o `UserController` camada Controller
+
+---------------------------------------------------------------------------------------------------
+Executar a aplicação via terminal:
+
+Como o .env está no diretório JulyTurAdm, precisamos carregar suas variáveis no terminal antes de
+iniciar o Maven. Não vamos mostrar os valores das senhas.
+
+Execute, dentro de backend-api:
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+set -a
+source ../.env
+set +a
+
+---
+
+Agora inicie a aplicação com a validação temporária do Hibernate:
+
+// clear
+mvn clean
+
+// Compilar
+mvn compile
+
+// para iniciar
+mvn spring-boot:run
+
+---
+
+Iniciar o cliente do Mysql:
+
+Via editor vi entrar no arquivo .env diretório JulyTurAdm.
+
+---
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS — 10/10 testes aprovados
+
+Excelente resultado! Todos os testes unitários do `UserService` passaram:
+
+| Resultado         | Quantidade |
+| ----------------- | ---------- |
+| Testes executados | 10         |
+| Falhas            | 0          |
+| Erros             | 0          |
+| Ignorados         | 0          |
+
+A advertência do OpenJDK sobre class data sharing não é uma falha dos testes e não impediu a execução.
+
+O que concluímos no gerenciamento de usuários
+
+- Cadastro com senha codificada usando BCrypt.
+- Prevenção de cadastro com e-mail duplicado.
+- Consulta por ID e e-mail.
+- Listagem somente de usuários ativos.
+- Desativação lógica (`enabled = false`).
+- Reativação (`enabled = true`).
+- Exceção para usuário não encontrado.
+- DTO de resposta sem exposição da senha.
+
+Próxima etapa — Controller REST
+
+Agora vamos conectar a camada de serviço à API HTTP, criando:
+
+`src/main/java/com/julyturadm/user/UserController.java`
+
+A ideia é disponibilizar estes endpoints:
+
+| Método HTTP | Endpoint                   | Operação             |
+| ----------- | -------------------------- | -------------------- |
+| POST        | `/api/users`               | Cadastrar usuário    |
+| GET         | `/api/users/{id}`          | Consultar por ID     |
+| GET         | `/api/users/email/{email}` | Consultar por e-mail |
+| GET         | `/api/users`               | Listar ativos        |
+| PATCH       | `/api/users/{id}/disable`  | Desativar            |
+| PATCH       | `/api/users/{id}/enable`   | Reativar             |
+
+Também vamos utilizar `@Valid` para validar os dados recebidos e preparar o tratamento padronizado
+das exceções HTTP.
+
+Minha proposta: antes de implementar o controller, vamos criar o tratamento global de exceções
+com `@RestControllerAdvice`.
+
+Assim, erros como usuário inexistente, e-mail duplicado e dados inválidos terão respostas HTTP
+apropriadas, sem expor detalhes internos da aplicação.
+
+Vamos seguir nessa ordem: tratamento global de exceções e, depois, controller REST.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Duvida referente a esta frase `src/main/java/com/julyturadm/user/UserController.java`, pela minha experiencia
+a pasta da camada Controller deve ser criada em `src/main/java/com/julyturadm/controller`, dentro desta camada 
+deve ser criada a classe UserController.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Sua observação faz sentido.
+
+A sua proposta é organizar o projeto por camadas técnicas, criando um pacote específico para os 
+controllers REST.
+
+Para o JulyTurAdm, podemos adotar essa convenção.
+
+A diferença está na organização dos pacotes Java, não no funcionamento do Spring Boot.
+
+1. Estrutura que vamos adotar
+
+A classe ficará em:
+
+```
+backend-api/
+└── src/
+    └── main/
+        └── java/
+            └── com/
+                └── julyturadm/
+                    ├── common/
+                    │   └── exception/
+                    ├── config/
+                    ├── controller/
+                    │   └── UserController.java
+                    ├── domain/
+                    │   ├── entity/
+                    │   └── repository/
+                    ├── dto/
+                    │   ├── request/
+                    │   └── response/
+                    ├── security/
+                    ├── service/
+                    │   └── UserService.java
+                    ├── role/
+                    └── permission/
+```
+
+O pacote da classe será:
+
+```
+package com.julyturadm.controller;
+```
+
+E não:
+
+```
+package com.julyturadm.user;
+```
+
+## 2. Por que essa organização?
+
+| Pacote              | Responsabilidade                              |
+| ------------------- | --------------------------------------------- |
+| `controller`        | Receber requisições HTTP e devolver respostas |
+| `service`           | Executar regras de negócio                    |
+| `domain.entity`     | Representar as entidades JPA                  |
+| `domain.repository` | Acessar os dados                              |
+| `dto.request`       | Representar os dados recebidos pela API       |
+| `dto.response`      | Representar os dados devolvidos pela API      |
+| `common.exception`  | Centralizar exceções compartilhadas           |
+| `config`            | Configurações do Spring                       |
+
+Essa separação torna mais fácil localizar as classes e manter as responsabilidades de cada camada bem definidas.
+
+Existe também a alternativa de organizar por funcionalidade, agrupando controller, service e DTOs
+de cada módulo em um único pacote.
+
+Ambas são válidas. Para o nosso projeto, vamos seguir a sua preferência por camadas técnicas.
+
+3. Próximo passo
+
+Quando formos criar a classe, no VS Code, crie o pacote `controller` dentro de `com.julyturadm` e,
+dentro dele, a classe `UserController.java`.
+
+Não precisamos mover nem modificar o `UserService.java`, que permanece em `com.julyturadm.service`.
+
+Antes de implementar o controller, seguiremos a etapa combinada: criar o tratamento global de 
+exceções com `@RestControllerAdvice`.
+
+Assim, a API já terá um padrão de resposta para erros quando começarmos a expor os endpoints.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Então, vamos para o proximo passo neh!
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Vamos avançar com o JulyTurAdm seguindo a arquitetura que definimos: primeiro o tratamento global 
+e exceções; depois o `UserController` no pacote `com.julyturadm.controller`.
+
+O objetivo agora é padronizar as respostas de erro da API antes de disponibilizar os endpoints REST.
+
+Assim, o controller não precisará implementar o tratamento de cada exceção individualmente.
+
+## Etapa 1 — Criar o tratamento global de exceções
+
+Vamos trabalhar no pacote que já existe:
+
+```
+src/main/java/com/julyturadm/common/exception/
+```
+
+Nele, já temos:
+
+- `BusinessException.java` — para erros de regras de negócio, como e-mail duplicado.
+- `ResourceNotFoundException.java` — para recursos que não existem, como um usuário não encontrado.
+
+Agora criaremos duas classes adicionais:
+
+- `ApiErrorResponse.java` — representa o formato padronizado do erro.
+- `GlobalExceptionHandler.java` — converte as exceções em respostas HTTP.
+
+Etapa 2 — Criar `ApiErrorResponse.java`
+
+No VS Code, dentro de `common/exception`, crie o arquivo `ApiErrorResponse.java`.
+
+Use este código:
+
+```
+
+package com.julyturadm.common.exception;
+
+import java.time.LocalDateTime;
+
+public record ApiErrorResponse(
+    LocalDateTime timestamp,
+    int status,
+    String error,
+    String message,
+    String path
+) {}
+
+```
+
+Esse `record` define o formato JSON que a API devolverá quando ocorrer um erro.
+
+Por exemplo, ao tentar consultar um usuário inexistente, a resposta poderá ter esta estrutura:
+
+```
+{
+  "timestamp": "2026-11-02T20:45:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Usuário não encontrado com o ID: 99",
+  "path": "/api/users/99"
+}
+```
+
+Os valores são ilustrativos; o horário e o caminho serão preenchidos durante a requisição.
+
+Etapa 3 — Criar `GlobalExceptionHandler.java`
+
+No mesmo pacote, crie `GlobalExceptionHandler.java`:
+
+```
+package com.julyturadm.common.exception;
+
+import java.time.LocalDateTime;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(
+            ResourceNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+            HttpStatus.NOT_FOUND,
+            exception.getMessage(),
+            request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessException(
+            BusinessException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+            HttpStatus.CONFLICT,
+            exception.getMessage(),
+            request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidation(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+
+        FieldError fieldError = exception.getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .findFirst()
+            .orElse(null);
+
+        String message = fieldError != null
+            ? fieldError.getDefaultMessage()
+            : "Os dados enviados são inválidos.";
+
+        return buildResponse(
+            HttpStatus.BAD_REQUEST,
+            message,
+            request.getRequestURI()
+        );
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildResponse(
+            HttpStatus status,
+            String message,
+            String path) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+            LocalDateTime.now(),
+            status.value(),
+            status.getReasonPhrase(),
+            message,
+            path
+        );
+
+        return ResponseEntity.status(status).body(response);
+    }
+}
+```
+
+O que esse handler resolve?
+
+| Exceção                           | HTTP | Significado                       |
+| --------------------------------- | ---- | --------------------------------- |
+| `ResourceNotFoundException`       | 404  | Recurso não encontrado            |
+| `BusinessException`               | 409  | Conflito com uma regra de negócio |
+| `MethodArgumentNotValidException` | 400  | Dados inválidos na requisição     |
+
+O `@RestControllerAdvice` permite que o Spring aplique esse tratamento globalmente aos controllers REST.
+
+Neste primeiro momento, retornaremos a primeira mensagem de validação encontrada.
+
+Posteriormente, poderemos evoluir o contrato para devolver os erros de todos os campos.
+
+Etapa 4 — Compilar o projeto
+
+Salve os dois arquivos e execute no terminal, dentro de `backend-api`:
+
+```
+mvn -q -DskipTests compile
+```
+
+Se a compilação terminar sem mensagens de erro, seguimos para o próximo passo:
+criar o `UserController.java` em `com.julyturadm.controller` e implementar os seis endpoints.
+
+Envie o resultado da compilação antes de continuarmos.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -q -DskipTests compile
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Ótimo! A compilação terminou sem apresentar erros. Podemos avançar para a criação do controller REST.
+
+Próxima etapa — criar `UserController.java`
+
+Vamos respeitar a organização por camadas que você definiu:
+
+```
+src/main/java/com/julyturadm/
+├── common/
+│   └── exception/
+│       ├── ApiErrorResponse.java
+│       ├── BusinessException.java
+│       ├── GlobalExceptionHandler.java
+│       └── ResourceNotFoundException.java
+├── controller/
+│   └── UserController.java
+├── dto/
+│   ├── request/
+│   │   └── UserCreateRequest.java
+│   └── response/
+│       └── UserResponse.java
+├── domain/
+│   ├── entity/
+│   └── repository/
+└── service/
+    └── UserService.java
+```
+
+1. Criar o pacote e a classe
+
+No VS Code, crie o pacote `controller` dentro de `com.julyturadm` e, nele, o arquivo `UserController.java`.
+
+O primeiro endpoint será o cadastro de usuários, usando `POST /api/users`.
+
+Vamos validar a entrada com `@Valid`, delegar a regra de negócio ao `UserService` e 
+retornar HTTP `201 Created` quando o cadastro for concluído.
+
+2. Implementar o controller
+
+Cole este código no novo arquivo:
+
+```
+package com.julyturadm.controller;
+
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+import com.julyturadm.service.UserService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+
+        UserResponse response = userService.createUser(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
+    }
+}
+
+```
+
+Por enquanto, implementamos apenas o cadastro. Vamos validar a compilação antes de acrescentar os 
+outros cinco endpoints, mantendo cada etapa pequena e verificável.
+
+3. Compilar
+
+Salve o arquivo e execute:
+
+```
+mvn -q -DskipTests compile
+```
+
+Envie o resultado. Se estiver correto, adicionaremos as consultas, a listagem de usuários ativos e
+as operações de ativação e desativação.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -q -DskipTests compile
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Muito bem! O `UserController.java` compilou sem apresentar erros.
+
+Já temos o primeiro endpoint REST de cadastro implementado.
+
+Agora vamos completar o controller com as outras cinco operações, aproveitando os métodos que já 
+existem e foram testados no `UserService`.
+
+Etapa seguinte — completar `UserController.java`
+
+Abra o arquivo:
+
+```
+src/main/java/com/julyturadm/controller/UserController.java
+```
+
+Substitua o conteúdo atual pelo código completo abaixo. Ele mantém o cadastro e adiciona consultas,
+listagem e ativação/desativação.
+
+```
+
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+import com.julyturadm.service.UserService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+
+        UserResponse response = userService.createUser(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> findUserById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.findUserById(id)
+        );
+    }
+
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserResponse> findUserByEmail(
+            @PathVariable String email) {
+
+        return ResponseEntity.ok(
+            userService.findUserByEmail(email)
+        );
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserResponse>> findAllActiveUsers() {
+
+        return ResponseEntity.ok(
+            userService.findAllActiveUsers()
+        );
+    }
+
+    @PatchMapping("/{id}/disable")
+    public ResponseEntity<UserResponse> disableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.disableUser(id)
+        );
+    }
+
+    @PatchMapping("/{id}/enable")
+    public ResponseEntity<UserResponse> enableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.enableUser(id)
+        );
+    }
+}
+
+```
+
+Endpoints implementados
+
+| Método  | Endpoint                   | Resultado                        |
+| ------- | -------------------------- | -------------------------------- |
+| `POST`  | `/api/users`               | Cadastro — `201 Created`         |
+| `GET`   | `/api/users/{id}`          | Consulta por ID — `200 OK`       |
+| `GET`   | `/api/users/email/{email}` | Consulta por e-mail — `200 OK`   |
+| `GET`   | `/api/users`               | Lista usuários ativos — `200 OK` |
+| `PATCH` | `/api/users/{id}/disable`  | Desativa usuário — `200 OK`      |
+| `PATCH` | `/api/users/{id}/enable`   | Reativa usuário — `200 OK`       |
+
+A desativação continua sendo lógica: o registro permanece no MySQL.
+
+Observação: a consulta por e-mail usa um segmento de URL; caracteres especiais podem exigir 
+codificação na requisição.
+
+Para uma evolução futura, também podemos considerar o formato `/api/users?email=...`.
+
+Próximo passo — compilar
+
+Salve o arquivo e execute:
+
+```
+mvn -q -DskipTests compile
+```
+
+Se a compilação passar, faremos a verificação dos testes e prepararemos os testes HTTP da API.
+
+A autenticação e a autorização ainda precisam ser configuradas; portanto, não devemos considerar
+esses endpoints protegidos apenas por terem sido criados.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+edro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -q -DskipTests compile
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Ótimo! O `UserController.java` compilou sem erros. Agora temos os seis endpoints de gerenciamento
+de usuários implementados.
+
+Próxima etapa — executar os testes
+
+Antes de iniciar a aplicação, vamos verificar se as alterações no controller e no serviço preservaram
+os testes existentes.
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+mvn test
+```
+
+Esse comando executa todos os testes do projeto, incluindo os testes unitários de `UserService`
+e os testes de integração dos repositórios.
+
+Atenção: não use `mvn spring-boot:run` com `ddl-auto=create-drop` no perfil principal.
+Nosso banco `bd_paytur` deve permanecer preservado.
+
+Envie o resultado do `mvn test`.
+
+Se todos os testes passarem, o próximo passo será verificar a configuração de segurança antes de
+testar a API com Postman.
+
+Os endpoints ainda não devem ser considerados protegidos apenas porque o controller está compilando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 52.61 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:56 min
+[INFO] Finished at: 2026-11-02T21:11:03-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS — 16/16 testes aprovados
+
+Excelente resultado! O projeto JulyTurAdm passou por todos os testes, sem falhas ou erros.
+
+1. Resultado da execução
+
+| Testes                      | Executados | Falhas | Erros |
+| --------------------------- | ---------- | ------ | ----- |
+| `UserServiceTest`           | 10         | 0      | 0     |
+| `RepositoryIntegrationTest` | 6          | 0      | 0     |
+| Total                       | 16         | 0      | 0     |
+
+Tempo total: aproximadamente 1 minuto e 56 segundos.
+
+Isso confirma que:
+
+- As operações do `UserService` continuam funcionando nos testes unitários.
+- Os repositórios JPA passaram nos testes de integração.
+- As alterações recentes não provocaram regressões detectadas pela suíte atual.
+
+2. Situação atual do projeto
+
+1. Modelo JPA e repositórios
+
+   Concluído e testado
+2. Gerenciamento de usuários — Service
+
+   Concluído e testado
+3. Tratamento global de exceções
+
+   Implementado e compilado
+4. Controller REST de usuários
+
+   Implementado e compilado
+5. Segurança e autorização dos endpoints
+
+   Pendente
+
+
+Continua no arquivo: [20261102_Chat-Gpt-Etapa1-12-Preparação do ambiente(backend-api)_Inplementando_Configuração_Segurança_AGORA_VAI-7.txt]
+
+-------------------------------------------------fim-----------------------------------------------
+

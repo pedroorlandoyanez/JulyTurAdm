@@ -1,0 +1,687 @@
+﻿
+02/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1 - Etapa1-10-Preparação do ambiente(backend-api) Inplementando_Exclusao-Logica_AGORA_VAI-5
+---------------------------------------------------------------------------------------------------
+
+Inplementando a Exclusao Logica de registros
+
+---------------------------------------------------------------------------------------------------
+Executar a aplicação via terminal:
+
+Como o .env está no diretório JulyTurAdm, precisamos carregar suas variáveis no terminal antes de
+iniciar o Maven. Não vamos mostrar os valores das senhas.
+
+Execute, dentro de backend-api:
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+set -a
+source ../.env
+set +a
+
+---
+
+Agora inicie a aplicação com a validação temporária do Hibernate:
+
+// clear
+mvn clean
+
+// Compilar
+mvn compile
+
+// para iniciar
+mvn spring-boot:run
+
+---
+
+Iniciar o cliente do Mysql:
+
+Via editor vi entrar no arquivo .env diretório JulyTurAdm.
+
+---
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente resultado! 
+4/4 TESTES APROVADOS
+
+O UserServiceTest passou integralmente:
+Teste	Resultado
+Cadastro de usuário	Aprovado
+Rejeição de e-mail duplicado	Aprovado
+Codificação da senha	Aprovado
+DTO sem campo password	Aprovado
+
+Resultado do Maven:
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+O aviso da JVM sobre bootstrap classpath não representa falha nos testes.
+
+1. O que já construímos
+
+No JulyTurAdm, concluímos:
+- Entidades e relacionamentos JPA.
+- Cinco repositórios.
+- DTOs de entrada e saída.
+- Configuração BCrypt.
+- UserService com cadastro e verificação de e-mail duplicado.
+- BusinessException.
+- Quatro testes unitários do serviço.
+- Seis testes de integração dos repositórios, aprovados anteriormente.
+
+2. Próxima etapa: melhorar o UserService
+Antes de criar a API REST, recomendo completar as operações de gerenciamento de usuários.
+
+Minha proposta:
+1. findUserById(Long id) — consultar usuário pelo ID.
+2. findUserByEmail(String email) — consultar pelo e-mail.
+3. findAllActiveUsers() — listar usuários habilitados.
+4. disableUser(Long id) — desabilitar usuário.
+5. enableUser(Long id) — habilitar usuário.
+
+Também criaremos uma exceção específica ResourceNotFoundException para usuários inexistentes.
+
+3. Uma decisão antes de avançar
+Para o gerenciamento de usuários, recomendo que a exclusão seja lógica, utilizando o campo enabled.
+
+Assim, não apagaremos fisicamente registros de usuários que possam estar relacionados a perfis e permissões.
+
+Você concorda em adotar essa política de exclusão lógica, sem exclusão física de usuários?
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Sim, eu concordo em adotar a exclusão lógica de usuários?
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! Vamos adotar oficialmente a exclusão lógica (Soft Delete) como regra de negócio do JulyTurAdm.
+
+Essa decisão é importante para preservar a integridade do histórico de usuários e seus relacionamentos
+com perfis e permissões.
+
+1. Regra de negócio definida
+
+Não haverá exclusão física de usuários pela aplicação.
+
+| Operação                  | Comportamento                |
+| ------------------------- | ---------------------------- |
+| Cadastrar usuário         | `enabled = true`             |
+| Desabilitar usuário       | `enabled = false`            |
+| Reabilitar usuário        | `enabled = true`             |
+| Excluir fisicamente       | Não permitido pela aplicação |
+| Consultar usuários ativos | Somente `enabled = true`     |
+
+O registro continuará armazenado no MySQL, preservando seus relacionamentos.
+
+2. Próxima implementação
+
+Vamos criar uma exceção para recursos inexistentes:
+
+```
+common/
+└── exception/
+    ├── BusinessException.java
+    └── ResourceNotFoundException.java
+```
+
+Crie `ResourceNotFoundException.java`:
+
+```
+package com.julyturadm.common.exception;
+
+public class ResourceNotFoundException extends RuntimeException {
+
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+```
+
+3. Operações que adicionaremos ao UserService
+
+| Método                          | Finalidade                    |
+| ------------------------------- | ----------------------------- |
+| `findUserById(Long id)`         | Consultar usuário pelo ID     |
+| `findUserByEmail(String email)` | Consultar usuário pelo e-mail |
+| `findAllActiveUsers()`          | Listar usuários habilitados   |
+| `disableUser(Long id)`          | Desabilitar usuário           |
+| `enableUser(Long id)`           | Reabilitar usuário            |
+
+Uma regra adicional: usuários desabilitados não poderão ser utilizados para autenticação, mesmo que
+possuam senha válida.
+
+Vamos assegurar isso posteriormente na configuração de autenticação do Spring Security.
+
+4. Primeiro passo
+
+Crie a classe `ResourceNotFoundException.java` no caminho indicado.
+
+Depois execute:
+
+```
+mvn -q -DskipTests compile
+```
+
+Envie o resultado. Em seguida, implementaremos os cinco métodos no `UserService`, preservando os DTOs e os relacionamentos JPA existentes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -q -DskipTests compile
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Ótimo! A compilação terminou sem erros. Isso confirma que a classe `ResourceNotFoundException`
+foi reconhecida pelo projeto.
+
+Vamos continuar a implementação do UserService, mantendo a decisão de exclusão lógica (Soft Delete):
+nenhum usuário será removido fisicamente do banco.
+
+Próxima etapa — completar as operações de usuários
+
+Vamos adicionar cinco operações:
+
+1. Buscar usuário por ID.
+2. Buscar usuário por e-mail.
+3. Listar somente usuários ativos.
+4. Desativar usuário (`enabled = false`).
+5. Reativar usuário (`enabled = true`).
+
+Antes de alterar o código, abra `UserService.java` no VS Code.
+
+Na próxima etapa, vamos inserir os métodos preservando o que já foi implementado e testado.
+
+A regra será: se o usuário não existir, lançar `ResourceNotFoundException`; se estiver desativado,
+ele não aparecerá na listagem de usuários ativos.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Abri a classe UserService.java no VS Code, vamos para a próxima etapa, completar as operações de usuários.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Vamos completar o `UserService.java` passo a passo, sem alterar o que já está funcionando.
+
+Etapa 1 — Adicionar os métodos de consulta
+
+No arquivo `UserService.java`, mantenha os imports e o método `createUser()` existentes.
+
+1. Adicione estes imports, caso ainda não estejam presentes:
+
+```
+import java.util.List;
+import com.julyturadm.common.exception.ResourceNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
+```
+
+2. Depois do método `createUser()`, adicione os três métodos abaixo:
+
+```
+@Transactional(readOnly = true)
+public UserResponse findUserById(Long id) {
+    User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Usuário não encontrado com o ID: " + id
+            ));
+
+    return toResponse(user);
+}
+
+@Transactional(readOnly = true)
+public UserResponse findUserByEmail(String email) {
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Usuário não encontrado com o e-mail: " + email
+            ));
+
+    return toResponse(user);
+}
+
+@Transactional(readOnly = true)
+public List<UserResponse> findAllActiveUsers() {
+    return userRepository.findAllByEnabledTrue()
+            .stream()
+            .map(this::toResponse)
+            .toList();
+}
+```
+
+Esses métodos utilizam os métodos que já existem no `UserRepository`.
+
+- `findUserById`: procura pelo identificador.
+- `findUserByEmail`: procura pelo e-mail.
+- `findAllActiveUsers`: retorna somente usuários com `enabled = true`.
+- `@Transactional(readOnly = true)`: identifica operações de consulta.
+
+Etapa 2 — Adicionar ativação e desativação
+
+Logo depois dos métodos de consulta, adicione:
+
+```
+public UserResponse disableUser(Long id) {
+    User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Usuário não encontrado com o ID: " + id
+            ));
+
+    user.setEnabled(false);
+
+    User updatedUser = userRepository.save(user);
+
+    return toResponse(updatedUser);
+}
+
+public UserResponse enableUser(Long id) {
+    User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Usuário não encontrado com o ID: " + id
+            ));
+
+    user.setEnabled(true);
+
+    User updatedUser = userRepository.save(user);
+
+    return toResponse(updatedUser);
+}
+```
+
+Regra importante: não utilizaremos `userRepository.delete()` ou `deleteById()`.
+A desativação preserva o registro e seus relacionamentos no banco.
+
+Etapa 3 — Conferir a estrutura final
+
+Seu `UserService.java` deverá conter:
+
+| Método                 | Responsabilidade          |
+| ---------------------- | ------------------------- |
+| `createUser()`         | Cadastrar usuário         |
+| `findUserById()`       | Buscar por ID             |
+| `findUserByEmail()`    | Buscar por e-mail         |
+| `findAllActiveUsers()` | Listar usuários ativos    |
+| `disableUser()`        | Desativar usuário         |
+| `enableUser()`         | Reativar usuário          |
+| `toResponse()`         | Converter entidade em DTO |
+
+Etapa 4 — Compilar
+
+Salve o arquivo e execute no terminal:
+
+```
+mvn -q -DskipTests compile
+```
+
+Objetivo desta etapa
+
+Ter as seis operações de gerenciamento de usuários implementadas, mantendo a senha protegida e sem
+expor a entidade JPA diretamente.
+
+Quando terminar, envie o resultado da compilação.
+
+Depois vamos criar os testes unitários dessas novas operações, antes de avançar para o controller REST.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -q -DskipTests compile
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Excelente! A compilação terminou sem apresentar erros. Isso confirma que os seis métodos do `UserService`
+estão compilando corretamente.
+
+Agora vamos validar o comportamento com testes unitários, sem acessar nem modificar o banco MySQL.
+
+Próxima etapa — ampliar `UserServiceTest.java`
+
+Abra:
+
+```
+src/test/java/com/julyturadm/service/UserServiceTest.java
+```
+
+Vamos acrescentar cinco testes:
+
+| Teste                         | Comportamento esperado         |
+| ----------------------------- | ------------------------------ |
+| `shouldFindUserById`          | Localizar usuário pelo ID      |
+| `shouldFindUserByEmail`       | Localizar usuário pelo e-mail  |
+| `shouldReturnOnlyActiveUsers` | Listar somente usuários ativos |
+| `shouldDisableUser`           | Alterar `enabled` para `false` |
+| `shouldEnableUser`            | Alterar `enabled` para `true`  |
+
+Também testaremos o caso em que o usuário não existe, garantindo o lançamento de `ResourceNotFoundException`.
+
+Antes de fornecer o código dos testes, preciso conferir a versão atual da classe para preservar os
+quatro testes que já passaram e evitar duplicações.
+
+Cole aqui o conteúdo completo de `UserServiceTest.java`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+A impressão total da classe UserServiceTest.java foi enviada para o Chat-Gpt...
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @InjectMocks
+    private UserService userService;
+
+    private UserCreateRequest request;
+
+    @BeforeEach
+    void setUp() {
+        request = new UserCreateRequest(
+            "Usuario Teste",
+            "usuario.teste@example.com",
+            "SenhaSegura123"
+        );
+    }
+...
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Conferi sua classe `UserServiceTest.java`.
+
+Os quatro testes existentes estão preservados e cobrem o cadastro, a validação de e-mail duplicado,
+a codificação da senha e a proteção do DTO.
+
+Vamos acrescentar os novos testes sem substituir os anteriores.
+
+Uma observação: para testar as operações de ativação e desativação, vamos simular o comportamento do
+repositório com Mockito.
+
+Assim, não precisamos acessar o MySQL.
+
+Etapa 1 — Adicionar os imports
+
+No início de `UserServiceTest.java`, acrescente:
+
+```
+import com.julyturadm.common.exception.ResourceNotFoundException;
+import java.util.List;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+```
+
+O restante dos imports pode permanecer como está.
+
+Etapa 2 — Acrescentar os testes
+
+Além dos imports acima, acrescente `List`:
+
+```
+import java.util.List;
+```
+
+Não é necessário importar `verifyNoMoreInteractions`; não vamos utilizá-lo.
+
+Agora, antes da última chave `}` da classe, insira os seis testes:
+
+```
+
+    @Test
+    void shouldFindUserById() {
+        User user = User.create(
+            "Usuario Teste",
+            "usuario.teste@example.com",
+            "senha-codificada"
+        );
+        user.setId(1L);
+
+        when(userRepository.findById(1L))
+            .thenReturn(Optional.of(user));
+
+        UserResponse response = userService.findUserById(1L);
+
+        assertNotNull(response);
+        assertEquals(1L, response.id());
+        assertEquals("Usuario Teste", response.name());
+
+        verify(userRepository).findById(1L);
+    }
+
+    @Test
+    void shouldFindUserByEmail() {
+        User user = User.create(
+            "Usuario Teste",
+            "usuario.teste@example.com",
+            "senha-codificada"
+        );
+
+        when(userRepository.findByEmail(request.email()))
+            .thenReturn(Optional.of(user));
+
+        UserResponse response =
+            userService.findUserByEmail(request.email());
+
+        assertNotNull(response);
+        assertEquals(request.email(), response.email());
+
+        verify(userRepository).findByEmail(request.email());
+    }
+
+    @Test
+    void shouldReturnOnlyActiveUsers() {
+        User activeUser = User.create(
+            "Usuario Ativo",
+            "ativo@example.com",
+            "senha-codificada"
+        );
+
+        when(userRepository.findAllByEnabledTrue())
+            .thenReturn(List.of(activeUser));
+
+        List<UserResponse> responses =
+            userService.findAllActiveUsers();
+
+        assertEquals(1, responses.size());
+        assertEquals("Usuario Ativo", responses.get(0).name());
+        assertTrue(responses.get(0).enabled());
+
+        verify(userRepository).findAllByEnabledTrue();
+    }
+
+    @Test
+    void shouldDisableUser() {
+        User user = User.create(
+            "Usuario Teste",
+            "usuario.teste@example.com",
+            "senha-codificada"
+        );
+        user.setId(1L);
+
+        when(userRepository.findById(1L))
+            .thenReturn(Optional.of(user));
+
+        when(userRepository.save(any(User.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserResponse response = userService.disableUser(1L);
+
+        assertNotNull(response);
+        assertFalse(response.enabled());
+
+        verify(userRepository).findById(1L);
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void shouldEnableUser() {
+        User user = User.create(
+            "Usuario Teste",
+            "usuario.teste@example.com",
+            "senha-codificada"
+        );
+        user.setId(1L);
+        user.setEnabled(false);
+
+        when(userRepository.findById(1L))
+            .thenReturn(Optional.of(user));
+
+        when(userRepository.save(any(User.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserResponse response = userService.enableUser(1L);
+
+        assertNotNull(response);
+        assertTrue(response.enabled());
+
+        verify(userRepository).findById(1L);
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void shouldThrowWhenUserDoesNotExist() {
+        when(userRepository.findById(99L))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> userService.findUserById(99L)
+        );
+
+        verify(userRepository).findById(99L);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+```
+
+Etapa 3 — Executar os testes
+
+Salve o arquivo e execute:
+
+```
+mvn -Dtest=UserServiceTest test
+```
+
+O resultado esperado é:
+
+10 testes aprovados
+
+| Grupo             | Quantidade |
+| ----------------- | ---------- |
+| Testes anteriores | 4          |
+| Novos testes      | 6          |
+| Total esperado    | 10         |
+
+Se aparecer algum erro, envie a saída completa do terminal. Vamos corrigir antes de avançar.
+
+Importante: esses testes validam o comportamento do serviço com repositório simulado; ainda não
+são testes de integração com o banco de dados.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=UserServiceTest test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.service.UserServiceTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.324 s -- in com.julyturadm.service.UserServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.347 s
+[INFO] Finished at: 2026-11-02T13:08:38-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS — 10/10 testes aprovados
+
+Excelente resultado! Todos os testes unitários do `UserService` passaram:
+
+| Resultado         | Quantidade |
+| ----------------- | ---------- |
+| Testes executados | 10         |
+| Falhas            | 0          |
+| Erros             | 0          |
+| Ignorados         | 0          |
+
+A advertência do OpenJDK sobre class data sharing não é uma falha dos testes e não impediu a execução.
+
+O que concluímos no gerenciamento de usuários
+
+- Cadastro com senha codificada usando BCrypt.
+- Prevenção de cadastro com e-mail duplicado.
+- Consulta por ID e e-mail.
+- Listagem somente de usuários ativos.
+- Desativação lógica (`enabled = false`).
+- Reativação (`enabled = true`).
+- Exceção para usuário não encontrado.
+- DTO de resposta sem exposição da senha.
+
+Próxima etapa — Controller REST
+
+Agora vamos conectar a camada de serviço à API HTTP, criando:
+
+`src/main/java/com/julyturadm/user/UserController.java`
+
+A ideia é disponibilizar estes endpoints:
+
+| Método HTTP | Endpoint                   | Operação             |
+| ----------- | -------------------------- | -------------------- |
+| POST        | `/api/users`               | Cadastrar usuário    |
+| GET         | `/api/users/{id}`          | Consultar por ID     |
+| GET         | `/api/users/email/{email}` | Consultar por e-mail |
+| GET         | `/api/users`               | Listar ativos        |
+| PATCH       | `/api/users/{id}/disable`  | Desativar            |
+| PATCH       | `/api/users/{id}/enable`   | Reativar             |
+
+Também vamos utilizar `@Valid` para validar os dados recebidos e preparar o tratamento padronizado
+das exceções HTTP.
+
+Minha proposta: antes de implementar o controller, vamos criar o tratamento global de exceções
+com `@RestControllerAdvice`.
+
+Assim, erros como usuário inexistente, e-mail duplicado e dados inválidos terão respostas HTTP
+apropriadas, sem expor detalhes internos da aplicação.
+
+Vamos seguir nessa ordem: tratamento global de exceções e, depois, controller REST.
+
+Continua no arquivo: [20261102_Chat-Etapa1-11-Preparação do ambiente(backend-api)_Implementando_Camada_Controller REST_AGORA_VAI-6.txt]
+
+-------------------------------------------------fim-----------------------------------------------
+

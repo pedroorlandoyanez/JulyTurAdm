@@ -2,7 +2,7 @@
 28/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Plano de Desenvolvimento `backend-api`
+Chat-Gpt: Plano de desenvolvimento do `backend-api`
 ---------------------------------------------------------------------------------------------------
 
 Chat-Gpt disse:
@@ -121,6 +121,8 @@ Confirmar lembrete
 
 Assim, o projeto terá um roteiro de execução e um lembrete para você retomar o trabalho sem precisar
 reorganizar tudo a cada sessão.
+
+Continua no arquivo: [20261029_Chat-Gpt-Etapa1-1-Preparação do ambiente:backend-api.txt]
 
 -------------------------------------------------fim-----------------------------------------------
 

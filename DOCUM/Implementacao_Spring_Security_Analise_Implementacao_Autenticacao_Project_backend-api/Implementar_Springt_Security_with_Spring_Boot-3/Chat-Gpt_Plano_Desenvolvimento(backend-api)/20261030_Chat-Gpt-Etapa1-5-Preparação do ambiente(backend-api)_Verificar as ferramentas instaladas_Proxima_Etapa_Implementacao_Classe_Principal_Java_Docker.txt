@@ -2,8 +2,8 @@
 30/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Etapa1 - Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
-                   Etapa Implementacao Docker e Instanciando o Mysql
+Chat-Gpt: Etapa1-5-Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima 
+          Etapa Implementacao Classe_Principal Java e Docker
 ---------------------------------------------------------------------------------------------------
 
 Pedro disse:
@@ -1003,7 +1003,7 @@ Como ainda não criamos nossos usuários e regras de autorização, a requisiç�
 
 Portanto, HTTP 401 neste teste não representa falha do backend.
 
-Próxima fase — modelagem JPA, continua no arquivo []
+Próxima fase — modelagem JPA, continua no arquivo [20261030_Chat-Gpt-Etapa1-5-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA.txt]
 
 -------------------------------------------------fim-----------------------------------------------
 

@@ -2,8 +2,8 @@
 30/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Etapa1 - Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
-                   Etapa Implementacao a modelagem JPA.
+Chat-Gpt: Etapa1-5-Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima 
+          Etapa Implementacao_modelagem JPA
 ---------------------------------------------------------------------------------------------------
 
 2. Próxima fase — modelagem JPA.
@@ -409,7 +409,7 @@ backend-api/src/main/resources/application.yml
 
 OBS: Apos verificar os documentos do projeto chegamos a um resultado.
 
-Continua no arquivo: [20261030_Chat-Gpt-Etapa1-6-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA_AGORA_VA]
+Continua no arquivo: [20261030_Chat-Gpt-Etapa1-6-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA_AGORA_VA.txt]
  
 -------------------------------------------------fim-----------------------------------------------
 

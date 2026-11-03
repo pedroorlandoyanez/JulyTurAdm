@@ -2,7 +2,7 @@
 29/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Plano de Desenvolvimento `backend-api`
+Chat-Gpt: Etapa1-1-Preparação do ambiente:backend-api
 ---------------------------------------------------------------------------------------------------
 
 Chat-Gpt disse:
@@ -123,9 +123,7 @@ Importante: por enquanto, não instale nem atualize nada.
 Primeiro vamos confirmar o estado atual do ambiente; depois avançaremos para a verificação do 
 projeto Maven e do banco `bd_paytur`.
 
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
+Continua no arquivo: [20261029_Chat-Gpt-Etapa1-2-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas.txt]
 
 -------------------------------------------------fim-----------------------------------------------
 

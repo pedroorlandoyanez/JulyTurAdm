@@ -2,7 +2,7 @@
 28/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Próxima etapa criar a classe principal, JulyTurAdmApplication.java 
+Chat-Gpt: Etapa1-4-Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima Etapa Implementacao Classes_Java
 ---------------------------------------------------------------------------------------------------
 
 Chat-Gpt disse:
@@ -1109,35 +1109,7 @@ do arquivo `.env`, que está na raiz do projeto, e não diretamente dentro de `b
 Quando terminar de salvar, avise-me. Vamos configurar essa leitura de variáveis com segurança antes
 de testar a aplicação.
 
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
-
----------------------------------------------------------------------------------------------------
-Gpt-Gpt disse:
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
----------------------------------------------------------------------------------------------------
-Gpt-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
----------------------------------------------------------------------------------------------------
-Gpt-Gpt disse:
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
----------------------------------------------------------------------------------------------------
-Gpt-Gpt disse:
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
+Continua no arquivo: [20261030_Chat-Gpt-Etapa1-5-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_Classe_Principal_Java_Docker.txt]
 
 -------------------------------------------------fim-----------------------------------------------
 

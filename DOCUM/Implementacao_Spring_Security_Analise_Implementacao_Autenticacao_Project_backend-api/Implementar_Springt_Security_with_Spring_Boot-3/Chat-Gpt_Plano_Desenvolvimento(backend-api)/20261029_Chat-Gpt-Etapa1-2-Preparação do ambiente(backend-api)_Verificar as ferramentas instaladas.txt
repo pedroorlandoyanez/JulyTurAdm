@@ -2,7 +2,7 @@
 29/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Plano de Desenvolvimento `backend-api`
+Chat-Gpt: Etapa1-2-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas
 ---------------------------------------------------------------------------------------------------
 
 Pedro disse:
@@ -693,7 +693,9 @@ Configuração anterior
 
 Backup criado antes da alteração.
 
-Próxima etapa — Verificar o Maven e o Git, continua no arquivo[ ]  
+Próxima etapa — Verificar o Maven e o Git, continua no arquivo[20261029_Chat-Gpt-Etapa1-3-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Verificar_Git_Maven_Pom.txt]  
+
+Continua no arquivo: [20261029_Chat-Gpt-Etapa1-3-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Verificar_Git_Maven_Pom.txt]
 
 -------------------------------------------------fim-----------------------------------------------
 

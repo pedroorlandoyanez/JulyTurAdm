@@ -44,4 +44,16 @@ public class User {
         fetch = FetchType.LAZY
     )
     private List<UserRole> userRoles = new ArrayList<>();
+
+    // Adicionar um método estático público à entidade `User`.
+    // permitirá criar usuários sem expor publicamente o construtor.
+    public static User create(String name, String email, String password) {
+        User user = new User();
+        user.setName(name);
+        user.setEmail(email);
+        user.setPassword(password);
+        user.setEnabled(true);
+        return user;
+    }
+
 }

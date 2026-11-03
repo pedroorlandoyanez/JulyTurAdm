@@ -2,9 +2,44 @@
 30/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Etapa1 - Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
+Chat-Gpt: Etapa1-6-Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima
                    Etapa Implementacao a modelagem JPA (AGORA VAI).
 ---------------------------------------------------------------------------------------------------
+
+Para executar a aplicação via terminal:
+
+Como o .env está no diretório JulyTurAdm, precisamos carregar suas variáveis no terminal antes de
+iniciar o Maven. Não vamos mostrar os valores das senhas.
+
+Execute, dentro de backend-api:
+
+bash:
+set -a
+source ../.env
+set +a
+
+---
+
+Agora inicie a aplicação com a validação temporária do Hibernate:
+
+// clear
+mvn spring-boot:clean 
+
+// Compilar
+mvn spring-boot:compile
+
+// clear e compila
+mvn clean compile
+
+// para iniciar
+mvn spring-boot:run
+
+---
+
+Iniciar o cliente do Mysql:
+
+Via editor vi entrar no arquivo .env diretório JulyTurAdm.
+
 
 ---------------------------------------------------------------------------------------------------
 Chat-Gpt disse:
@@ -2737,6 +2772,7 @@ updated_at DATETIME NOT NULL
 Isso corresponde à decisão de deixar o banco controlar os timestamps.
 
 O mapeamento Java com insertable = false, updatable = false é coerente com esse comportamento.
+
 3. Próxima fase: teste de integração JPA
 Agora vamos validar o mapeamento pelo próprio Hibernate.
 
@@ -2853,10 +2889,8 @@ Antes de começar: encerre a aplicação com Ctrl+C, se ainda estiver executando
 Minha sugestão é começar pelo UserRepository, implementando consultas por e-mail e usuários habilitados.
 Essas consultas serão importantes para a futura autenticação com Spring Security 7.
 
----------------------------------------------------------------------------------------------------
-Pedro disse:
 
-Continua no arquivo: [20261031_Chat-Gpt-Etapa1-6-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_modelagem JPA_AGORA_VAI-2] 
+Continua no arquivo: [20261031_Chat-Gpt-Etapa1-7-Preparação do ambiente(backend-api)_Implementacao_modelagem- JPA_AGORA_VAI-2]
 
 -------------------------------------------------fim-----------------------------------------------
 

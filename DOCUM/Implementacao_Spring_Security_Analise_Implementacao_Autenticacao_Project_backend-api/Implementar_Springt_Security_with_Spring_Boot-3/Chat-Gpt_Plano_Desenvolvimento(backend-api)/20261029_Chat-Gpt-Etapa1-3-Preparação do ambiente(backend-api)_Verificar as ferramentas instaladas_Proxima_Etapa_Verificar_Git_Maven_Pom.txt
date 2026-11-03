@@ -2,7 +2,8 @@
 28/10/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Próxima etapa — Verificar o Maven e o Git 
+Chat-Gpt: Etapa1-3-Preparação do ambiente(backend-api) Verificar as ferramentas instaladas Proxima 
+          Etapa Verificar Git, Maven e Pom.xml
 ---------------------------------------------------------------------------------------------------
 
 Chat-Gpt disse:
@@ -1667,15 +1668,8 @@ public class JulyTurAdmApplication {
 Essa é a classe de entrada da aplicação Spring Boot. A anotação `@SpringBootApplication` habilita a configuração automática e a descoberta dos componentes que colocaremos abaixo do pacote `com.julyturadm`.
 
 Quando terminar, não execute outros comandos ainda. Avise-me para verificarmos o arquivo e, em seguida, testar a compilação com `mvn compile`.
----------------------------------------------------------------------------------------------------
-Pedro disse:
 
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
+Continua no arquivo: [20261029_Chat-Gpt-Etapa1-4-Preparação do ambiente(backend-api)_Verificar as ferramentas instaladas_Proxima_Etapa_Implementacao_Classes_Java]
 
 -------------------------------------------------fim-----------------------------------------------
 

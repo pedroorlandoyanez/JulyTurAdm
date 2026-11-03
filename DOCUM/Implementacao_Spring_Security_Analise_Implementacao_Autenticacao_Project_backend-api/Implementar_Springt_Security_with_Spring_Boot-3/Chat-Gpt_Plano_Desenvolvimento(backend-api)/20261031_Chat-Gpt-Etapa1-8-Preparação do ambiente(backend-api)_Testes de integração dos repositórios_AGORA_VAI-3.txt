@@ -1,0 +1,1995 @@
+﻿
+31/10/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1-8-Preparação do ambiente(backend-api) Etapa Implementacao - Testes de integração
+                   dos repositórios, Criação do banco `bd_paytur_test` no mesmo container MySQL.
+                   Escrever os testes (AGORA VAI-3).
+---------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------
+Executar a aplicação via terminal:
+
+Como o .env está no diretório JulyTurAdm, precisamos carregar suas variáveis no terminal antes de
+iniciar o Maven. Não vamos mostrar os valores das senhas.
+
+Execute, dentro de backend-api:
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+set -a
+source ../.env
+set +a
+
+---
+
+Agora inicie a aplicação com a validação temporária do Hibernate:
+
+// clear
+mvn clean
+
+// Compilar
+mvn compile
+
+// para iniciar
+mvn spring-boot:run
+
+---
+
+Iniciar o cliente do Mysql:
+
+Via editor vi entrar no arquivo .env diretório JulyTurAdm.
+
+---
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+---------------------------------------------------------------------------------------------------
+Executar os testes
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+Depois, carregue as variáveis do `.env` e execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn clean test
+```
+
+Não execute `mvn spring-boot:run` com o perfil de testes.
+
+Verificando o docker:
+
+docker compose -d
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Próxima etapa — 4.11. Testes de integração dos repositórios
+
+Agora precisamos verificar o funcionamento real das consultas, não apenas a compilação.
+
+Vamos testar:
+
+| Repositório                | Testes previstos                                  |
+| -------------------------- | ------------------------------------------------- |
+| `UserRepository`           | Buscar usuário por e-mail e verificar habilitação |
+| `RoleRepository`           | Buscar perfil por nome                            |
+| `PermissionRepository`     | Buscar permissão por nome                         |
+| `UserRoleRepository`       | Consultar perfis de usuários                      |
+| `RolePermissionRepository` | Consultar permissões de perfis                    |
+
+Uma decisão importante antes dos testes
+
+Como você informou que o ambiente está em produção, não vamos executar testes que insiram ou removam
+registros no banco operacional `bd_paytur`.
+
+Minha recomendação é utilizar um banco isolado, por exemplo:
+
+```
+bd_paytur          → Produção
+bd_paytur_test     → Testes de integração
+```
+
+Assim preservamos os dados reais.
+
+Preciso confirmar uma coisa: você já possui um banco de testes separado ou podemos preparar
+o `bd_paytur_test` no mesmo container MySQL?
+
+Depois disso, seguiremos para a Fase 5: Services e integração com Spring Security, preparando
+a autenticação real por usuários, perfis e permissões granulares.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Não possui um banco de testes separado, prepare o `bd_paytur_test` no mesmo container MySQL?
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Vamos preparar o banco `bd_paytur_test` no mesmo container MySQL, mantendo o banco operacional `bd_paytur` completamente separado.
+
+Essa é uma boa decisão para o JulyTurAdm: poderemos executar testes de integração sem correr o risco
+de modificar usuários, perfis e permissões reais.
+
+1. Estratégia de configuração
+
+Container Docker MySQL
+
+Existente
+
+Uma única instância MySQL
+
+bd_paytur
+
+Produção
+
+Tabelas e dados operacionais preservados.
+
+bd_paytur_test
+
+Testes
+
+Estrutura independente e dados descartáveis de teste.
+
+Vamos utilizar:
+
+- Mesmo container MySQL.
+- Banco separado.
+- Usuário e permissões específicos para testes, se necessário.
+- Hibernate `create` ou `create-drop` somente no ambiente de testes.
+- Nunca utilizar `ddl-auto=create`, `create-drop` ou `update` na produção.
+
+2. Criar o banco de testes
+
+No terminal do VS Code, entre na raiz do projeto:
+
+```
+cd ~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api
+```
+
+Primeiro, confirme que o container está ativo:
+
+```
+docker compose ps
+```
+
+Em seguida, crie o banco utilizando o usuário administrativo do MySQL:
+
+```
+docker compose exec -T mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+CREATE DATABASE IF NOT EXISTS bd_paytur_test
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_0900_ai_ci;
+
+SHOW DATABASES LIKE '\''bd_paytur_test'\'';
+"'
+```
+
+O comando não remove nem modifica o banco de produção.
+
+3. Conferir a criação
+
+Execute:
+
+```
+docker compose exec mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+SELECT
+    SCHEMA_NAME,
+    DEFAULT_CHARACTER_SET_NAME,
+    DEFAULT_COLLATION_NAME
+FROM information_schema.SCHEMATA
+WHERE SCHEMA_NAME IN (
+    '\''bd_paytur'\'',
+    '\''bd_paytur_test'\''
+);
+"'
+```
+
+Esperamos encontrar os dois bancos:
+
+| Banco            | Finalidade |
+| ---------------- | ---------- |
+| `bd_paytur`      | Produção   |
+| `bd_paytur_test` | Testes     |
+
+4. Próxima configuração
+
+Depois de confirmar a criação, vamos preparar:
+
+```
+src/main/resources/
+├── application.properties
+├── application-test.properties
+```
+
+O perfil `test` terá conexão exclusiva com `bd_paytur_test`.
+
+Também vamos configurar os testes JPA para criar e remover as tabelas automaticamente apenas nesse banco.
+
+Próxima ação
+
+Execute os comandos das etapas 2 e 3 e envie a saída aqui.
+
+Não vamos avançar para os testes até confirmar que os dois bancos estão presentes e independentes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose ps
+NAME               IMAGE       COMMAND                  SERVICE            CREATED      STATUS                 PORTS
+mysql-julituradm   mysql:8.0   "docker-entrypoint.s…"   mysql-julituradm   2 days ago   Up 3 hours (healthy)   33060/tcp, 127.0.0.1:3309->3306/tcp
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec -T mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+CREATE DATABASE IF NOT EXISTS bd_paytur_test
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_0900_ai_ci;
+
+SHOW DATABASES LIKE '\''bd_paytur_test'\'';
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Database (bd_paytur_test)
+bd_paytur_test
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+SELECT
+    SCHEMA_NAME,
+    DEFAULT_CHARACTER_SET_NAME,
+    DEFAULT_COLLATION_NAME
+FROM information_schema.SCHEMATA
+WHERE SCHEMA_NAME IN (
+    '\''bd_paytur'\'',
+    '\''bd_paytur_test'\''
+);
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
++----------------+----------------------------+------------------------+
+| SCHEMA_NAME    | DEFAULT_CHARACTER_SET_NAME | DEFAULT_COLLATION_NAME |
++----------------+----------------------------+------------------------+
+| bd_paytur      | utf8mb4                    | utf8mb4_0900_ai_ci     |
+| bd_paytur_test | utf8mb4                    | utf8mb4_0900_ai_ci     |
++----------------+----------------------------+------------------------+
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! O banco `bd_paytur_test` foi criado corretamente no mesmo container MySQL, e a conferência
+confirmou que os dois bancos possuem a mesma configuração de charset e collation.
+
+MySQL 8.0 — mysql-julituradm
+
+Healthy
+
+`bd_paytur`
+
+Preservado
+
+`bd_paytur_test`
+
+Criado
+
+Ambos usam utf8mb4 / utf8mb4_0900_ai_ci.
+
+Agora vamos configurar o perfil de testes sem interferir na configuração operacional.
+
+5. Preparar o perfil `test`
+
+Antes de criar os arquivos de configuração, precisamos conferir como o projeto atual carrega as
+credenciais e configura a conexão MySQL.
+
+Execute na raiz de `backend-api`:
+
+1. Identificar os arquivos de configuração:
+
+```
+find src/main/resources -maxdepth 2 -type f -print
+```
+
+2. Mostrar a configuração atual, ocultando senhas:
+
+```
+for f in src/main/resources/application.properties \
+         src/main/resources/application.yml \
+         src/main/resources/application.yaml
+do
+    if [ -f "$f" ]; then
+        echo "========== $f =========="
+        sed -E \
+          's/(password|secret)([[:space:]]*[=:][[:space:]]*).*/\1\2[OCULTO]/I' \
+          "$f"
+    fi
+done
+```
+
+3. Conferir as dependências de testes no `pom.xml`:
+
+```
+grep -n -A 5 -B 2 \
+  'spring-boot-starter-test\|spring-security-test\|h2' pom.xml
+```
+
+O que faremos depois
+
+A configuração ficará organizada desta maneira:
+
+| Configuração                  | Banco            |
+| ----------------------------- | ---------------- |
+| `application.properties`      | `bd_paytur`      |
+| `application-test.properties` | `bd_paytur_test` |
+
+Também vamos verificar se o usuário MySQL utilizado pela aplicação possui autorização para acessar
+o novo banco.
+
+Se não possuir, criaremos uma permissão específica, sem ampliar desnecessariamente os privilégios
+de produção.
+
+Uma regra importante: os testes deverão falhar imediatamente se tentarem utilizar `bd_paytur` em
+vez de `bd_paytur_test`.
+
+Envie os resultados dos três comandos.
+
+Com isso, prepararemos os arquivos de configuração respeitando sua estrutura atual, sem sobrescrever
+configurações que já funcionam.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/resources -maxdepth 2 -type f -print
+src/main/resources/application.yml
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ for f in src/main/resources/application.properties \
+         src/main/resources/application.yml \
+         src/main/resources/application.yaml
+do
+    if [ -f "$f" ]; then
+        echo "========== $f =========="
+        sed -E \
+          's/(password|secret)([[:space:]]*[=:][[:space:]]*).*/\1\2[OCULTO]/I' \
+          "$f"
+    fi
+done
+========== src/main/resources/application.yml ==========
+spring:
+  application:
+    name: julyturadm-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/${MYSQL_DATABASE}
+    username: ${MYSQL_USER}
+    password: [OCULTO]
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+server:
+  port: 8081
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -n -A 5 -B 2 \
+  'spring-boot-starter-test\|spring-security-test\|h2' pom.xml
+67-        <dependency>
+68-            <groupId>org.springframework.boot</groupId>
+69:            <artifactId>spring-boot-starter-test</artifactId>
+70-            <scope>test</scope>
+71-        </dependency>
+72-
+73-        <!-- Testes de segurança -->
+74-        <dependency>
+75-            <groupId>org.springframework.security</groupId>
+76:            <artifactId>spring-security-test</artifactId>
+77-            <scope>test</scope>
+78-        </dependency>
+79-
+80-    </dependencies>
+81-
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. Agora conhecemos a configuração real do projeto.
+
+Há três pontos positivos:
+
+1. Você utiliza `application.yml`, portanto vamos manter esse padrão e não criar um segundo arquivo
+   de configuração principal.
+
+2. O Hibernate está com `ddl-auto: none` na aplicação normal, uma configuração adequada para 
+   preservar o banco operacional.
+
+3. As dependências `spring-boot-starter-test` e `spring-security-test` já estão disponíveis.
+
+Vamos acrescentar o perfil `test` usando outro arquivo YAML, sem alterar o funcionamento atual da
+aplicação.
+
+5.1. Criar `application-test.yml`
+
+Antes, precisamos confirmar um detalhe de segurança: o usuário definido em `MYSQL_USER` pode ter
+acesso ao banco de testes? Não vamos presumir isso.
+
+5.2. Verificar o usuário MySQL da aplicação
+
+Execute:
+
+```
+docker compose exec mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+SELECT User, Host
+FROM mysql.user
+WHERE User = '\''${MYSQL_USER}'\'';
+
+SHOW GRANTS FOR '\''${MYSQL_USER}'\''@'\''%'\'';
+"'
+```
+
+Se o usuário não utilizar `%` como Host, o resultado de `SHOW GRANTS` poderá exigir ajuste conforme
+o Host encontrado.
+
+Não execute ainda nenhum `GRANT` nem altere o `application.yml`.
+
+Primeiro precisamos conhecer os privilégios atuais.
+
+5.3. Configuração que vamos adotar
+
+Após essa confirmação, criaremos `src/main/resources/application-test.yml`:
+
+```
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+server:
+  port: 0
+```
+
+O `create-drop` será restrito ao perfil de testes, que deverá ser ativado explicitamente com
+`@ActiveProfiles("test")`.
+
+Também adicionaremos uma proteção nos testes para verificar que a conexão está efetivamente no 
+banco `bd_paytur_test`.
+
+Próximo passo: envie a saída do comando `SHOW GRANTS`.
+Assim, definiremos a permissão mínima necessária e concluiremos a separação entre produção e testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+SELECT User, Host
+FROM mysql.user
+WHERE User = '\''${MYSQL_USER}'\'';
+
+SHOW GRANTS FOR '\''${MYSQL_USER}'\''@'\''%'\'';
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
++----------------+------+
+| User           | Host |
++----------------+------+
+| julituradm_app | %    |
++----------------+------+
++----------------------------------------------------------------+
+| Grants for julituradm_app@%                                    |
++----------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `julituradm_app`@`%`                     |
+| GRANT ALL PRIVILEGES ON `bd\_paytur`.* TO `julituradm_app`@`%` |
++----------------------------------------------------------------+
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Agora identificamos exatamente a situação dos privilégios MySQL.
+
+O usuário `julituradm_app` possui acesso somente ao banco operacional `bd_paytur`:
+
+```
+GRANT ALL PRIVILEGES ON `bd_paytur`.* 
+TO `julituradm_app`@`%`;
+```
+
+Isso é positivo do ponto de vista de isolamento: o usuário da aplicação ainda não tem acesso ao 
+banco de testes.
+
+Vamos conceder acesso somente ao novo banco, sem ampliar os privilégios globais.
+
+5.4. Conceder acesso ao banco de testes
+
+Execute no terminal:
+
+```
+docker compose exec -T mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+GRANT ALL PRIVILEGES ON bd_paytur_test.*
+TO '\''julituradm_app'\''@'\''%'\'';
+
+SHOW GRANTS FOR '\''julituradm_app'\''@'\''%'\'';
+"'
+```
+
+Esse privilégio será limitado a `bd_paytur_test.*`. Não precisamos de `FLUSH PRIVILEGES` após um `GRANT`.
+
+5.5. Criar o perfil de testes
+
+Crie o arquivo:
+
+`src/main/resources/application-test.yml`
+
+Conteúdo:
+
+```
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+server:
+  port: 0
+```
+
+Importante: `create-drop` somente poderá ser utilizado com o perfil `test`.
+
+Ele cria e remove as tabelas durante o ciclo dos testes.
+
+Nunca inicie a aplicação operacional com esse perfil.
+
+5.6. Conferir a configuração
+
+Depois de conceder o acesso, execute:
+
+```
+docker compose exec mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+SHOW GRANTS FOR '\''julituradm_app'\''@'\''%'\'';
+"'
+```
+
+Devemos encontrar privilégios separados para os dois bancos:
+
+- `bd_paytur.*`
+- `bd_paytur_test.*`
+
+Envie a saída desse comando e confirme a criação do `application-test.yml`.
+
+Depois vamos implementar os testes de integração com JUnit 5 e Spring Boot, começando pelo `UserRepository`, incluindo uma verificação obrigatória de que o banco conectado é `bd_paytur_test`.
+
+Assim, manteremos o ambiente operacional protegido durante todo o desenvolvimento.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec -T mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+GRANT ALL PRIVILEGES ON bd_paytur_test.*
+TO '\''julituradm_app'\''@'\''%'\'';
+
+SHOW GRANTS FOR '\''julituradm_app'\''@'\''%'\'';
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Grants for julituradm_app@%
+GRANT USAGE ON *.* TO `julituradm_app`@`%`
+GRANT ALL PRIVILEGES ON `bd\\_paytur`.* TO `julituradm_app`@`%`
+GRANT ALL PRIVILEGES ON `bd_paytur_test`.* TO `julituradm_app`@`%`
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec mysql-julituradm sh -c \
+'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+SHOW GRANTS FOR '\''julituradm_app'\''@'\''%'\'';
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
++--------------------------------------------------------------------+
+| Grants for julituradm_app@%                                        |
++--------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `julituradm_app`@`%`                         |
+| GRANT ALL PRIVILEGES ON `bd\_paytur`.* TO `julituradm_app`@`%`     |
+| GRANT ALL PRIVILEGES ON `bd_paytur_test`.* TO `julituradm_app`@`%` |
++--------------------------------------------------------------------+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! O acesso ao banco de testes foi concedido e confirmado.
+
+O resultado do `SHOW GRANTS` mostra exatamente o que precisávamos:
+
+| Banco de dados   | Permissão                   |
+| ---------------- | --------------------------- |
+| `bd_paytur`      | Acesso concedido            |
+| `bd_paytur_test` | Acesso concedido            |
+| Outros bancos    | Sem privilégios específicos |
+
+O aviso sobre a senha na linha de comando é do cliente MySQL. Não significa que o comando falhou.
+
+Próxima etapa — configurar o perfil de testes
+
+Vamos criar `application-test.yml` para que os testes utilizem exclusivamente `bd_paytur_test`.
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+cat > src/main/resources/application-test.yml <<'EOF'
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+server:
+  port: 0
+EOF
+```
+
+Atenção à proteção do banco operacional:
+
+- `application.yml` continua com `ddl-auto: none`.
+- `application-test.yml` utiliza `bd_paytur_test`.
+- `create-drop` permite que o Hibernate crie as tabelas para os testes e as remova ao final do contexto.
+- Não inicie a aplicação manualmente com o perfil `test`. Esse perfil será ativado pelos testes automatizados.
+
+Depois, confira o arquivo
+
+Execute:
+
+```
+cat src/main/resources/application-test.yml
+```
+
+Envie o resultado para conferirmos a configuração antes de avançar.
+
+Nossa próxima tarefa será preparar os testes de integração dos cinco repositórios JPA, garantindo que nenhuma operação de teste atinja o banco operacional `bd_paytur`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/resources/application-test.yml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+server:
+  port: 0
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente!
+
+Configuração confirmada
+
+
+O arquivo `application-test.yml` está correto. Agora temos a separação dos ambientes:
+
+| Configuração           | Banco utilizado  | Hibernate     |
+| ---------------------- | ---------------- | ------------- |
+| `application.yml`      | `bd_paytur`      | `none`        |
+| `application-test.yml` | `bd_paytur_test` | `create-drop` |
+
+Uma precaução importante: como o usuário MySQL da aplicação tem acesso aos dois bancos, vamos 
+acrescentar uma proteção nos testes para verificar o banco efetivamente conectado antes de executar
+qualquer operação.
+
+Próxima etapa — teste de integração dos repositórios
+
+Antes de criar os testes, vamos conferir a estrutura atual do projeto e verificar se já existe 
+alguma classe de teste.
+
+Execute:
+
+```
+find src/test -type f -print
+```
+
+Depois:
+
+```
+find src/main/java/com/julyturadm -maxdepth 4 -type f | sort
+```
+
+Envie os dois resultados.
+
+Com isso, vamos organizar os testes para:
+
+1. Confirmar a conexão com `bd_paytur_test`.
+2. Testar a persistência e consulta de `User`.
+3. Testar `Role` e `Permission`.
+4. Testar os relacionamentos `UserRole` e `RolePermission`.
+5. Verificar os métodos derivados dos cinco repositórios.
+
+Vamos avançar gradualmente, sem alterar as tabelas nem os dados de `bd_paytur`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/test -type f -print
+find: ‘src/test’: Arquivo ou diretório inexistente
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm -maxdepth 4 -type f | sort
+src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java
+src/main/java/com/julyturadm/domain/entity/Permission.java
+src/main/java/com/julyturadm/domain/entity/Role.java
+src/main/java/com/julyturadm/domain/entity/RolePermission.java
+src/main/java/com/julyturadm/domain/entity/User.java
+src/main/java/com/julyturadm/domain/entity/UserRole.java
+src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+src/main/java/com/julyturadm/domain/repository/UserRepository.java
+src/main/java/com/julyturadm/domain/repository/UserRoleRepository.java
+src/main/java/com/julyturadm/JulyTurAdmApplication.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. Os resultados confirmam que temos uma estrutura enxuta e que ainda não existe o 
+diretório `src/test`.
+
+Isso é normal: até agora concluímos as entidades JPA e os cinco repositórios, mas ainda não
+iniciamos a camada de testes.
+
+Vamos criar os testes de integração com JUnit 5, Spring Boot Test e MySQL 8, aproveitando as 
+dependências que já estão no `pom.xml`.
+
+A primeira preocupação será garantir que os testes só executem se a conexão estiver apontando para
+`bd_paytur_test`.
+
+Não vamos utilizar H2 nem modificar o banco operacional.
+
+1. Vamos conferir as entidades antes de escrever os testes
+
+Quero verificar os construtores, getters, setters e os relacionamentos para que os testes sejam 
+compatíveis com o código real, sem presumir nomes de atributos.
+
+Execute este comando:
+
+```
+for f in \
+  src/main/java/com/julyturadm/domain/entity/User.java \
+  src/main/java/com/julyturadm/domain/entity/Role.java \
+  src/main/java/com/julyturadm/domain/entity/Permission.java \
+  src/main/java/com/julyturadm/domain/entity/UserRole.java \
+  src/main/java/com/julyturadm/domain/entity/RolePermission.java \
+  src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java \
+  src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+do
+  echo
+  echo "========== $f =========="
+  cat "$f"
+done
+```
+
+Envie a saída completa.
+
+2. O que vamos implementar em seguida
+
+Pretendo organizar os testes assim:
+
+```
+src/test/java/com/julyturadm/
+└── domain/
+    └── repository/
+        └── RepositoryIntegrationTest.java
+```
+
+A classe verificará os cinco repositórios e seus relacionamentos.
+
+Também vamos incluir uma proteção executada antes da inicialização do Hibernate, conferindo se a
+URL de conexão termina em `/bd_paytur_test`.
+
+Assim, se alguém alterar acidentalmente a configuração para o banco operacional, o contexto de 
+teste será interrompido antes de qualquer criação ou remoção de tabelas.
+
+Primeiro vamos conferir as entidades; depois implementamos a classe de testes completa.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ for f in \
+  src/main/java/com/julyturadm/domain/entity/User.java \
+  src/main/java/com/julyturadm/domain/entity/Role.java \
+  src/main/java/com/julyturadm/domain/entity/Permission.java \
+  src/main/java/com/julyturadm/domain/entity/UserRole.java \
+  src/main/java/com/julyturadm/domain/entity/RolePermission.java \
+  src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java \
+  src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+do
+  echo
+  echo "========== $f =========="
+  cat "$f"
+done
+
+========== src/main/java/com/julyturadm/domain/entity/User.java ==========
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 255)
+    private String email;
+
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @Column(nullable = false)
+    private Boolean enabled = true;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;
+
+    @OneToMany(
+        mappedBy = "user",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+}
+========== src/main/java/com/julyturadm/domain/entity/Role.java ==========
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+}
+
+========== src/main/java/com/julyturadm/domain/entity/Permission.java ==========
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Permission {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 80)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "permission",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+}
+
+========== src/main/java/com/julyturadm/domain/entity/UserRole.java ==========
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.UserRoleId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "users_roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class UserRole {
+
+    @EmbeddedId
+    private UserRoleId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("userId")
+    @JoinColumn(
+        name = "user_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_user")
+    )
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_role")
+    )
+    private Role role;
+}
+========== src/main/java/com/julyturadm/domain/entity/RolePermission.java ==========
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    @EmbeddedId
+    private RolePermissionId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_role")
+    )
+    private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(
+        name = "permission_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_permission")
+    )
+    private Permission permission;
+}
+========== src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java ==========
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserRoleId implements Serializable {
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "role_id")
+    private Long roleId;
+}
+
+========== src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java ==========
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class RolePermissionId implements Serializable {
+
+    @Column(name = "role_id")
+    private Long roleId;
+
+    @Column(name = "permission_id")
+    private Long permissionId;
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Agora temos a estrutura real das sete classes e podemos escrever os testes respeitando o
+mapeamento JPA existente.
+
+Há três pontos importantes no seu modelo:
+
+1. `User`, `Role` e `Permission` possuem construtores sem argumentos com acesso `protected`.
+Os testes podem criar instâncias usando reflexão ou um construtor público específico; não precisamos
+alterar as entidades apenas para testá-las.
+
+2. `UserRole` e `RolePermission` usam chaves compostas com `@EmbeddedId` e `@MapsId`.
+Vamos testar também a gravação dessas associações.
+
+3. Os relacionamentos estão configurados como `LAZY`, conforme sua decisão de arquitetura.
+
+Uma observação: `create-drop` é adequado para um banco de testes isolado, mas precisamos validar
+o destino da conexão antes de o Hibernate inicializar.
+
+Vamos fazer isso no próprio teste.
+
+1. Criar a proteção do banco de testes
+
+vá para o diretorio do backend-api
+
+Crie os diretórios:
+
+```
+mkdir -p src/test/java/com/julyturadm/domain/repository
+mkdir -p src/test/java/com/julyturadm/config
+```
+
+Agora crie o arquivo `src/test/java/com/julyturadm/config/TestDatabaseSafetyConfiguration.java`:
+
+```
+package com.julyturadm.config;
+
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+
+@TestConfiguration
+public class TestDatabaseSafetyConfiguration {
+
+    @Bean
+    static BeanFactoryPostProcessor databaseSafetyGuard(Environment environment) {
+
+        return beanFactory -> {
+            String url = environment.getProperty(
+                "spring.datasource.url",
+                ""
+            );
+
+            boolean isTestDatabase = url.matches(
+                "jdbc:mysql://[^/]+/bd_paytur_test(?:\\?.*)?"
+            );
+
+            if (!isTestDatabase) {
+                throw new IllegalStateException(
+                    "TESTE INTERROMPIDO: o banco configurado não é bd_paytur_test. "
+                    + "URL encontrada: " + url
+                );
+            }
+        };
+    }
+}
+```
+
+Essa proteção verifica a URL antes da criação dos componentes JPA. Se o destino não for `bd_paytur_test`, o contexto não deverá inicializar.
+
+2. Criar os testes dos cinco repositórios
+
+Crie o arquivo:
+
+`src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java`
+
+Conteúdo:
+
+```
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import com.julyturadm.domain.entity.id.UserRoleId;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Constructor;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class RepositoryIntegrationTest {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
+    private <T> T createEntity(Class<T> type) throws Exception {
+        Constructor<T> constructor = type.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        return constructor.newInstance();
+    }
+
+    private String uniqueValue(String prefix) {
+        return prefix + "_" + UUID.randomUUID();
+    }
+
+    @Test
+    void shouldConnectOnlyToTestDatabase() {
+
+        String database = jdbcTemplate.queryForObject(
+            "SELECT DATABASE()",
+            String.class
+        );
+
+        assertEquals("bd_paytur_test", database);
+    }
+
+    @Test
+    void shouldPersistAndFindUserByEmail() throws Exception {
+
+        User user = createEntity(User.class);
+
+        String email = uniqueValue("user") + "@test.com";
+
+        user.setName("Usuario Teste");
+        user.setEmail(email);
+        user.setPassword("password-test");
+        user.setEnabled(true);
+
+        User savedUser = userRepository.saveAndFlush(user);
+
+        assertNotNull(savedUser.getId());
+
+        assertTrue(userRepository.existsByEmail(email));
+
+        User foundUser = userRepository.findByEmail(email)
+            .orElseThrow();
+
+        assertEquals(email, foundUser.getEmail());
+        assertEquals("Usuario Teste", foundUser.getName());
+        assertTrue(foundUser.getEnabled());
+
+        assertTrue(
+            userRepository.findAllByEnabledTrue()
+                .stream()
+                .anyMatch(item -> item.getId().equals(savedUser.getId()))
+        );
+    }
+
+    @Test
+    void shouldPersistAndFindRole() throws Exception {
+
+        Role role = createEntity(Role.class);
+
+        String roleName = uniqueValue("ROLE_TEST");
+
+        role.setName(roleName);
+
+        Role savedRole = roleRepository.saveAndFlush(role);
+
+        assertNotNull(savedRole.getId());
+        assertTrue(roleRepository.existsByName(roleName));
+
+        Role foundRole = roleRepository.findByName(roleName)
+            .orElseThrow();
+
+        assertEquals(roleName, foundRole.getName());
+    }
+
+    @Test
+    void shouldPersistAndFindPermission() throws Exception {
+
+        Permission permission = createEntity(Permission.class);
+
+        String permissionName = uniqueValue("PERMISSION_TEST");
+
+        permission.setName(permissionName);
+
+        Permission savedPermission =
+            permissionRepository.saveAndFlush(permission);
+
+        assertNotNull(savedPermission.getId());
+        assertTrue(permissionRepository.existsByName(permissionName));
+
+        Permission foundPermission =
+            permissionRepository.findByName(permissionName)
+                .orElseThrow();
+
+        assertEquals(permissionName, foundPermission.getName());
+    }
+
+    @Test
+    void shouldPersistUserRoleRelationship() throws Exception {
+
+        User user = createEntity(User.class);
+
+        user.setName("Usuario Relacionamento");
+        user.setEmail(uniqueValue("relationship") + "@test.com");
+        user.setPassword("password-test");
+        user.setEnabled(true);
+
+        user = userRepository.saveAndFlush(user);
+
+        Role role = createEntity(Role.class);
+
+        role.setName(uniqueValue("ROLE_USER_TEST"));
+
+        role = roleRepository.saveAndFlush(role);
+
+        UserRole userRole = createEntity(UserRole.class);
+
+        userRole.setId(new UserRoleId(user.getId(), role.getId()));
+        userRole.setUser(user);
+        userRole.setRole(role);
+
+        userRoleRepository.saveAndFlush(userRole);
+
+        UserRoleId id = new UserRoleId(
+            user.getId(),
+            role.getId()
+        );
+
+        assertTrue(userRoleRepository.existsById(id));
+
+        assertTrue(
+            userRoleRepository.existsByUser_IdAndRole_Id(
+                user.getId(),
+                role.getId()
+            )
+        );
+
+        assertEquals(
+            1,
+            userRoleRepository.findAllByUser_Id(user.getId()).size()
+        );
+
+        assertEquals(
+            1,
+            userRoleRepository.findAllByRole_Id(role.getId()).size()
+        );
+    }
+
+    @Test
+    void shouldPersistRolePermissionRelationship() throws Exception {
+
+        Role role = createEntity(Role.class);
+
+        role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
+
+        role = roleRepository.saveAndFlush(role);
+
+        Permission permission = createEntity(Permission.class);
+
+        permission.setName(uniqueValue("PERMISSION_ROLE_TEST"));
+
+        permission = permissionRepository.saveAndFlush(permission);
+
+        RolePermission rolePermission =
+            createEntity(RolePermission.class);
+
+        rolePermission.setId(
+            new RolePermissionId(role.getId(), permission.getId())
+        );
+
+        rolePermission.setRole(role);
+        rolePermission.setPermission(permission);
+
+        rolePermissionRepository.saveAndFlush(rolePermission);
+
+        RolePermissionId id = new RolePermissionId(
+            role.getId(),
+            permission.getId()
+        );
+
+        assertTrue(rolePermissionRepository.existsById(id));
+
+        assertTrue(
+            rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                role.getId(),
+                permission.getId()
+            )
+        );
+
+        assertEquals(
+            1,
+            rolePermissionRepository.findAllByRole_Id(role.getId()).size()
+        );
+
+        assertEquals(
+            1,
+            rolePermissionRepository
+                .findAllByPermission_Id(permission.getId()).size()
+        );
+    }
+}
+```
+
+Observação: o import `EnvironmentAware` não é necessário na configuração de segurança.
+
+Se o editor apontar import não utilizado, pode removê-lo; o código não depende dele.
+
+3. Executar os testes
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+Depois, carregue as variáveis do `.env` e execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn clean test
+```
+
+Não execute `mvn spring-boot:run` com o perfil de testes.
+
+4. O que esperamos validar
+
+| Teste                                     | Verificação                          |
+| ----------------------------------------- | ------------------------------------ |
+| `shouldConnectOnlyToTestDatabase`         | Banco correto                        |
+| `shouldPersistAndFindUserByEmail`         | Persistência e consulta de usuário   |
+| `shouldPersistAndFindRole`                | Persistência e consulta de perfil    |
+| `shouldPersistAndFindPermission`          | Persistência e consulta de permissão |
+| `shouldPersistUserRoleRelationship`       | Associação usuário/perfil            |
+| `shouldPersistRolePermissionRelationship` | Associação perfil/permissão          |
+
+Os testes são transacionais e, em condições normais, cada um terá suas alterações revertidas ao final.
+
+Importante: como estamos usando `create-drop`, o Hibernate poderá criar e remover as tabelas do banco `bd_paytur_test` ao iniciar e encerrar o contexto.
+
+Isso é intencional e não deve atingir `bd_paytur`.
+
+Execute e me envie o resultado completo do `mvn clean test`, especialmente se houver algum
+`BUILD FAILURE`.
+
+Vamos corrigir eventuais problemas antes de passar para a camada de serviços.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose ps
+NAME               IMAGE       COMMAND                  SERVICE            CREATED      STATUS                    PORTS
+mysql-julituradm   mysql:8.0   "docker-entrypoint.s…"   mysql-julituradm   3 days ago   Up 52 minutes (healthy)   33060/tcp, 127.0.0.1:3309->3306/tcp
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ set -a
+source ../.env
+set +a
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn clean test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.4.1:clean (default-clean) @ backend-api ---
+[INFO] Deleting /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 13 source files with javac [debug parameters release 17] to target/classes
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 2 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.domain.repository.RepositoryIntegrationTest
+20:06:42.747 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.julyturadm.domain.repository.RepositoryIntegrationTest]: RepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+20:06:43.182 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.julyturadm.JulyTurAdmApplication for test class com.julyturadm.domain.repository.RepositoryIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-01T20:06:45.673-03:00  INFO 26103 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : Starting RepositoryIntegrationTest using Java 17.0.10 with PID 26103 (started by pedro in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api)
+2026-11-01T20:06:45.676-03:00  INFO 26103 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : The following 1 profile is active: "test"
+2026-11-01T20:06:51.349-03:00  INFO 26103 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-11-01T20:06:51.476-03:00  INFO 26103 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 102 ms. Found 5 JPA repository interfaces.
+2026-11-01T20:06:53.386-03:00  INFO 26103 --- [julyturadm-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-11-01T20:06:53.579-03:00  INFO 26103 --- [julyturadm-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-11-01T20:06:53.694-03:00  INFO 26103 --- [julyturadm-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-11-01T20:06:54.369-03:00  INFO 26103 --- [julyturadm-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-11-01T20:06:54.490-03:00  INFO 26103 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-01T20:06:55.523-03:00  INFO 26103 --- [julyturadm-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@3c3ab672
+2026-11-01T20:06:55.529-03:00  INFO 26103 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-01T20:06:55.720-03:00  INFO 26103 --- [julyturadm-backend] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.0.46
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-11-01T20:06:57.172-03:00  INFO 26103 --- [julyturadm-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-11-01T20:06:57.221-03:00  WARN 26103 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+
+org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Errors: 
+[ERROR]   RepositoryIntegrationTest.shouldPersistRolePermissionRelationship:203 » DataIntegrityViolation could not execute statement [Data truncation: Data too long for column 'name' at row 1] [insert into roles (name) values (?)]; SQL [insert into roles (name) values (?)]
+[ERROR]   RepositoryIntegrationTest.shouldPersistUserRoleRelationship:161 » DataIntegrityViolation could not execute statement [Data truncation: Data too long for column 'name' at row 1] [insert into roles (name) values (?)]; SQL [insert into roles (name) values (?)]
+[INFO] 
+[ERROR] Tests run: 6, Failures: 0, Errors: 2, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:05 min
+[INFO] Finished at: 2026-11-01T20:07:26-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project backend-api: 
+[ERROR] 
+[ERROR] See /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Observei que as tabelas do banco de dados "bd_paytur_test" não existem, fiz esta verificação entrando
+pelo Workbench e confirmei esta observação. Antes de compilar a aplicação sugiro verificar esta informação
+e apos compilar, o que você acha?.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Concordo com sua sugestão. Antes de compilar e executar novamente os testes, devemos verificar por 
+que as tabelas não aparecem no banco `bd_paytur_test`.
+
+É uma boa prática, principalmente porque estamos protegendo o banco operacional `bd_paytur`.
+
+No log anterior, há uma pista importante: o Hibernate tentou remover chaves estrangeiras de tabelas
+que ainda não existiam.
+
+Isso pode ocorrer quando `ddl-auto: create-drop` inicia em um banco de testes vazio.
+
+O Hibernate deveria, então, criar as tabelas durante a inicialização e removê-las quando o contexto
+de testes terminar.
+
+Portanto, o fato de as tabelas não aparecerem agora no MySQL Workbench não significa necessariamente
+que houve um erro: com `create-drop`, elas podem ter sido removidas no encerramento do teste.
+
+Vamos confirmar isso antes de tirar conclusões.
+
+1. Primeiro, consultar o banco sem modificá-lo
+
+No terminal do projeto, execute esta consulta somente de leitura:
+
+```
+docker compose exec -T mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -D bd_paytur_test -e "
+SELECT DATABASE() AS banco_atual;
+
+SHOW TABLES;
+
+SELECT TABLE_NAME
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = '\''bd_paytur_test'\''
+ORDER BY TABLE_NAME;
+"'
+```
+
+Isso mostrará se as tabelas existem neste momento e confirmará o banco consultado.
+
+2. Como interpretar o resultado
+
+- Nenhuma tabela: pode ser o comportamento esperado após o encerramento do contexto com `create-drop`,
+  mas precisamos confirmar o encerramento no log.
+
+- As cinco tabelas existem: investigaremos se o Workbench está conectado a outra instância ou se 
+  o esquema selecionado é diferente.
+
+- A consulta falha: analisaremos o erro de conexão ou de permissões antes de continuar.
+
+3. Depois da consulta
+
+Envie a saída completa do comando.
+
+Por enquanto, não execute novamente `mvn test` e não crie tabelas manualmente no Workbench.
+
+Após confirmar o estado atual, vamos decidir se mantemos `create-drop` ou se é melhor usar `create`
+para preservar as tabelas entre execuções dos testes.
+
+Para este projeto, prefiro primeiro confirmar o comportamento real e só então alterar a configuração.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec -T mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -D bd_paytur_test -e "
+SELECT DATABASE() AS banco_atual;
+
+SHOW TABLES;
+
+SELECT TABLE_NAME
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = '\''bd_paytur_test'\''
+ORDER BY TABLE_NAME;
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+banco_atual
+bd_paytur_test
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+A verificação confirmou que o banco selecionado é `bd_paytur_test`, mas nenhuma tabela foi encontrada.
+
+Isso é compatível com a configuração `spring.jpa.hibernate.ddl-auto: create-drop`, que cria as tabelas
+ao iniciar o contexto de teste e as remove quando ele termina.
+
+Vamos continuar com cuidado, sem tocar no banco principal `bd_paytur`.
+
+1. Primeiro, corrigir os dois erros dos testes
+
+Na classe `RepositoryIntegrationTest.java`, ajuste os nomes dos dois papéis que ultrapassaram o
+limite de 50 caracteres.
+
+Procure estas linhas e altere:
+
+```
+role.setName(uniqueValue("ROLE_USER_TEST"));
+```
+
+para:
+
+```
+role.setName(uniqueValue("RU"));
+```
+
+E:
+
+```
+role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
+```
+
+para:
+
+```
+role.setName(uniqueValue("RP"));
+```
+
+O sufixo UUID continua garantindo valores únicos, enquanto os prefixos curtos respeitam o limite da coluna `roles.name`.
+
+2. Antes de compilar, confira as alterações
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+grep -n -E 'ROLE_USER_TEST|ROLE_PERMISSION_TEST|uniqueValue\("RU"\)|uniqueValue\("RP"\)' \
+src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+```
+
+O resultado esperado é mostrar as duas chamadas com `RU` e `RP`, sem os prefixos antigos.
+
+3. Depois, executar os testes
+
+Quando confirmar a alteração, carregue as variáveis de ambiente e execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn clean test
+```
+
+O resultado esperado é BUILD SUCCESS, com os seis testes aprovados.
+
+Por que não mudar `create-drop` agora?
+
+Porque a ausência das tabelas depois do encerramento dos testes é esperada com essa configuração. Mantê-la evita deixar tabelas de teste persistentes entre execuções. A aplicação de teste deve continuar usando exclusivamente `bd_paytur_test`; não precisamos criar tabelas manualmente nem alterar `bd_paytur`.
+
+Faça primeiro a alteração dos dois nomes e confira o resultado do `grep`. Depois seguimos para a compilação e a validação dos seis testes.
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -n -E 'ROLE_USER_TEST|ROLE_PERMISSION_TEST|uniqueValue\("RU"\)|uniqueValue\("RP"\)' \
+src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+159:        //role.setName(uniqueValue("ROLE_USER_TEST"));
+160:        role.setName(uniqueValue("RU"));
+202:        //role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
+203:        role.setName(uniqueValue("RP"));
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ set -a
+source ../.env
+set +a
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn clean test
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn clean test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.4.1:clean (default-clean) @ backend-api ---
+[INFO] Deleting /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 13 source files with javac [debug parameters release 17] to target/classes
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 2 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.domain.repository.RepositoryIntegrationTest
+20:55:28.641 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.julyturadm.domain.repository.RepositoryIntegrationTest]: RepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+20:55:28.807 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.julyturadm.JulyTurAdmApplication for test class com.julyturadm.domain.repository.RepositoryIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-01T20:55:29.548-03:00  INFO 50570 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : Starting RepositoryIntegrationTest using Java 17.0.10 with PID 50570 (started by pedro in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api)
+2026-11-01T20:55:29.550-03:00  INFO 50570 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : The following 1 profile is active: "test"
+
+2026-11-01T20:55:46.141-03:00  INFO 50570 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-01T20:55:47.432-03:00  WARN 50570 --- [julyturadm-backend] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 98a84bf2-65fa-4ab1-b9e1-3eaaade89671
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-11-01T20:55:47.441-03:00  INFO 50570 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-11-01T20:55:47.634-03:00  INFO 50570 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : Started RepositoryIntegrationTest in 18.575 seconds (process running for 19.988)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 21.08 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  33.376 s
+[INFO] Finished at: 2026-11-01T20:55:56-03:00
+[INFO] ------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Analisei o registro da execução do `mvn clean test`.
+
+A correção dos dois nomes foi aplicada corretamente, mas ainda precisamos investigar um problema na
+inicialização do Hibernate antes de considerar os testes aprovados.
+
+1. O que o log já confirma
+
+- Java 17.0.10: utilizado corretamente.
+- Spring Boot 3.5.7: inicialização do teste começou.
+- Perfil `test`: ativado.
+- Repositórios JPA: os cinco foram detectados.
+- Conexão MySQL: estabelecida.
+- Nomes dos papéis: agora usam os prefixos curtos `RU` e `RP`.
+
+2. O alerta que merece atenção
+
+O Hibernate tentou executar comandos para remover chaves estrangeiras de tabelas que ainda não existiam:
+
+```
+Table 'bd_paytur_test.roles_permissions' doesn't exist
+Table 'bd_paytur_test.users_roles' doesn't exist
+```
+
+Esses avisos aparecem durante a preparação do esquema.
+
+Isoladamente, eles não provam que os testes falharam nem que as tabelas não foram criadas depois.
+
+Também não devemos presumir que o `create-drop` seja a única explicação sem verificar o restante
+do resultado. Precisamos conferir o encerramento da execução e as causas efetivas dos testes.
+
+3. Resultado final: os seis testes passaram
+
+O trecho final do arquivo confirma:
+
+```
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+
+BUILD SUCCESS
+```
+
+Portanto, a compilação e os seis testes de integração dos repositórios foram concluídos com sucesso.
+
+Os avisos sobre as chaves estrangeiras ocorreram durante a tentativa inicial de remoção de restrições
+inexistentes; apesar deles, o Hibernate inicializou o `EntityManagerFactory` e os testes passaram.
+
+Há ainda um aviso de segurança importante: o Spring Boot gerou uma senha temporária para o usuário
+de segurança em memória.
+
+Isso é comportamento automático de desenvolvimento, não uma configuração de autenticação pronta para
+produção.
+
+4. Próxima verificação: confirmar o banco de teste
+
+Agora, sem executar novamente os testes, confira se as tabelas permanecem ausentes depois do 
+encerramento do processo:
+
+```
+docker compose exec -T mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -D bd_paytur_test -e "
+SELECT DATABASE() AS banco_atual;
+SHOW TABLES;
+"'
+```
+
+É esperado que `SHOW TABLES` não liste tabelas com a configuração `create-drop` depois que o contexto
+de testes termina.
+
+Minha recomendação: manter `create-drop` por enquanto.
+
+Os testes passaram, o perfil `test` estava ativo e o teste específico de conexão ao banco de teste faz
+parte dos seis testes executados.
+
+Não há necessidade de manter tabelas de teste permanentemente apenas para visualizá-las no Workbench.
+
+Depois dessa verificação, podemos considerar concluída a fase de repositórios JPA e avançar para a 
+próxima etapa: serviços da aplicação, começando pela definição das regras de negócio de usuários,
+perfis e permissões.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec -T mysql-julituradm sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -D bd_paytur_test -e "
+SELECT DATABASE() AS banco_atual;
+SHOW TABLES;
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+banco_atual
+bd_paytur_test
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito!
+
+O resultado confirma que o banco consultado é `bd_paytur_test` e que o comando `SHOW TABLES` não
+retornou nenhuma tabela.
+
+Isso é compatível com o comportamento esperado do `create-drop`: ao encerrar o contexto de testes,
+o Hibernate remove as tabelas criadas durante a execução.
+
+Como os seis testes passaram, temos um bom resultado inicial.
+
+Estado da fase de repositórios JPA
+
+Seis testes de integração aprovados
+
+6 executados · 0 falhas · 0 erros
+
+Banco de testes isolado
+
+`bd_paytur_test` sem tabelas após a execução.
+
+Banco principal preservado
+
+Os testes foram direcionados ao banco de testes, sem necessidade de alterar `bd_paytur`.
+
+A mensagem de aviso sobre a senha na linha de comando é do cliente MySQL; não significa que os testes falharam.
+
+Próxima fase: serviços da aplicação
+
+Agora podemos avançar para a camada `service`, mantendo a separação de responsabilidades:
+
+1. Repositories: acesso e consulta aos dados — concluído na primeira etapa.
+2. Services: regras de negócio para usuários, perfis (`roles`) e permissões (`permissions`).
+3. Validações: impedir e-mails duplicados, nomes duplicados e associações inválidas.
+4. Transações: garantir consistência nas operações que envolvem várias entidades.
+5. Testes dos serviços: continuar usando exclusivamente `bd_paytur_test`.
+
+Minha recomendação: antes de implementar os serviços, vamos conferir a estrutura atual dos pacotes
+e dos repositórios para evitar duplicar classes ou contrariar o modelo JPA que você definiu.
+
+No terminal, a partir de `backend-api`, execute:
+
+```
+find src/main/java/com/julyturadm -maxdepth 4 -type f | sort
+```
+
+Envie o resultado.
+
+Com essa estrutura, seguimos passo a passo para implementar a primeira classe de serviço, preservando
+o banco principal, o carregamento `LAZY` e os relacionamentos explícitos.
+
+
+Continua no arquivo: [20261101_Chat-Gpt-Etapa1-9-Preparação do ambiente(backend-api)_Inplementando_Camada_Service_AGORA_VAI-4]
+
+-------------------------------------------------fim-----------------------------------------------
+
