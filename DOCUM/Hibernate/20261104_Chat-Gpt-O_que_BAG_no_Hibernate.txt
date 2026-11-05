@@ -1,0 +1,183 @@
+﻿
+04/11/2026
+
+---------------------------------------------------------------------------------------------------
+O que é bug no hibernate (MultipleBagFetchException: cannot simultaneously fetch multiple bags)
+---------------------------------------------------------------------------------------------------
+
+Chat-Gpt disse:
+
+1. O que significa bag no Hibernate?
+
+No Hibernate, uma bag é uma coleção que pode conter elementos repetidos e que não possui uma ordem
+ou identificação única dos elementos.
+
+Em Java, uma propriedade declarada como `List` pode ser mapeada pelo Hibernate como uma bag,
+dependendo do mapeamento JPA.
+
+No seu projeto, temos duas coleções:
+
+```
+// User.java
+@OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+private List<UserRole> userRoles = new ArrayList<>();
+```
+
+```
+// Role.java
+@OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
+private List<RolePermission> rolePermissions = new ArrayList<>();
+```
+
+O problema não é usar `List` em si.
+
+O problema aparece quando uma consulta tenta carregar simultaneamente duas coleções desse tipo
+com `JOIN FETCH`.
+
+Por que o Hibernate reclama?
+
+Imagine que um usuário tenha:
+
+- 2 papéis;
+- cada papel tenha 3 permissões.
+
+Ao fazer os dois `JOIN FETCH`, o banco pode produzir várias linhas combinadas.
+
+O Hibernate precisa reconstruir as coleções a partir dessas linhas e não consegue garantir corretamente
+a reconstrução simultânea de múltiplas bags.
+
+Por isso, lança:
+
+```
+MultipleBagFetchException:
+cannot simultaneously fetch multiple bags
+```
+
+Importante: não significa que seus dados estejam duplicados ou que o banco esteja errado.
+
+É uma limitação do modo como o Hibernate trata esse tipo de carregamento simultâneo.
+
+2. Como vamos resolver no JulyTurAdm
+
+A entidade `Role` confirma que temos os atributos necessários:
+
+- `Role.userRoles`
+- `Role.rolePermissions`
+
+Vamos dividir o carregamento:
+
+1. Primeira consulta: usuário e seus papéis.
+2. Segunda consulta: papéis do usuário e suas permissões.
+
+As duas consultas serão executadas dentro da transação de `CustomUserDetailsService`, mantendo o
+contexto de persistência.
+
+Assim, o Hibernate poderá inicializar as coleções sem buscar duas bags simultaneamente.
+
+Essa solução preserva suas decisões arquiteturais: relacionamentos explícitos, `LAZY` e coleções `List`.
+
+3. Primeira alteração: `UserRepository`
+
+Vamos substituir a consulta que provoca a exceção por outra que carrega somente a coleção `userRoles`.
+
+Abra `UserRepository.java` e substitua o método atual `findByEmailWithRolesAndPermissions` por:
+
+```
+    @Query("""
+        SELECT DISTINCT u
+        FROM User u
+        LEFT JOIN FETCH u.userRoles ur
+        LEFT JOIN FETCH ur.role
+        WHERE u.email = :email
+    """)
+    Optional<User> findByEmailWithRoles(
+        @Param("email") String email
+    );
+```
+
+A consulta mantém o `LEFT JOIN FETCH`: assim, um usuário sem papéis também poderá ser encontrado.
+
+4. Segunda alteração: `RoleRepository`
+
+Agora vamos carregar as permissões dos papéis em uma segunda consulta.
+
+Acrescente os imports:
+
+```
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.util.List;
+```
+
+E acrescente este método à interface:
+
+```
+    @Query("""
+        SELECT DISTINCT r
+        FROM Role r
+        JOIN r.userRoles ur
+        LEFT JOIN FETCH r.rolePermissions rp
+        LEFT JOIN FETCH rp.permission
+        WHERE ur.user.email = :email
+    """)
+    List<Role> findAllByUserEmailWithPermissions(
+        @Param("email") String email
+    );
+```
+
+Observe a diferença:
+
+- `JOIN r.userRoles ur`: identifica os papéis associados ao usuário.
+- `LEFT JOIN FETCH r.rolePermissions`: carrega as permissões desses papéis.
+- `LEFT JOIN FETCH rp.permission`: carrega os dados de cada permissão.
+
+Dessa forma, cada consulta carrega apenas uma coleção `List` com `JOIN FETCH`.
+
+5. Como ficará o carregamento na autenticação
+
+O `CustomUserDetailsService` fará duas operações, na mesma transação:
+
+```
+User user = userRepository.findByEmailWithRoles(email)
+    .orElseThrow(() ->
+        new UsernameNotFoundException("Credenciais inválidas.")
+    );
+
+if (!Boolean.TRUE.equals(user.getEnabled())) {
+    throw new UsernameNotFoundException("Credenciais inválidas.");
+}
+
+// Inicializa as permissões dos papéis do usuário.
+List<Role> roles =
+    roleRepository.findAllByUserEmailWithPermissions(email);
+```
+
+Depois, construiremos as autoridades a partir da lista `roles`, que já terá suas permissões carregadas.
+
+Por que isso funciona? Porque as duas consultas são executadas dentro da mesma transação e do mesmo
+contexto de persistência.
+
+O Hibernate reutiliza as entidades `Role` gerenciadas e inicializa a coleção `rolePermissions` sem
+tentar carregar duas bags ao mesmo tempo.
+
+6. Vamos fazer por etapas
+
+Por enquanto, altere somente estes dois arquivos:
+
+1. `UserRepository.java`
+2. `RoleRepository.java`
+
+Depois execute:
+
+```
+mvn -DskipTests compile
+```
+
+Se a compilação for bem-sucedida, envie o resultado.
+
+Na próxima etapa, ajustaremos `CustomUserDetailsService` e o teste de integração para validar o
+carregamento completo de usuário, papéis e permissões.
+
+-------------------------------------------------fim-----------------------------------------------
+
+

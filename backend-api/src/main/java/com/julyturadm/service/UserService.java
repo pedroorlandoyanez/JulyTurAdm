@@ -14,7 +14,6 @@ import com.julyturadm.common.exception.BusinessException;
 
 import java.util.List;
 import com.julyturadm.common.exception.ResourceNotFoundException;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor

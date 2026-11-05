@@ -2,10 +2,20 @@
 02/11/2026
 
 ---------------------------------------------------------------------------------------------------
-Chat-Gpt: Etapa1 - Etapa1-10-Preparação do ambiente(backend-api) Inplementando_Exclusao-Logica_AGORA_VAI-5
+Chat-Gpt: Etapa1 - Etapa1-10-Preparação do ambiente(backend-api) Inplementando_Exclusao-Logica
 ---------------------------------------------------------------------------------------------------
 
-Inplementando a Exclusao Logica de registros
+- Cadastro com senha codificada usando BCrypt.
+- Prevenção de cadastro com e-mail duplicado.
+- Consulta por ID e e-mail.
+- Listagem somente de usuários ativos.
+- Desativação lógica (`enabled = false`).
+- Reativação (`enabled = true`).
+- Exceção para usuário não encontrado.
+- DTO de resposta sem exposição da senha.
+
+
+Inplementando_Senha_Codificada_BCrypt_Excecao_Usuario_DTOs_Exclusao_Logica_Registros
 
 ---------------------------------------------------------------------------------------------------
 Executar a aplicação via terminal:

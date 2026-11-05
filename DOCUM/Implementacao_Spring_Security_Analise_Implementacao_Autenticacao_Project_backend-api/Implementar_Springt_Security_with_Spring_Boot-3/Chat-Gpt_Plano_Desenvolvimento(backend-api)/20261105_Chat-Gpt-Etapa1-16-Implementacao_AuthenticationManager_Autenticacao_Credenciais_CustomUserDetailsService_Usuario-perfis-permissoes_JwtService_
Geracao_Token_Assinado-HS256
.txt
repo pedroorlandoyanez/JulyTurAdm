@@ -1,0 +1,1865 @@
+﻿
+05/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1-16-Implementacao AuthenticationManager Autenticacao Credenciais CustomUserDetailsService
+                    Usuario perfis permissoes JwtService Geracao Token Assinado HS256 - LoginResponse
+                    AccessToken · tokenType · expiresIn
+---------------------------------------------------------------------------------------------------
+
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=CustomUserDetailsServiceTest test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.845 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.116 s
+[INFO] Finished at: 2026-11-05T12:55:06-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Vamos avançar. O próximo passo é consolidar a validação do `CustomUserDetailsService` e preparar o
+fluxo de autenticação.
+
+Antes de implementar o login JWT, precisamos confirmar que o quarto teste passou de verdade: ele deve
+verificar as três autoridades (`ROLE_ADMIN`, `USER_CREATE` e `USER_UPDATE`).
+
+Próxima etapa — Executar a suíte completa
+
+Como acrescentamos quatro testes para o serviço de autenticação, precisamos garantir que eles não 
+afetaram os testes existentes.
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn test
+```
+
+A expectativa é:
+
+| Classe de teste                | Testes |
+| ------------------------------ | ------ |
+| `UserServiceTest`              | 10     |
+| `RepositoryIntegrationTest`    | 7      |
+| `CustomUserDetailsServiceTest` | 4      |
+| Total                          | 21     |
+
+Se todos passarem, teremos validado a camada de usuários, repositórios e carregamento das autoridades.
+
+O que faremos depois
+
+A próxima fase será implementar o fluxo de login:
+
+1. Criar `AuthController` com `POST /api/auth/login`.
+2. Validar e autenticar e-mail e senha usando `AuthenticationManager`.
+3. Gerar o JWT com `JwtService`.
+4. Retornar `LoginResponse` com token, tipo e validade.
+5. Liberar somente o endpoint de login, mantendo os demais endpoints protegidos.
+
+Também precisaremos configurar o conversor JWT para transformar os claims `roles` e `permissions`
+nas autoridades do Spring Security.
+
+Isso é essencial para que as permissões funcionem nas regras de autorização.
+
+Execute `mvn test` e envie o resultado. Vamos confirmar os 21 testes antes de iniciar o login.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ set -a
+source ../.env
+set +a
+2026-11-05T13:50:52.388-03:00  INFO 124884 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : Started RepositoryIntegrationTest in 20.27 seconds (process running for 23.189)
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 21.76 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.403 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  34.274 s
+[INFO] Finished at: 2026-11-05T13:51:01-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+21 testes executados — zero falhas, zero erros.
+
+Concluímos a validação das três camadas:
+
+| Classe                         | Testes | Resultado       |
+| ------------------------------ | ------ | --------------- |
+| `UserServiceTest`              | 10     | Aprovados       |
+| `RepositoryIntegrationTest`    | 7      | Aprovados       |
+| `CustomUserDetailsServiceTest` | 4      | Aprovados       |
+| Total                          | 21     | Todos aprovados |
+
+Isso confirma que o carregamento do usuário e das autoridades está funcionando nos cenários testados.
+
+Podemos iniciar a implementação do login.
+
+Próxima fase — Implementação do login JWT
+
+Vamos seguir a arquitetura que já construímos, sem modificar as entidades ou os repositórios.
+
+O fluxo será:
+
+POST `/api/auth/login`
+
+E-mail e senha
+
+AuthenticationManager
+
+Autenticação das credenciais
+
+CustomUserDetailsService
+
+Usuário, perfis e permissões
+
+JwtService
+
+Geração do token assinado HS256
+
+LoginResponse
+
+accessToken · tokenType · expiresIn
+
+Etapa 1 — Conferir os arquivos existentes
+
+Antes de criar qualquer classe, vamos verificar os componentes já implementados.
+
+Execute estes comandos, dentro de `backend-api`:
+
+```
+cat src/main/java/com/julyturadm/security/JwtService.java
+cat src/main/java/com/julyturadm/dto/request/LoginRequest.java
+cat src/main/java/com/julyturadm/dto/response/LoginResponse.java
+cat src/main/java/com/julyturadm/config/SecurityConfig.java
+```
+
+Também confira se já existe algum componente de autenticação:
+
+```
+find src/main/java/com/julyturadm -type f \
+  | grep -Ei 'auth|login|jwt'
+```
+
+Por enquanto, não altere os arquivos.
+
+Depois de analisar o resultado, vamos implementar o serviço de autenticação e o `AuthController`,
+liberando exclusivamente `POST /api/auth/login`, sem tornar público o cadastro de usuários.
+
+Vamos preservar o modelo de duas camadas de autorização: perfis funcionais e permissões granulares.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/security/JwtService.java
+cat src/main/java/com/julyturadm/dto/request/LoginRequest.java
+cat src/main/java/com/julyturadm/dto/response/LoginResponse.java
+cat src/main/java/com/julyturadm/config/SecurityConfig.java
+package com.julyturadm.security;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+
+//---
+//A classe JwtService.java gera tokens JWT assinados com HS256, incluindo:
+//- Identificação do usuário (sub).
+//- Data de emissão (iat).
+//- Expiração em 30 minutos (exp).
+//- Papéis funcionais (roles).
+//- Permissões granulares (permissions).
+//---
+// `JwtEncoder`: assina os tokens com HS256.
+// `JwtDecoder`: valida a assinatura com HS256.
+// `JWT_SECRET`: é carregado por variável de ambiente, sem expor a chave no código.
+// O `application.yml`: está apontando corretamente para `${JWT_SECRET}`.
+//---
+@Service
+@RequiredArgsConstructor
+public class JwtService {
+
+    private static final long TOKEN_EXPIRATION_MINUTES = 30;
+
+    private final JwtEncoder jwtEncoder;
+
+    public String generateToken(UserDetails userDetails) {
+
+        Instant issuedAt = Instant.now();
+
+        Instant expiresAt = issuedAt.plus(
+                TOKEN_EXPIRATION_MINUTES,
+                ChronoUnit.MINUTES
+        );
+
+        List<String> authorities = userDetails.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<String> roles = authorities.stream()
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .toList();
+
+        List<String> permissions = authorities.stream()
+                .filter(authority -> !authority.startsWith("ROLE_"))
+                .toList();
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject(userDetails.getUsername())
+                .issuedAt(issuedAt)
+                .expiresAt(expiresAt)
+                .claim("roles", roles)
+                .claim("permissions", permissions)
+                .build();
+
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+
+        return jwtEncoder.encode(
+                JwtEncoderParameters.from(header, claims)
+        ).getTokenValue();
+    }
+}
+package com.julyturadm.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record LoginRequest(
+
+    @NotBlank(message = "O e-mail é obrigatório.")
+    @Email(message = "Informe um endereço de e-mail válido.")
+    @Size(max = 255, message = "O e-mail deve ter no máximo 255 caracteres.")
+    String email,
+
+    @NotBlank(message = "A senha é obrigatória.")
+    @Size(max = 72, message = "A senha excede o tamanho permitido.")
+    String password
+
+) {
+}
+package com.julyturadm.dto.response;
+
+public record LoginResponse(
+
+    String accessToken,
+
+    String tokenType,
+    // O campo `expiresIn` representará o tempo de validade do token em segundos: 1800 segundos (30 minutos).
+    long expiresIn
+
+) {
+}
+package com.julyturadm.config;
+
+import com.julyturadm.security.CustomUserDetailsService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    // `CustomUserDetailsService`: localiza o usuário e suas autoridades.
+    private final CustomUserDetailsService userDetailsService;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(
+            PasswordEncoder passwordEncoder) {
+
+        // `DaoAuthenticationProvider`: valida as credenciais utilizando BCrypt.
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+
+        provider.setPasswordEncoder(passwordEncoder);
+
+        return provider;
+    }
+
+    //---
+    // O metodo `AuthenticationManager` será o ponto de entrada para validar as credenciais:
+    // `AuthenticationService → AuthenticationManager → DaoAuthenticationProvider → CustomUserDetailsService → UserRepository`
+    // O `PasswordEncoder` fará a comparação com o hash BCrypt armazenado no banco.
+    //---
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration)
+            throws Exception {
+
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationProvider authenticationProvider)
+            throws Exception {
+
+        http
+                .csrf(csrf -> csrf.disable())
+
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .authenticationProvider(authenticationProvider)
+
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/users/**").authenticated()
+                        .anyRequest().authenticated())
+
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> {
+                        })
+                        .authenticationEntryPoint(
+                                new BearerTokenAuthenticationEntryPoint())
+                        .accessDeniedHandler(
+                                new BearerTokenAccessDeniedHandler()));
+
+        return http.build();
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm -type f \
+  | grep -Ei 'auth|login|jwt'
+src/main/java/com/julyturadm/config/JwtConfig.java
+src/main/java/com/julyturadm/dto/request/LoginRequest.java
+src/main/java/com/julyturadm/dto/response/LoginResponse.java
+src/main/java/com/julyturadm/service/AuthenticationService.java
+src/main/java/com/julyturadm/security/JwtService.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente. A análise revelou um detalhe importante: o `AuthenticationService.java` já existe.
+
+Portanto, não devemos criar outro serviço de autenticação nem duplicar responsabilidades.
+
+O que já temos:
+
+| Componente              | Situação                                                |
+| ----------------------- | ------------------------------------------------------- |
+| `JwtService`            | Implementado                                            |
+| `LoginRequest`          | Implementado                                            |
+| `LoginResponse`         | Implementado                                            |
+| `JwtConfig`             | Já existe                                               |
+| `AuthenticationService` | Já existe — precisamos analisar                         |
+| `AuthController`        | Ainda não apareceu na listagem                          |
+| `SecurityConfig`        | Precisa liberar o login e configurar as autoridades JWT |
+
+Etapa 2 — Inspecionar o AuthenticationService
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/service/AuthenticationService.java
+```
+
+E também:
+
+```
+cat src/main/java/com/julyturadm/config/JwtConfig.java
+```
+
+Quero verificar especialmente:
+
+- Se o `AuthenticationManager` já está sendo utilizado.
+- Se o `JwtService` já é chamado.
+- Se o tempo de expiração está centralizado.
+- Se o tratamento de credenciais inválidas está adequado.
+
+Não altere nenhum arquivo ainda.
+
+Primeiro vamos aproveitar o que já foi desenvolvido e completar somente o que estiver faltando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/service/AuthenticationService.java
+package com.julyturadm.service;
+
+import com.julyturadm.dto.request.LoginRequest;
+import com.julyturadm.dto.response.LoginResponse;
+import com.julyturadm.security.JwtService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
+//---
+// A classe `AuthenticationService.java`
+// O fluxo será:
+//
+//1. Receber o e-mail e a senha.
+//2. Encaminhar as credenciais ao `AuthenticationManager`.
+//3. O Spring Security validará a senha usando BCrypt.
+//4. Se a autenticação for aprovada, o `JwtService` emitirá o token.
+//5. Retornar o token no `LoginResponse`.
+//---
+@Service
+@RequiredArgsConstructor
+public class AuthenticationService {
+
+    private static final long TOKEN_EXPIRATION_SECONDS = 1800;
+
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+
+    public LoginResponse authenticate(LoginRequest request) {
+
+        Authentication authentication =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                request.email(),
+                                request.password()
+                        )
+                );
+
+        String accessToken = jwtService.generateToken(
+                (org.springframework.security.core.userdetails.UserDetails)
+                        authentication.getPrincipal()
+        );
+
+        return new LoginResponse(
+                accessToken,
+                "Bearer",
+                TOKEN_EXPIRATION_SECONDS
+        );
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/config/JwtConfig.java
+package com.julyturadm.config;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
+import java.util.Base64;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+
+// O objetivo será configurar dois componentes:
+//- JwtEncoder: assina os tokens emitidos pela aplicação.
+//- JwtDecoder: valida os tokens recebidos pela API.
+@Configuration
+public class JwtConfig {
+
+    @Value("${julyturadm.security.jwt.secret}")
+    private String jwtSecret;
+
+    // jwtSecretKey()	Decodifica a chave Base64
+    @Bean
+    public SecretKey jwtSecretKey() {
+
+        byte[] decodedKey = Base64.getDecoder().decode(jwtSecret);
+
+        return new SecretKeySpec(
+            decodedKey,
+            "HmacSHA256"
+        );
+    }
+
+    // jwtEncoder()	Assina os tokens com HS256
+    @Bean
+    public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
+
+        return new NimbusJwtEncoder(
+            new ImmutableSecret<>(jwtSecretKey)
+        );
+    }
+
+    // jwtDecoder()	Valida a assinatura dos tokens com HS256
+    @Bean
+    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {
+
+        return NimbusJwtDecoder
+            .withSecretKey(jwtSecretKey)
+            .macAlgorithm(MacAlgorithm.HS256)
+            .build();
+    }
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. Agora temos uma visão mais completa: o `AuthenticationService` já executa corretamente a 
+sequência conceitual de autenticação:
+
+1. Recebe e-mail e senha.
+2. Encaminha as credenciais ao `AuthenticationManager`.
+3. O `DaoAuthenticationProvider` utiliza o `CustomUserDetailsService` e o BCrypt.
+4. O `JwtService` gera o token.
+5. O serviço retorna `LoginResponse`.
+
+O `JwtConfig` também já fornece os componentes de assinatura e validação HS256.
+
+Não precisamos reescrever esses componentes. Vamos fazer dois ajustes arquiteturais antes de criar
+o controller:
+
+- Centralizar a validade do token, evitando manter `30 minutos` em dois arquivos.
+
+- Configurar o conversor JWT para recuperar `roles` e `permissions` dos claims e transformá-los em 
+  autoridades do Spring Security.
+
+Etapa 3 — Conferir o padrão dos controllers e erros
+
+Antes de implementar o endpoint, quero verificar como o projeto já trata requisições HTTP e exceções.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/controller/UserController.java
+```
+
+Depois:
+
+```
+cat src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+```
+
+E:
+
+```
+find src/main/java/com/julyturadm/common/exception -type f -maxdepth 1 -print
+```
+
+Isso é importante porque precisamos garantir que:
+
+- Login válido retorne HTTP `200 OK`.
+- Credenciais inválidas retornem HTTP `401 Unauthorized`.
+- Dados inválidos retornem HTTP `400 Bad Request`.
+- O cadastro de usuários continue protegido.
+
+Depois dessa conferência, criaremos o `AuthController` e ajustaremos o tratamento de erros.
+
+Não vamos alterar ainda a configuração de autorização JWT até termos o endpoint funcionando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/controller/UserController.java
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+import com.julyturadm.service.UserService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+
+        UserResponse response = userService.createUser(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> findUserById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.findUserById(id)
+        );
+    }
+
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserResponse> findUserByEmail(
+            @PathVariable String email) {
+
+        return ResponseEntity.ok(
+            userService.findUserByEmail(email)
+        );
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserResponse>> findAllActiveUsers() {
+
+        return ResponseEntity.ok(
+            userService.findAllActiveUsers()
+        );
+    }
+
+    @PatchMapping("/{id}/disable")
+    public ResponseEntity<UserResponse> disableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.disableUser(id)
+        );
+    }
+
+    @PatchMapping("/{id}/enable")
+    public ResponseEntity<UserResponse> enableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.enableUser(id)
+        );
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+package com.julyturadm.common.exception;
+
+import java.time.LocalDateTime;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(
+            ResourceNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+            HttpStatus.NOT_FOUND,
+            exception.getMessage(),
+            request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessException(
+            BusinessException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+            HttpStatus.CONFLICT,
+            exception.getMessage(),
+            request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidation(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+
+        FieldError fieldError = exception.getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .findFirst()
+            .orElse(null);
+
+        String message = fieldError != null
+            ? fieldError.getDefaultMessage()
+            : "Os dados enviados são inválidos.";
+
+        return buildResponse(
+            HttpStatus.BAD_REQUEST,
+            message,
+            request.getRequestURI()
+        );
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildResponse(
+            HttpStatus status,
+            String message,
+            String path) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+            LocalDateTime.now(),
+            status.value(),
+            status.getReasonPhrase(),
+            message,
+            path
+        );
+
+        return ResponseEntity.status(status).body(response);
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm/common/exception -type f -maxdepth 1 -print
+find: aviso: você especificou a opção global -maxdepth após o argumento -type, mas as opções globais não são posicionais (ou seja, -maxdepth afeta testes especificados antes disso assim como aqueles especificados após). Por favor, especifique opções globais antes de outros argumentos.
+src/main/java/com/julyturadm/common/exception/ApiErrorResponse.java
+src/main/java/com/julyturadm/common/exception/BusinessException.java
+src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+src/main/java/com/julyturadm/common/exception/ResourceNotFoundException.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Etapa 4 — Criar o AuthController
+
+Vamos começar pelo controller. Ele terá uma única responsabilidade: receber as credenciais, 
+encaminhá-las ao `AuthenticationService` e devolver o token.
+
+Crie o arquivo:
+
+```
+src/main/java/com/julyturadm/controller/AuthController.java
+```
+
+Insira o código:
+
+```
+package com.julyturadm.controller;
+
+import com.julyturadm.dto.request.LoginRequest;
+import com.julyturadm.dto.response.LoginResponse;
+import com.julyturadm.service.AuthenticationService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthenticationService authenticationService;
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request) {
+
+        LoginResponse response =
+                authenticationService.authenticate(request);
+
+        return ResponseEntity.ok(response);
+    }
+}
+```
+
+Entendendo o endpoint:
+
+| Elemento                       | Responsabilidade                        |
+| ------------------------------ | --------------------------------------- |
+| `@RequestMapping("/api/auth")` | Define o caminho-base                   |
+| `@PostMapping("/login")`       | Define o endpoint de login              |
+| `@Valid`                       | Executa as validações do `LoginRequest` |
+| `AuthenticationService`        | Autentica e solicita a geração do JWT   |
+| `ResponseEntity.ok()`          | Retorna HTTP 200                        |
+
+O endpoint ficará assim:
+
+`POST http://localhost:8081/api/auth/login`
+
+Exemplo de corpo JSON:
+
+```
+{
+  "email": "admin@julyturadm.com",
+  "password": "sua-senha"
+}
+```
+
+A senha é apenas ilustrativa; não utilize uma senha real nos exemplos compartilhados.
+
+Verificar a compilação:
+
+Execute:
+
+```
+mvn -DskipTests compile
+```
+
+Ainda não vamos testar o login via Postman.
+
+O `SecurityConfig` atual exige autenticação em todas as rotas, inclusive no login.
+
+Vamos corrigir isso na próxima etapa.
+
+Envie o resultado da compilação.
+
+Depois vamos configurar a liberação exclusiva do endpoint de login e o tratamento HTTP 401 para 
+credenciais inválidas.
+
+Também podemos programar um acompanhamento periódico da evolução e dos testes do backend, caso queira.
+
+🛠️Acompanhar evolução do backendToque para configurar
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -DskipTests compile
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 29 source files with javac [debug parameters release 17] to target/classes
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.728 s
+[INFO] Finished at: 2026-11-05T14:30:19-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+O AuthController compilou corretamente com Java 17.
+
+Agora temos o endpoint de login implementado, mas ainda precisamos permitir seu acesso sem token.
+
+Etapa 5 — Ajustar o SecurityConfig
+
+Atualmente, a configuração exige autenticação em todas as requisições.
+
+Vamos liberar exclusivamente:
+
+POST /api/auth/login
+
+Todas as demais rotas continuarão protegidas, inclusive POST /api/users.
+
+5.1 — Substituir o conteúdo do arquivo
+
+Abra:
+src/main/java/com/julyturadm/config/SecurityConfig.java
+
+
+Substitua pelo código abaixo:
+
+package com.julyturadm.config;
+
+import com.julyturadm.security.CustomUserDetailsService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.http.HttpMethod;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    // `CustomUserDetailsService`: localiza o usuário e suas autoridades.
+    private final CustomUserDetailsService userDetailsService;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(
+            PasswordEncoder passwordEncoder) {
+
+        // `DaoAuthenticationProvider`: valida as credenciais utilizando BCrypt.
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+
+        provider.setPasswordEncoder(passwordEncoder);
+
+        return provider;
+    }
+
+    //---
+    // O metodo `AuthenticationManager` será o ponto de entrada para validar as credenciais:
+    // `AuthenticationService → AuthenticationManager → DaoAuthenticationProvider → CustomUserDetailsService → UserRepository`
+    // O `PasswordEncoder` fará a comparação com o hash BCrypt armazenado no banco.
+    //---
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration)
+            throws Exception {
+
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationProvider authenticationProvider)
+            throws Exception {
+
+        http
+            .csrf(csrf -> csrf.disable())
+
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            .authenticationProvider(authenticationProvider)
+
+             // ----------------------------------------
+             // Requisição Acesso
+             // ----------------------------------------
+             // POST /api/auth/login Público
+             // POST /api/users Protegido
+             // GET /api/users Protegido
+             // PATCH /api/users/{id}/disable Protegido
+             // Demais endpoints Protegido
+             // ----------------------------------------
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/auth/login"
+                ).permitAll()
+                .anyRequest().authenticated())
+
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> {})
+                .authenticationEntryPoint(
+                    new BearerTokenAuthenticationEntryPoint())
+                .accessDeniedHandler(
+                    new BearerTokenAccessDeniedHandler()));
+
+        return http.build();
+    }
+}
+
+---
+
+5.2 — O que mudou?
+A regra principal é:
+
+.requestMatchers(
+    HttpMethod.POST,
+    "/api/auth/login"
+).permitAll()
+.anyRequest().authenticated()
+
+
+Isso significa:
+
+Requisição                    Acesso
+----------------------------------------
+POST /api/auth/login          Público
+POST /api/users               Protegido
+GET /api/users                Protegido
+PATCH /api/users/{id}/disable Protegido
+Demais endpoints              Protegido
+
+Observe que liberamos apenas o método POST no caminho exato do login.
+
+5.3 — Compilar
+
+Execute:
+mvn -DskipTests compile
+
+Depois, execute a suíte completa:
+mvn test
+
+Importante: ainda faltam dois ajustes antes de testar o login de ponta a ponta:
+
+1. Tratar credenciais inválidas com HTTP 401.
+
+2. Configurar o conversor JWT para transformar os claims roles e permissions em autoridades do
+   Spring Security.
+
+Envie os resultados dos comandos. Vamos avançar gradualmente, preservando os 21 testes já aprovados.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -DskipTests compile
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.157 s
+[INFO] Finished at: 2026-11-05T14:48:33-03:00
+[INFO] ------------------------------------------------------------------------
+
+2026-11-05T14:49:57.321-03:00  INFO 153258 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : Started RepositoryIntegrationTest in 20.323 seconds (process running for 23.167)
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 22.18 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.347 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  33.605 s
+[INFO] Finished at: 2026-11-05T14:50:06-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo.
+
+A compilação e a suíte de testes passaram sem erros após a inclusão do `AuthController` e a 
+atualização do `SecurityConfig`.
+
+- Compilação: `BUILD SUCCESS`.
+
+- Testes: 21 executados, 0 falhas, 0 erros e 0 ignorados.
+
+- O banco principal `bd_paytur` continua fora do escopo dos testes; os testes de integração
+  usam `bd_paytur_test`.
+
+Podemos avançar para o tratamento das falhas de autenticação. O comportamento esperado é:
+
+| Situação                      | HTTP |
+| ----------------------------- | ---- |
+| Login com credenciais válidas | 200  |
+| E-mail ou senha incorretos    | 401  |
+| Campos inválidos ou ausentes  | 400  |
+| Recurso inexistente           | 404  |
+
+Próxima etapa — retornar HTTP 401 no login
+
+Atualmente, se o usuário informar uma senha incorreta, o `AuthenticationManager` lançará uma exceção
+de autenticação.
+
+Precisamos convertê-la em uma resposta HTTP 401, sem expor detalhes internos.
+
+Abra:
+
+```
+src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+```
+
+1. Adicione este import:
+
+```
+import org.springframework.security.core.AuthenticationException;
+```
+
+2. Dentro da classe `GlobalExceptionHandler`, acrescente o método:
+
+```
+@ExceptionHandler(AuthenticationException.class)
+public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+        AuthenticationException exception,
+        HttpServletRequest request) {
+
+    HttpStatus status = HttpStatus.UNAUTHORIZED;
+
+    ApiErrorResponse response = new ApiErrorResponse(
+        LocalDateTime.now(),
+        status.value(),
+        "Unauthorized",
+        "E-mail ou senha inválidos.",
+        request.getRequestURI()
+    );
+
+    return ResponseEntity.status(status).body(response);
+}
+```
+
+Confira se estes imports já existem; caso contrário, adicione-os:
+
+```
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+```
+
+Por que uma mensagem genérica? Para não revelar se o e-mail não existe, se a senha está incorreta
+ou se a conta está desabilitada.
+
+Depois de salvar, envie o conteúdo atualizado do `GlobalExceptionHandler.java`.
+
+Vou conferir a integração com os tratamentos de exceção existentes antes de avançarmos para os 
+testes do login.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+package com.julyturadm.common.exception;
+
+import java.time.LocalDateTime;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import org.springframework.security.core.AuthenticationException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(
+            ResourceNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage(),
+                request.getRequestURI());
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessException(
+            BusinessException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request.getRequestURI());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidation(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+
+        FieldError fieldError = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .orElse(null);
+
+        String message = fieldError != null
+                ? fieldError.getDefaultMessage()
+                : "Os dados enviados são inválidos.";
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                message,
+                request.getRequestURI());
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildResponse(
+            HttpStatus status,
+            String message,
+            String path) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                path);
+
+        return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+            AuthenticationException exception,
+            HttpServletRequest request) {
+
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                status.value(),
+                "Unauthorized",
+                "E-mail ou senha inválidos.",
+                request.getRequestURI());
+
+        return ResponseEntity.status(status).body(response);
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Seu `GlobalExceptionHandler` está correto.
+
+A exceção `AuthenticationException` agora será convertida em HTTP 401 Unauthorized, com uma mensagem
+genérica, sem revelar detalhes das credenciais.
+
+Também está coerente com os demais tratamentos:
+
+- `400`: validação dos dados.
+- `401`: falha de autenticação.
+- `404`: recurso não encontrado.
+- `409`: conflito de negócio.
+
+Uma pequena melhoria: podemos reutilizar o método `buildResponse()` para evitar duplicação de código.
+
+Não é obrigatório, mas deixa a classe mais uniforme.
+
+Eu recomendo apenas simplificar o último método para aproveitar o método auxiliar já existente:
+
+```
+@ExceptionHandler(AuthenticationException.class)
+public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+        AuthenticationException exception,
+        HttpServletRequest request) {
+
+    return buildResponse(
+            HttpStatus.UNAUTHORIZED,
+            "E-mail ou senha inválidos.",
+            request.getRequestURI());
+}
+```
+
+A exceção continua sendo recebida, mas não precisamos utilizar seu conteúdo.
+
+Próximo passo
+
+Salve a alteração e execute, no diretório `backend-api`:
+
+```
+mvn test
+```
+
+Se os 21 testes continuarem passando, avançaremos para criar testes específicos do 
+`AuthenticationService`, cobrindo login válido e credenciais inválidas.
+
+Depois, verificaremos a conversão das claims `roles` e `permissions` do JWT em autoridades do
+Spring Security.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 20.92 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.323 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  33.001 s
+[INFO] Finished at: 2026-11-05T15:07:48-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente. A suíte continua estável: 21 testes executados, nenhuma falha ou erro e `BUILD SUCCESS`.
+
+Agora vamos testar uma parte importante do fluxo de autenticação: o `AuthenticationService`,
+responsável por receber as credenciais, autenticar o usuário e solicitar a geração do JWT.
+
+Etapa seguinte — testes unitários do AuthenticationService
+
+Vamos cobrir dois cenários:
+
+1. Login válido: o `AuthenticationManager` autentica e o serviço devolve um `LoginResponse` com 
+   token Bearer e validade de 1800 segundos.
+
+2. Credenciais inválidas: o serviço propaga a exceção de autenticação, que depois será convertida
+   pelo `GlobalExceptionHandler` em HTTP 401.
+
+1. Crie o arquivo de teste
+
+Caminho:
+
+```
+src/test/java/com/julyturadm/service/AuthenticationServiceTest.java
+```
+
+Se o diretório `service` ainda não existir dentro de `src/test/java/com/julyturadm`, crie-o.
+
+2. Insira este código
+
+```
+package com.julyturadm.service;
+
+import com.julyturadm.dto.request.LoginRequest;
+import com.julyturadm.dto.response.LoginResponse;
+import com.julyturadm.security.JwtService;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class AuthenticationServiceTest {
+
+    @Mock
+    private AuthenticationManager authenticationManager;
+
+    @Mock
+    private JwtService jwtService;
+
+    @InjectMocks
+    private AuthenticationService authenticationService;
+
+    @Test
+    void shouldAuthenticateUserAndReturnJwtToken() {
+
+        LoginRequest request = new LoginRequest(
+                "usuario@teste.com",
+                "Senha123"
+        );
+
+        UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername("usuario@teste.com")
+                .password("senha-criptografada")
+                .authorities("ROLE_ADMIN", "USER_CREATE")
+                .build();
+
+        Authentication authentication = mock(Authentication.class);
+
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+
+        when(authenticationManager.authenticate(
+                any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(authentication);
+
+        when(jwtService.generateToken(userDetails))
+                .thenReturn("jwt-token-teste");
+
+        LoginResponse response = authenticationService.authenticate(request);
+
+        assertNotNull(response);
+        assertEquals("jwt-token-teste", response.accessToken());
+        assertEquals("Bearer", response.tokenType());
+        assertEquals(1800L, response.expiresIn());
+
+        verify(authenticationManager).authenticate(
+                any(UsernamePasswordAuthenticationToken.class));
+
+        verify(jwtService).generateToken(userDetails);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCredentialsAreInvalid() {
+
+        LoginRequest request = new LoginRequest(
+                "usuario@teste.com",
+                "SenhaIncorreta"
+        );
+
+        when(authenticationManager.authenticate(
+                any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Credenciais inválidas."));
+
+        assertThrows(
+                BadCredentialsException.class,
+                () -> authenticationService.authenticate(request)
+        );
+
+        verify(authenticationManager).authenticate(
+                any(UsernamePasswordAuthenticationToken.class));
+
+        verifyNoInteractions(jwtService);
+    }
+}
+```
+
+3. Execute os testes
+
+No terminal, dentro de `backend-api`:
+
+```
+mvn test
+```
+
+Resultado esperado: 23 testes, todos aprovados.
+
+Esses testes verificam o serviço isoladamente, sem acessar o MySQL e sem gerar um JWT 
+criptográfico real.
+
+Isso é intencional: estamos testando o comportamento do serviço e suas dependências.
+
+Quando terminar, envie o resultado do Maven.
+
+Depois vamos validar um ponto essencial: o Spring Security precisa interpretar as claims `roles`
+e `permissions` do JWT para aplicar corretamente as duas camadas de autorização que definimos para
+o JulyTurAdm.&#x20;
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.87 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.281 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 23, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  38.750 s
+[INFO] Finished at: 2026-11-05T15:16:09-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Muito bom. Agora temos 23 testes aprovados, sem falhas ou erros.
+
+Os dois novos testes confirmam que:
+
+- O login válido produz a resposta esperada (`Bearer`, token e 1800 segundos).
+- Credenciais inválidas interrompem o fluxo e não acionam a geração do JWT.
+
+Próxima etapa — converter as claims do JWT em authorities
+
+Há um detalhe importante na configuração atual: o Spring Security Resource Server não interpreta
+automaticamente as claims personalizadas `roles` e `permissions`.
+
+Por padrão, ele procura principalmente `scope` ou `scp`.
+
+Isso significa que o token pode ser válido e autenticado, mas as permissões funcionais do usuário
+ainda não estarão disponíveis para as regras de autorização.
+
+Vamos corrigir isso usando `JwtAuthenticationConverter`, compatível com a versão Spring Security 6.5.6
+do projeto.
+
+1. Atualize o `SecurityConfig.java`
+
+Arquivo:
+
+```
+src/main/java/com/julyturadm/config/SecurityConfig.java
+```
+
+Vamos acrescentar um conversor que lê as duas claims e transforma seus valores em `SimpleGrantedAuthority`.
+
+Adicione estes imports:
+
+```
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+```
+
+2. Crie o seguinte método dentro da classe `SecurityConfig`:
+
+```
+@Bean
+public JwtAuthenticationConverter jwtAuthenticationConverter() {
+
+    Converter<Jwt, Collection<GrantedAuthority>> authoritiesConverter = jwt -> {
+
+        Set<GrantedAuthority> authorities = new LinkedHashSet<>();
+
+        addClaimAuthorities(jwt, "roles", authorities);
+        addClaimAuthorities(jwt, "permissions", authorities);
+
+        return authorities;
+    };
+
+    JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+    converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+
+    return converter;
+}
+```
+
+Acrescente também este método auxiliar:
+
+```
+private void addClaimAuthorities(
+        Jwt jwt,
+        String claimName,
+        Set<GrantedAuthority> authorities) {
+
+    Object claim = jwt.getClaims().get(claimName);
+
+    if (claim instanceof Collection<?> values) {
+        values.stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .map(SimpleGrantedAuthority::new)
+                .forEach(authorities::add);
+    }
+}
+```
+
+3. Conecte o conversor ao Resource Server
+
+Na assinatura do método `securityFilterChain`, acrescente o parâmetro `JwtAuthenticationConverter`:
+
+```
+public SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        AuthenticationProvider authenticationProvider,
+        JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+```
+
+Agora substitua:
+
+```
+.jwt(jwt -> {})
+```
+
+Por:
+
+```
+.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+```
+
+4. O que esperamos obter
+
+Imagine que o JWT contenha:
+
+```
+{
+  "sub": "usuario@teste.com",
+  "roles": [
+    "ROLE_ADMIN"
+  ],
+  "permissions": [
+    "USER_CREATE",
+    "USER_UPDATE",
+    "USER_DISABLE"
+  ]
+}
+```
+
+O Spring Security passará a reconhecer:
+
+| Authority      | Origem              |
+| -------------- | ------------------- |
+| `ROLE_ADMIN`   | Claim `roles`       |
+| `USER_CREATE`  | Claim `permissions` |
+| `USER_UPDATE`  | Claim `permissions` |
+| `USER_DISABLE` | Claim `permissions` |
+
+Assim poderemos utilizar regras como:
+
+```
+.requestMatchers("/api/admin/**").hasRole("ADMIN")
+.requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("USER_CREATE")
+```
+
+Atenção: essas regras são exemplos para uma etapa posterior. Ainda não vamos alterar os endpoints.
+
+Faça essas alterações e envie o `SecurityConfig.java` atualizado.
+
+Vou revisar o código antes de executarmos os testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+package com.julyturadm.config;
+
+import com.julyturadm.security.CustomUserDetailsService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.http.HttpMethod;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    // `CustomUserDetailsService`: localiza o usuário e suas autoridades.
+    private final CustomUserDetailsService userDetailsService;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(
+            PasswordEncoder passwordEncoder) {
+
+        // `DaoAuthenticationProvider`: valida as credenciais utilizando BCrypt.
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+
+        provider.setPasswordEncoder(passwordEncoder);
+
+        return provider;
+    }
+
+    // ---
+    // O metodo `AuthenticationManager` será o ponto de entrada para validar as
+    // credenciais:
+    // `AuthenticationService → AuthenticationManager → DaoAuthenticationProvider →
+    // CustomUserDetailsService → UserRepository`
+    // O `PasswordEncoder` fará a comparação com o hash BCrypt armazenado no banco.
+    // ---
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration)
+            throws Exception {
+
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationProvider authenticationProvider,
+            JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+
+        http
+                .csrf(csrf -> csrf.disable())
+
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .authenticationProvider(authenticationProvider)
+
+                // ----------------------------------------
+                // Requisição Acesso
+                // ----------------------------------------
+                // POST /api/auth/login Público
+                // POST /api/users Protegido
+                // GET /api/users Protegido
+                // PATCH /api/users/{id}/disable Protegido
+                // Demais endpoints Protegido
+                // ----------------------------------------
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/auth/login")
+                        .permitAll()
+                        .anyRequest().authenticated())
+
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+                        .authenticationEntryPoint(
+                                new BearerTokenAuthenticationEntryPoint())
+                        .accessDeniedHandler(
+                                new BearerTokenAccessDeniedHandler()));
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+
+        Converter<Jwt, Collection<GrantedAuthority>> authoritiesConverter = jwt -> {
+
+            Set<GrantedAuthority> authorities = new LinkedHashSet<>();
+
+            addClaimAuthorities(jwt, "roles", authorities);
+            addClaimAuthorities(jwt, "permissions", authorities);
+
+            return authorities;
+        };
+
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+
+        return converter;
+    }
+
+    private void addClaimAuthorities(
+            Jwt jwt,
+            String claimName,
+            Set<GrantedAuthority> authorities) {
+
+        Object claim = jwt.getClaims().get(claimName);
+
+        if (claim instanceof Collection<?> values) {
+            values.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .map(SimpleGrantedAuthority::new)
+                    .forEach(authorities::add);
+        }
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Janela de contexto cheia
+Inicie um novo chat com um resumo automático desta conversa ou faça upgrade para continuar aqui com mais contexto disponível em todos os chats.
+
+Continua no arquivo: [20261105_Chat-Gpt-Etapa1-17-Implementacao_AuthenticationManager_Autenticacao_Credenciais_CustomUserDetailsService_Usuario-perfis-permissoes_JwtService_
+Geracao_Token_Assinado-HS256.txt]
+
+-------------------------------------------------fim-----------------------------------------------
+

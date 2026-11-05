@@ -6,6 +6,8 @@ Chat-Gpt: Etapa1 - Etapa1-11-Preparação do ambiente(backend-api) Implementando
                    AGORA_VAI-6
 ---------------------------------------------------------------------------------------------------
 
+Implementando_Modelo-JPA_Camadas_Repositórios_Controller
+
 Implementando tratamento global e exceções, depois o `UserController` camada Controller
 
 ---------------------------------------------------------------------------------------------------

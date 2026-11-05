@@ -1,0 +1,68 @@
+﻿
+05/11/2026
+
+---------------------------------------------------------------------------------------------------
+Como iniciar o projeto backend-api (Spring Boot	v3.5.7)
+---------------------------------------------------------------------------------------------------
+
+Estamos utilizando
+--------------------------------
+Java 17	using Java 17.0.10
+Spring Boot	v3.5.7
+MySQL Database version: 8.0.46
+HikariCP Start completed
+Hibernate 6.6.33.Final
+Tomcat	Porta 8081
+
+
+---------------------------------------------------------------------------------------------------
+Executar a aplicação via terminal:
+
+Como o .env está no diretório JulyTurAdm, precisamos carregar suas variáveis no terminal antes de
+iniciar o Maven. Não vamos mostrar os valores das senhas.
+
+Execute, dentro de backend-api:
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+Vá para o diretoio, src/main/java/com/julyturadm/backend-api
+
+Inicialize as variaveis de ambiente que contem as credenciais do projeto backend-api.
+
+```
+set -a
+source ../.env
+set +a
+---
+
+Agora inicie a aplicação com a validação temporária do Hibernate:
+
+// clear
+mvn clean
+
+// Compilar
+mvn compile
+
+// para iniciar
+mvn spring-boot:run
+
+---
+
+Iniciar o cliente do Mysql:
+
+Via editor vi entrar no arquivo .env diretório JulyTurAdm.
+
+---
+
+Antes de executar, confirme que o Docker está ativo:
+
+```
+docker compose ps
+```
+
+-------------------------------------------------fim-----------------------------------------------
+

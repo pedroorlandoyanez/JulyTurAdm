@@ -11,6 +11,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import org.springframework.security.core.AuthenticationException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -20,10 +22,9 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         return buildResponse(
-            HttpStatus.NOT_FOUND,
-            exception.getMessage(),
-            request.getRequestURI()
-        );
+                HttpStatus.NOT_FOUND,
+                exception.getMessage(),
+                request.getRequestURI());
     }
 
     @ExceptionHandler(BusinessException.class)
@@ -32,10 +33,9 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         return buildResponse(
-            HttpStatus.CONFLICT,
-            exception.getMessage(),
-            request.getRequestURI()
-        );
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request.getRequestURI());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -44,20 +44,19 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         FieldError fieldError = exception.getBindingResult()
-            .getFieldErrors()
-            .stream()
-            .findFirst()
-            .orElse(null);
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .orElse(null);
 
         String message = fieldError != null
-            ? fieldError.getDefaultMessage()
-            : "Os dados enviados são inválidos.";
+                ? fieldError.getDefaultMessage()
+                : "Os dados enviados são inválidos.";
 
         return buildResponse(
-            HttpStatus.BAD_REQUEST,
-            message,
-            request.getRequestURI()
-        );
+                HttpStatus.BAD_REQUEST,
+                message,
+                request.getRequestURI());
     }
 
     private ResponseEntity<ApiErrorResponse> buildResponse(
@@ -66,13 +65,41 @@ public class GlobalExceptionHandler {
             String path) {
 
         ApiErrorResponse response = new ApiErrorResponse(
-            LocalDateTime.now(),
-            status.value(),
-            status.getReasonPhrase(),
-            message,
-            path
-        );
+                LocalDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                path);
 
         return ResponseEntity.status(status).body(response);
     }
+
+    //@ExceptionHandler(AuthenticationException.class)
+    //public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+    //        AuthenticationException exception,
+    //        HttpServletRequest request) {
+    //
+    //    HttpStatus status = HttpStatus.UNAUTHORIZED;
+    //
+    //    ApiErrorResponse response = new ApiErrorResponse(
+    //            LocalDateTime.now(),
+    //            status.value(),
+    //            "Unauthorized",
+    //            "E-mail ou senha inválidos.",
+    //            request.getRequestURI());
+    // 
+    //    return ResponseEntity.status(status).body(response);
+    //}
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+            AuthenticationException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.UNAUTHORIZED,
+                "E-mail ou senha inválidos.",
+                request.getRequestURI());
+    }
+
 }

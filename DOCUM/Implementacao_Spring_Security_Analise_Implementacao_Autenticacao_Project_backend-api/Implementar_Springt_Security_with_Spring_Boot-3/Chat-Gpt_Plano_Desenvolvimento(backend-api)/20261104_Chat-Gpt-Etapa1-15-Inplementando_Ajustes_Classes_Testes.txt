@@ -1,0 +1,182 @@
+﻿
+04/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1-15-Preparação do ambiente(backend-api) Inplementando Configuração Segurança
+---------------------------------------------------------------------------------------------------
+
+Chat-Gpt disse:
+
+Perfeito. Agora temos a estrutura real das entidades e podemos montar o quarto teste sem alterar o 
+mapeamento JPA.
+
+Uma observação importante: como `Role`, `Permission`, `UserRole` e `RolePermission` possuem 
+construtores sem argumentos protegidos, podemos instanciá-los dentro do teste usando `mock`, mas 
+prefiro utilizar objetos reais para validar o comportamento das associações.
+
+Etapa 3 — Implementar o quarto teste
+
+Vamos usar os métodos `setName()`, `setRolePermissions()` e `setPermission()`, disponibilizados pelo Lombok.
+
+Abra:
+
+```
+src/test/java/com/julyturadm/security/CustomUserDetailsServiceTest.java
+```
+
+Adicione estes imports:
+
+```
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+```
+
+Agora substitua o método vazio pelo seguinte:
+
+```
+
+@Test
+void shouldLoadActiveUserWithRolesAndPermissions() {
+
+    // Usuário ativo.
+    User user = mock(User.class);
+
+    when(userRepository.findByEmailWithRoles("admin@email.com"))
+            .thenReturn(Optional.of(user));
+
+    when(user.getEnabled()).thenReturn(true);
+    when(user.getEmail()).thenReturn("admin@email.com");
+    when(user.getPassword()).thenReturn("$2a$10$senhaCriptografada");
+
+    // Perfil funcional ADMIN.
+    Role role = mock(Role.class);
+    when(role.getName()).thenReturn("ADMIN");
+
+    // Primeira permissão.
+    Permission permissionCreate = mock(Permission.class);
+    when(permissionCreate.getName()).thenReturn("USER_CREATE");
+
+    RolePermission rolePermissionCreate = mock(RolePermission.class);
+    when(rolePermissionCreate.getPermission())
+            .thenReturn(permissionCreate);
+
+    // Segunda permissão.
+    Permission permissionUpdate = mock(Permission.class);
+    when(permissionUpdate.getName()).thenReturn("USER_UPDATE");
+
+    RolePermission rolePermissionUpdate = mock(RolePermission.class);
+    when(rolePermissionUpdate.getPermission())
+            .thenReturn(permissionUpdate);
+
+    when(role.getRolePermissions()).thenReturn(
+            List.of(rolePermissionCreate, rolePermissionUpdate)
+    );
+
+    when(roleRepository.findAllByUserEmailWithPermissions(
+            "admin@email.com"
+    )).thenReturn(List.of(role));
+
+    // Execução.
+    UserDetails userDetails =
+            userDetailsService.loadUserByUsername("admin@email.com");
+
+    // Verificações.
+    assertEquals("admin@email.com", userDetails.getUsername());
+
+    assertTrue(userDetails.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
+
+    assertTrue(userDetails.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("USER_CREATE")));
+
+    assertTrue(userDetails.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("USER_UPDATE")));
+
+    assertEquals(3, userDetails.getAuthorities().size());
+}
+
+```
+
+Por que utilizar mocks neste teste?
+
+Aqui estamos testando o `CustomUserDetailsService`, não o Hibernate.
+
+Os mocks representam o resultado que os repositórios entregariam ao serviço.
+
+Os relacionamentos reais e o carregamento JPA já foram verificados nos testes de integração anteriores.
+
+Etapa 4 — Executar os testes
+
+Execute:
+
+```
+mvn -Dtest=CustomUserDetailsServiceTest test
+```
+
+O resultado esperado será:
+
+```
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+
+BUILD SUCCESS
+```
+
+Envie o resultado. Depois verificaremos se há algum ajuste necessário no serviço e executaremos a
+suíte completa antes de avançar para o login.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=CustomUserDetailsServiceTest test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.845 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.116 s
+[INFO] Finished at: 2026-11-05T12:55:06-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Janela de contexto cheia
+Inicie um novo chat com um resumo automático desta conversa ou faça upgrade para continuar aqui com mais contexto disponível em todos os chats.
+
+
+Continua no arquivo: [ ]
+
+-------------------------------------------------fim-----------------------------------------------
+

@@ -23,228 +23,293 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestDatabaseSafetyConfiguration.class)
 @Transactional
 class RepositoryIntegrationTest {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+        @Autowired
+        private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    @Autowired
-    private RoleRepository roleRepository;
+        @Autowired
+        private RoleRepository roleRepository;
 
-    @Autowired
-    private PermissionRepository permissionRepository;
+        @Autowired
+        private PermissionRepository permissionRepository;
 
-    @Autowired
-    private UserRoleRepository userRoleRepository;
+        @Autowired
+        private UserRoleRepository userRoleRepository;
 
-    @Autowired
-    private RolePermissionRepository rolePermissionRepository;
+        @Autowired
+        private RolePermissionRepository rolePermissionRepository;
 
-    private <T> T createEntity(Class<T> type) throws Exception {
-        Constructor<T> constructor = type.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        return constructor.newInstance();
-    }
+        @Autowired
+        private EntityManager entityManager;
 
-    private String uniqueValue(String prefix) {
-        return prefix + "_" + UUID.randomUUID();
-    }
+        private <T> T createEntity(Class<T> type) throws Exception {
+                Constructor<T> constructor = type.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+        }
 
-    @Test
-    void shouldConnectOnlyToTestDatabase() {
+        private String uniqueValue(String prefix) {
+                return prefix + "_" + UUID.randomUUID();
+        }
 
-        String database = jdbcTemplate.queryForObject(
-            "SELECT DATABASE()",
-            String.class
-        );
+        @Test
+        void shouldConnectOnlyToTestDatabase() {
 
-        assertEquals("bd_paytur_test", database);
-    }
+                String database = jdbcTemplate.queryForObject(
+                                "SELECT DATABASE()",
+                                String.class);
 
-    @Test
-    void shouldPersistAndFindUserByEmail() throws Exception {
+                assertEquals("bd_paytur_test", database);
+        }
 
-        User user = createEntity(User.class);
+        @Test
+        void shouldPersistAndFindUserByEmail() throws Exception {
 
-        String email = uniqueValue("user") + "@test.com";
+                User user = createEntity(User.class);
 
-        user.setName("Usuario Teste");
-        user.setEmail(email);
-        user.setPassword("password-test");
-        user.setEnabled(true);
+                String email = uniqueValue("user") + "@test.com";
 
-        User savedUser = userRepository.saveAndFlush(user);
+                user.setName("Usuario Teste");
+                user.setEmail(email);
+                user.setPassword("password-test");
+                user.setEnabled(true);
 
-        assertNotNull(savedUser.getId());
+                User savedUser = userRepository.saveAndFlush(user);
 
-        assertTrue(userRepository.existsByEmail(email));
+                assertNotNull(savedUser.getId());
 
-        User foundUser = userRepository.findByEmail(email)
-            .orElseThrow();
+                assertTrue(userRepository.existsByEmail(email));
 
-        assertEquals(email, foundUser.getEmail());
-        assertEquals("Usuario Teste", foundUser.getName());
-        assertTrue(foundUser.getEnabled());
+                User foundUser = userRepository.findByEmail(email)
+                                .orElseThrow();
 
-        assertTrue(
-            userRepository.findAllByEnabledTrue()
-                .stream()
-                .anyMatch(item -> item.getId().equals(savedUser.getId()))
-        );
-    }
+                assertEquals(email, foundUser.getEmail());
+                assertEquals("Usuario Teste", foundUser.getName());
+                assertTrue(foundUser.getEnabled());
 
-    @Test
-    void shouldPersistAndFindRole() throws Exception {
+                assertTrue(
+                                userRepository.findAllByEnabledTrue()
+                                                .stream()
+                                                .anyMatch(item -> item.getId().equals(savedUser.getId())));
+        }
 
-        Role role = createEntity(Role.class);
+        @Test
+        void shouldPersistAndFindRole() throws Exception {
 
-        String roleName = uniqueValue("ROLE_TEST");
+                Role role = createEntity(Role.class);
 
-        role.setName(roleName);
+                String roleName = uniqueValue("ROLE_TEST");
 
-        Role savedRole = roleRepository.saveAndFlush(role);
+                role.setName(roleName);
 
-        assertNotNull(savedRole.getId());
-        assertTrue(roleRepository.existsByName(roleName));
+                Role savedRole = roleRepository.saveAndFlush(role);
 
-        Role foundRole = roleRepository.findByName(roleName)
-            .orElseThrow();
+                assertNotNull(savedRole.getId());
+                assertTrue(roleRepository.existsByName(roleName));
 
-        assertEquals(roleName, foundRole.getName());
-    }
+                Role foundRole = roleRepository.findByName(roleName)
+                                .orElseThrow();
 
-    @Test
-    void shouldPersistAndFindPermission() throws Exception {
+                assertEquals(roleName, foundRole.getName());
+        }
 
-        Permission permission = createEntity(Permission.class);
+        @Test
+        void shouldPersistAndFindPermission() throws Exception {
 
-        String permissionName = uniqueValue("PERMISSION_TEST");
+                Permission permission = createEntity(Permission.class);
 
-        permission.setName(permissionName);
+                String permissionName = uniqueValue("PERMISSION_TEST");
 
-        Permission savedPermission =
-            permissionRepository.saveAndFlush(permission);
+                permission.setName(permissionName);
 
-        assertNotNull(savedPermission.getId());
-        assertTrue(permissionRepository.existsByName(permissionName));
+                Permission savedPermission = permissionRepository.saveAndFlush(permission);
 
-        Permission foundPermission =
-            permissionRepository.findByName(permissionName)
-                .orElseThrow();
+                assertNotNull(savedPermission.getId());
+                assertTrue(permissionRepository.existsByName(permissionName));
 
-        assertEquals(permissionName, foundPermission.getName());
-    }
+                Permission foundPermission = permissionRepository.findByName(permissionName)
+                                .orElseThrow();
 
-    @Test
-    void shouldPersistUserRoleRelationship() throws Exception {
+                assertEquals(permissionName, foundPermission.getName());
+        }
 
-        User user = createEntity(User.class);
+        @Test
+        void shouldPersistUserRoleRelationship() throws Exception {
 
-        user.setName("Usuario Relacionamento");
-        user.setEmail(uniqueValue("relationship") + "@test.com");
-        user.setPassword("password-test");
-        user.setEnabled(true);
+                User user = createEntity(User.class);
 
-        user = userRepository.saveAndFlush(user);
+                user.setName("Usuario Relacionamento");
+                user.setEmail(uniqueValue("relationship") + "@test.com");
+                user.setPassword("password-test");
+                user.setEnabled(true);
 
-        Role role = createEntity(Role.class);
+                user = userRepository.saveAndFlush(user);
 
-        //role.setName(uniqueValue("ROLE_USER_TEST"));
-        role.setName(uniqueValue("RU"));
+                Role role = createEntity(Role.class);
 
-        role = roleRepository.saveAndFlush(role);
+                // role.setName(uniqueValue("ROLE_USER_TEST"));
+                role.setName(uniqueValue("RU"));
 
-        UserRole userRole = createEntity(UserRole.class);
+                role = roleRepository.saveAndFlush(role);
 
-        userRole.setId(new UserRoleId(user.getId(), role.getId()));
-        userRole.setUser(user);
-        userRole.setRole(role);
+                UserRole userRole = createEntity(UserRole.class);
 
-        userRoleRepository.saveAndFlush(userRole);
+                userRole.setId(new UserRoleId(user.getId(), role.getId()));
+                userRole.setUser(user);
+                userRole.setRole(role);
 
-        UserRoleId id = new UserRoleId(
-            user.getId(),
-            role.getId()
-        );
+                userRoleRepository.saveAndFlush(userRole);
 
-        assertTrue(userRoleRepository.existsById(id));
+                UserRoleId id = new UserRoleId(
+                                user.getId(),
+                                role.getId());
 
-        assertTrue(
-            userRoleRepository.existsByUser_IdAndRole_Id(
-                user.getId(),
-                role.getId()
-            )
-        );
+                assertTrue(userRoleRepository.existsById(id));
 
-        assertEquals(
-            1,
-            userRoleRepository.findAllByUser_Id(user.getId()).size()
-        );
+                assertTrue(
+                                userRoleRepository.existsByUser_IdAndRole_Id(
+                                                user.getId(),
+                                                role.getId()));
 
-        assertEquals(
-            1,
-            userRoleRepository.findAllByRole_Id(role.getId()).size()
-        );
-    }
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByUser_Id(user.getId()).size());
 
-    @Test
-    void shouldPersistRolePermissionRelationship() throws Exception {
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByRole_Id(role.getId()).size());
+        }
 
-        Role role = createEntity(Role.class);
+        @Test
+        void shouldPersistRolePermissionRelationship() throws Exception {
 
-        //role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
-        role.setName(uniqueValue("RP"));
+                Role role = createEntity(Role.class);
 
-        role = roleRepository.saveAndFlush(role);
+                // role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
+                role.setName(uniqueValue("RP"));
 
-        Permission permission = createEntity(Permission.class);
+                role = roleRepository.saveAndFlush(role);
 
-        permission.setName(uniqueValue("PERMISSION_ROLE_TEST"));
+                Permission permission = createEntity(Permission.class);
 
-        permission = permissionRepository.saveAndFlush(permission);
+                permission.setName(uniqueValue("PERMISSION_ROLE_TEST"));
 
-        RolePermission rolePermission =
-            createEntity(RolePermission.class);
+                permission = permissionRepository.saveAndFlush(permission);
 
-        rolePermission.setId(
-            new RolePermissionId(role.getId(), permission.getId())
-        );
+                RolePermission rolePermission = createEntity(RolePermission.class);
 
-        rolePermission.setRole(role);
-        rolePermission.setPermission(permission);
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
 
-        rolePermissionRepository.saveAndFlush(rolePermission);
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
 
-        RolePermissionId id = new RolePermissionId(
-            role.getId(),
-            permission.getId()
-        );
+                rolePermissionRepository.saveAndFlush(rolePermission);
 
-        assertTrue(rolePermissionRepository.existsById(id));
+                RolePermissionId id = new RolePermissionId(
+                                role.getId(),
+                                permission.getId());
 
-        assertTrue(
-            rolePermissionRepository.existsByRole_IdAndPermission_Id(
-                role.getId(),
-                permission.getId()
-            )
-        );
+                assertTrue(rolePermissionRepository.existsById(id));
 
-        assertEquals(
-            1,
-            rolePermissionRepository.findAllByRole_Id(role.getId()).size()
-        );
+                assertTrue(
+                                rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                                                role.getId(),
+                                                permission.getId()));
 
-        assertEquals(
-            1,
-            rolePermissionRepository
-                .findAllByPermission_Id(permission.getId()).size()
-        );
-    }
+                assertEquals(
+                                1,
+                                rolePermissionRepository.findAllByRole_Id(role.getId()).size());
+
+                assertEquals(
+                                1,
+                                rolePermissionRepository
+                                                .findAllByPermission_Id(permission.getId()).size());
+        }
+
+        // teste de integração que crie um usuário, um perfil e uma permissão no banco
+        // de testes e valide o carregamento conjunto.
+        @Test
+        void shouldLoadUserWithRolesAndPermissionsForAuthentication()
+                        throws Exception {
+
+                User user = createEntity(User.class);
+                user.setName("Usuario Autenticacao");
+                user.setEmail(uniqueValue("auth") + "@test.com");
+                user.setPassword("password-test");
+                user.setEnabled(true);
+                user = userRepository.saveAndFlush(user);
+
+                Role role = createEntity(Role.class);
+                role.setName(uniqueValue("AUTH_ROLE"));
+                role = roleRepository.saveAndFlush(role);
+
+                Permission permission = createEntity(Permission.class);
+                permission.setName(uniqueValue("AUTH_PERMISSION"));
+                permission = permissionRepository.saveAndFlush(permission);
+
+                UserRole userRole = createEntity(UserRole.class);
+                userRole.setId(new UserRoleId(user.getId(), role.getId()));
+                userRole.setUser(user);
+                userRole.setRole(role);
+                userRoleRepository.saveAndFlush(userRole);
+
+                RolePermission rolePermission = createEntity(RolePermission.class);
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
+
+                // Pedro em 05/11/2026
+                rolePermissionRepository.saveAndFlush(rolePermission);
+
+                // Sincroniza os registros com o banco.
+                entityManager.flush();
+
+                // Limpa o contexto de persistência.
+                entityManager.clear();
+
+                // Primeira consulta: usuário e papéis.
+                User loadedUser = userRepository
+                                .findByEmailWithRoles(user.getEmail())
+                                .orElseThrow();
+
+                // Segunda consulta: papéis e permissões.
+                List<Role> loadedRoles = roleRepository.findAllByUserEmailWithPermissions(
+                                user.getEmail());
+
+                // Valida usuário.
+                assertEquals(user.getEmail(), loadedUser.getEmail());
+                assertEquals(1, loadedUser.getUserRoles().size());
+
+                // Valida papel.
+                UserRole foundUserRole = loadedUser.getUserRoles().get(0);
+
+                assertEquals(role.getName(), foundUserRole.getRole().getName());
+
+                // Valida carregamento das permissões.
+                assertEquals(1, loadedRoles.size());
+                assertEquals(1, loadedRoles.get(0).getRolePermissions().size());
+
+                assertEquals(
+                                permission.getName(),
+                                loadedRoles.get(0)
+                                                .getRolePermissions()
+                                                .get(0)
+                                                .getPermission()
+                                                .getName());
+        }
+
 }
