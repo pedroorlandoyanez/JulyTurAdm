@@ -1,0 +1,254 @@
+﻿
+08/11/2026
+
+---------------------------------------------------------------------------------------------------
+Lista de Códigos HTTP (API REST)
+---------------------------------------------------------------------------------------------------
+
+Pedro disse:
+AI google, liste todos os códigos HTTP?
+
+---------------------------------------------------------------------------------------------------
+AI google disse:
+
+Resumo das Categorias de Códigos HTTP
+
+• 1xx (Informativos): A requisição foi recebida e o processo continua.
+
+• 2xx (Sucesso): A ação foi recebida, compreendida e aceita com sucesso.
+
+• 3xx (Redirecionamento): Mais ações precisam ser tomadas para completar a requisição.
+
+• 4xx (Erro do Cliente): A requisição contém sintaxe incorreta ou não pode ser processada pelo 
+  servidor por culpa do cliente (onde o 401 se encaixa).
+
+• 5xx (Erro do Servidor): O servidor falhou ao tentar processar uma requisição aparentemente válida.
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Gere uma lista dos codigos e descrição da Categorias de Códigos HTTP (1xx - Informativos).
+
+---------------------------------------------------------------------------------------------------
+AI google disse:
+
+Aqui está a lista completa dos códigos da categoria 1xx (Informativos).
+
+No desenvolvimento de APIs REST modernas, estes códigos são raramente manipulados diretamente no 
+código da aplicação, pois servem para comunicação de baixo nível entre o cliente (navegador/biblioteca HTTP)
+e o servidor (ou proxy).
+
+Lista de Códigos HTTP 1xx (Informativos)
+
+• 100 Continue: O servidor recebeu os cabeçalhos da requisição e o cliente pode continuar enviando o
+  restante dos dados (útil para envios de arquivos grandes onde o servidor valida os cabeçalhos antes
+  de aceitar o upload).
+
+• 101 Switching Protocols: O servidor aceitou o pedido do cliente para mudar o protocolo de comunicação
+  (muito utilizado na transição de HTTP/1.1 para WebSockets).
+
+• 102 Processing: O servidor recebeu a requisição completa e está processando-a, mas nenhuma resposta
+  está pronta ainda (evita que o cliente sofra um timeout em requisições muito longas).
+
+• 103 Early Hints: Permite que o servidor envie cabeçalhos de resposta antes da mensagem final, ajudando
+   o navegador a começar a pré-carregar recursos necessários (como arquivos CSS e JavaScript) enquanto
+   o servidor gera a página principal.
+
+Como estes códigos operam em um nível mais baixo de infraestrutura, você gostaria de avançar para a 
+categoria 2xx (Sucesso) ou 3xx (Redirecionamento) para entender como estruturar as respostas mais comuns da sua API?
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Gere uma lista dos codigos e descrição da Categorias de Códigos HTTP (2xx - Sucesso).
+
+---------------------------------------------------------------------------------------------------
+AI google disse:
+
+Aqui está a lista dos códigos da categoria 2xx (Sucesso). 
+
+No desenvolvimento de APIs REST, estes são os códigos retornados quando a requisição do cliente foi
+recebida, compreendida e processada com êxito pelo servidor.
+
+Lista de Códigos HTTP 2xx (Sucesso)
+
+• 200 OK: A requisição foi bem-sucedida. O significado do sucesso depende do método HTTP utilizado
+  (ex: em um GET, os dados solicitados são retornados no corpo da resposta).
+
+• 201 Created: A requisição foi bem-sucedida e um novo recurso foi criado no servidor (muito utilizado
+  como resposta padrão para métodos POST).
+
+• 202 Accepted: A requisição foi aceita para processamento, mas este ainda não foi concluído.
+  É ideal para operações assíncronas ou tarefas pesadas que rodam em segundo plano (background jobs).
+
+• 203 Non-Authoritative Information: Os metadados retornados não são idênticos aos do servidor de
+  origem, tendo sido modificados por um proxy ou terceiro intermediário.
+
+• 204 No Content: A requisição foi processada com sucesso, mas não há conteúdo para retornar no
+  corpo da resposta (altamente utilizado em requisições DELETE ou PUT/PATCH quando não há necessidade
+  de devolver o objeto atualizado).
+
+• 205 Reset Content: Informa ao cliente que a requisição foi bem-sucedida e que ele deve resetar
+  a visualização do documento que enviou a requisição (ex: limpar um formulário na tela).
+
+• 206 Partial Content: O servidor está enviando apenas parte do recurso devido a um cabeçalho de 
+  intervalo (Range) enviado pelo cliente (muito utilizado para transmissão de streaming de vídeo
+  ou downloads pausáveis).
+
+Deseja continuar a sequência e ver os códigos da categoria 3xx (Redirecionamento) ou prefere ver
+como esses códigos 2xx se aplicam na prática dentro das rotas da sua API?
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Gere uma lista dos codigos e descrição da Categorias de Códigos HTTP (3xx - Redirecionamento).
+
+---------------------------------------------------------------------------------------------------
+AI google disse:
+
+Aqui está a lista dos códigos da categoria 3xx (Redirecionamento).
+No desenvolvimento de APIs REST, esses códigos informam ao cliente que ele precisa tomar uma ação 
+adicional (geralmente fazer uma nova requisição para uma URL diferente) para obter o recurso desejado.
+
+Lista de Códigos HTTP 3xx (Redirecionamento)
+
+• 300 Multiple Choices: A requisição tem mais de uma resposta possível e o cliente deve escolher uma
+  delas (ex: formatos de vídeo alternativos ou opções de idioma).
+
+• 301 Moved Permanently: O recurso solicitado foi movido permanentemente para uma nova URL.
+  O servidor envia o novo endereço no cabeçalho Location, e o cliente deve atualizar seus links.
+
+• 302 Found (Moved Temporarily): O recurso solicitado foi movido temporariamente para uma nova URL.
+  O cliente deve continuar usando a URL original para requisições futuras.
+
+• 303 See Other: O servidor direciona o cliente para obter o recurso solicitado em outra URL usando
+  uma requisição obrigatoriamente do tipo GET (muito usado após um POST para evitar que o usuário 
+  reenvie os dados ao atualizar a página).
+
+• 304 Not Modified: Indica que o recurso não foi modificado desde a última requisição.
+  É usado para fins de cache: o cliente pode usar a versão que já tem guardada localmente, economizando banda.
+
+• 307 Temporary Redirect: O recurso foi movido temporariamente para outra URL.
+  Diferente do 302, este código garante que o cliente não mude o método HTTP ao redirecionar (se a requisição
+  original foi um POST, o redirecionamento também deve ser um POST).
+
+• 308 Permanent Redirect: O recurso foi movido permanentemente para outra URL.
+  Assim como o 307, ele exige que o método HTTP original seja mantido sem alterações na nova requisição.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Gere uma lista dos codigos e descrição da Categorias de Códigos HTTP (4xx - Erro do Cliente, como por exemplo 
+saber a diferença prática entre o erro 401 (Unauthorized) e o erro 403 (Forbidden), que costumam gerar 
+bastante confusão no desenvolvimento de APIs
+
+---------------------------------------------------------------------------------------------------
+AI google disse:
+
+Lista de Códigos HTTP 4xx (Erro do Cliente)
+
+• 400 Bad Request: O servidor não conseguiu entender a requisição devido a uma sintaxe inválida 
+  (ex: corpo do JSON malformado).
+
+• 401 Unauthorized: O cliente precisa se autenticar para obter a resposta solicitada 
+  (falta de token ou credenciais inválidas).
+
+• 403 Forbidden: O cliente foi autenticado, mas não tem direitos de acesso ao recurso 
+  (permissão insuficiente).
+
+• 404 Not Found: O servidor não conseguiu encontrar o recurso solicitado 
+  (URL inexistente ou ID não encontrado).
+
+• 405 Method Not Allowed: O método HTTP enviado é conhecido pelo servidor, mas foi desabilitado
+  para aquele recurso (ex: tentar fazer um POST em uma rota que só aceita GET).
+
+• 406 Not Acceptable: O servidor não consegue retornar uma resposta que atenda aos critérios dos 
+  cabeçalhos Accept enviados pelo cliente.
+
+• 408 Request Timeout: O servidor desconectou a requisição por ociosidade (o cliente demorou muito
+  para enviar os dados).
+
+• 409 Conflict: A requisição não pôde ser concluída devido a um conflito com o estado atual do 
+  servidor (ex: tentar cadastrar um usuário com um e-mail que já existe).
+
+• 415 Unsupported Media Type: O formato de mídia dos dados enviados não é suportado pelo servidor 
+  (ex: enviar XML quando a API só aceita application/json).
+
+• 422 Unprocessable Entity: A requisição está bem-formada, mas contém erros semânticos
+  (muito usado para falhas de validação de formulários ou campos obrigatórios ausentes).
+
+• 429 Too Many Requests: O cliente enviou requisições demais em um curto período de tempo 
+  (estourou o limite de rate limiting).
+
+Diferença Prática: 401 Unauthorized vs. 403 Forbidden
+
+A forma mais simples de diferenciar os dois é pensar em Identidade (Quem é você?) versus Permissão
+  (O que você pode fazer?).
+
+Critério: 401-Unauthorized | 403-Forbidden
+
+Foco principal	Autenticação (Authentication)	Autorização (Authorization)
+
+O que significa?
+"Eu não sei quem você é. (401 Unauthorized - Authentication)" 
+
+"Eu sei quem você é, mas você não manda aqui. (403 Forbidden - Authorization)"
+
+Situação real:
+O usuário esqueceu de enviar o Token JWT no cabeçalho ou o token expirou.
+O usuário está logado como "Cliente", mas tentou acessar a rota /admin/deletar-usuario.
+
+Ação do sistema:
+- Bloqueia o acesso e geralmente redireciona para a tela de Login.
+- Bloqueia o acesso e mostra uma mensagem de "Acesso Negado".
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Gere uma lista dos codigos e descrição da Categorias de Códigos HTTP (5xx - Erro do Servidor).
+
+---------------------------------------------------------------------------------------------------
+AI google disse:
+
+Aqui está a lista dos códigos da categoria 5xx (Erro do Servidor).
+
+No desenvolvimento de APIs REST, estes códigos são retornados quando o servidor reconhece que encontrou
+um erro ou é incapaz de executar a requisição por um problema interno, mesmo que a requisição enviada
+pelo cliente esteja completamente correta.
+
+Lista de Códigos HTTP 5xx (Erro do Servidor)
+
+• 500 Internal Server Error: O código genérico para erro no servidor.
+  Significa que algo deu errado do lado do código ou do sistema, mas o servidor não conseguiu 
+  encontrar uma mensagem de erro mais específica (ex: uma exceção não tratada no código da sua API).
+
+• 501 Not Implemented: O servidor não possui suporte para o método HTTP utilizado na requisição ou
+  não é capaz de processá-lo (ex: o cliente tentou usar o método PATCH em um servidor antigo que não
+  reconhece esse verbo).
+
+• 502 Bad Gateway: O servidor, ao agir como um gateway ou proxy, recebeu uma resposta inválida do 
+  servidor upstream (o servidor de aplicação real que está por trás dele).
+  Muito comum quando o Nginx ou Apache não consegue se comunicar com o Node.js, Python ou PHP.
+
+• 503 Service Unavailable: O servidor não está pronto para lidar com a requisição no momento.
+  Os motivos mais comuns são manutenções programadas ou sobrecarga de acessos no sistema.
+
+• 504 Gateway Timeout: O servidor, agindo como proxy ou gateway, não recebeu uma resposta a tempo
+  do servidor de aplicação upstream (ex: a API demorou tanto para processar um banco de dados que o
+  servidor de borda derrubou a conexão por tempo limite).
+
+• 505 HTTP Version Not Supported: O servidor não suporta a versão do protocolo HTTP que foi utilizada
+  na requisição do cliente.
+
+• 507 Insufficient Storage: O servidor não consegue criar ou modificar o recurso porque ficou totalmente
+  sem espaço de armazenamento em disco.
+
+• 508 Loop Detected: O servidor interrompeu uma operação porque detectou um loop infinito durante o 
+  processamento da requisição de forma encadeada.
+
+• 511 Network Authentication Required: O cliente precisa se autenticar para ganhar acesso à rede externa
+  (muito comum em redes Wi-Fi públicas de hotéis ou aeroportos que exigem um login antes de liberar a internet).
+
+
+-------------------------------------------------fim-----------------------------------------------
+

@@ -31,4 +31,8 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
     List<Role> findAllByUserEmailWithPermissions(
     @Param("email") String email
     );
+
+    // Esse método verifica se outro perfil já utiliza o nome informado,
+    // ignorando o próprio perfil durante uma atualização.
+    boolean existsByNameAndIdNot(String name, Long id);
 }

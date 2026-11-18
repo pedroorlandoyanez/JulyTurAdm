@@ -3,9 +3,28 @@
 
 ---------------------------------------------------------------------------------------------------
 Chat-Gpt: Etapa1-17-Implementacao AuthenticationManager Autenticacao Credenciais CustomUserDetailsService
-                    Usuario perfis permissoes JwtService Geracao Token Assinado HS256 - LoginResponse
-                    AccessToken · tokenType · expiresIn
+                    Usuario perfis permissoes JwtService Geracao Token Assinado HS256 - Revisão do
+                    SecurityConfig
 ---------------------------------------------------------------------------------------------------
+
+Revisão do SecurityConfig
+
+A implementação está coerente com nossa arquitetura:
+
+| Elemento                             | Avaliação                       |
+| ------------------------------------ | ------------------------------- |
+| `BCryptPasswordEncoder`              | Correto                         |
+| `DaoAuthenticationProvider`          | Correto                         |
+| `AuthenticationManager`              | Correto                         |
+| Sessão `STATELESS`                   | Correto                         |
+| Login público                        | Correto                         |
+| Demais endpoints protegidos          | Correto                         |
+| `JwtAuthenticationConverter`         | Correto                         |
+| Leitura de `roles`                   | Correto                         |
+| Leitura de `permissions`             | Correto                         |
+| Eliminação de autoridades duplicadas | Correto, usando `LinkedHashSet` |
+| ------------------------------------ | ------------------------------- |
+
 
 ---------------------------------------------------------------------------------------------------
 Chat-Gpt disse:
@@ -406,84 +425,39 @@ Vamos validar essa implementação antes de introduzir novas regras de autoriza�
 ---------------------------------------------------------------------------------------------------
 Pedro disse:
 
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 23.94 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.386 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 23, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  37.100 s
+[INFO] Finished at: 2026-11-05T19:56:38-03:00
+[INFO] ------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------------------------------
 Chat-Gpt disse:
 
+Mais uma etapa concluída com sucesso. Os 23 testes passaram, sem falhas, erros ou testes ignorados.
 
----------------------------------------------------------------------------------------------------
-Pedro disse:
+Isso confirma que a inclusão do conversor de JWT no `SecurityConfig` não quebrou os componentes já
+implementados. Temos agora:
 
+- Autenticação de credenciais com `AuthenticationManager` e BCrypt.
+- Geração de JWT com validade de 30 minutos.
+- API sem estado de sessão (`STATELESS`).
+- Conversão das claims `roles` e `permissions` em autoridades do Spring Security.
+- Tratamento de credenciais inválidas com HTTP 401.
 
-Pedro disse:
+O próximo passo é testar diretamente o conversor, sem depender de banco de dados ou de uma requisição
+HTTP.
 
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
-
-
----------------------------------------------------------------------------------------------------
-Chat-Gpt disse:
-
-
----------------------------------------------------------------------------------------------------
-Pedro disse:
+Continua no arquivo: [20261105_Chat-Gpt-Etapa1-18-testes do JwtAuthenticationConverter.txt]
 
 -------------------------------------------------fim-----------------------------------------------
 

@@ -14,4 +14,8 @@ public interface UserRoleRepository
     List<UserRole> findAllByRole_Id(Long roleId);
 
     boolean existsByUser_IdAndRole_Id(Long userId, Long roleId);
+
+    // Verifica se o perfil está associado a algum usuário.
+    boolean existsByRole_Id(Long roleId);
+
 }

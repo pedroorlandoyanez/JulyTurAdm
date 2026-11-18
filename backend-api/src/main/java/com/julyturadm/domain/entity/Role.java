@@ -41,4 +41,15 @@ public class Role {
         fetch = FetchType.LAZY
     )
     private List<RolePermission> rolePermissions = new ArrayList<>();
+
+    // Esse método permite criar um perfil sem expor publicamente o construtor da entidade.
+    public static Role create(String name) {
+
+        Role role = new Role();
+
+        role.setName(name);
+
+        return role;
+    }
+
 }

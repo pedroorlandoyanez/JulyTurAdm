@@ -13,6 +13,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import org.springframework.security.core.AuthenticationException;
 
+//---
+// A classe GlobalExceptionHandler já trata as duas classes de execeptions:
+//- BusinessException → HTTP 409 (Conflict).
+//- ResourceNotFoundException → HTTP 404 (Not Found).
+//---
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -74,23 +79,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(response);
     }
 
-    //@ExceptionHandler(AuthenticationException.class)
-    //public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
-    //        AuthenticationException exception,
-    //        HttpServletRequest request) {
-    //
-    //    HttpStatus status = HttpStatus.UNAUTHORIZED;
-    //
-    //    ApiErrorResponse response = new ApiErrorResponse(
-    //            LocalDateTime.now(),
-    //            status.value(),
-    //            "Unauthorized",
-    //            "E-mail ou senha inválidos.",
-    //            request.getRequestURI());
-    // 
-    //    return ResponseEntity.status(status).body(response);
-    //}
-
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
             AuthenticationException exception,
@@ -101,5 +89,4 @@ public class GlobalExceptionHandler {
                 "E-mail ou senha inválidos.",
                 request.getRequestURI());
     }
-
 }

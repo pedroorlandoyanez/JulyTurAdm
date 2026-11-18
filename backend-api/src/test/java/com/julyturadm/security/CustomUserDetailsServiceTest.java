@@ -20,6 +20,12 @@ import com.julyturadm.domain.entity.Permission;
 import com.julyturadm.domain.entity.Role;
 import com.julyturadm.domain.entity.RolePermission;
 
+//---
+// Rejeita usuário inexistente
+// Rejeita usuário desativado
+// Carrega usuário sem roles
+// Carrega usuário com role e permissões
+//---
 class CustomUserDetailsServiceTest {
 
     private UserRepository userRepository;
@@ -117,7 +123,7 @@ class CustomUserDetailsServiceTest {
 
         // Segunda permissão.
         Permission permissionUpdate = mock(Permission.class);
-        when(permissionUpdate.getName()).thenReturn("USER_UPDATE");
+        when(permissionUpdate.getName()).thenReturn("USER_READ");
 
         RolePermission rolePermissionUpdate = mock(RolePermission.class);
         when(rolePermissionUpdate.getPermission())
@@ -142,7 +148,7 @@ class CustomUserDetailsServiceTest {
                 .anyMatch(a -> a.getAuthority().equals("USER_CREATE")));
 
         assertTrue(userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("USER_UPDATE")));
+                .anyMatch(a -> a.getAuthority().equals("USER_READ")));
 
         assertEquals(3, userDetails.getAuthorities().size());
     }

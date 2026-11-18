@@ -1,0 +1,2785 @@
+﻿
+09/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt:Etapa1-23-Revisar_Permissoes:`MASTER_ADMIN`_e_`RH`.txt
+---------------------------------------------------------------------------------------------------
+
+O ChatGpt esta me questionando com esta mensagem:
+"Você está usando a versão gratuita do ChatGPT. Faça upgrade para ter acesso a modelos avançados,
+memória aprimorada e criação de imagens de maior qualidade." Se eu fizer, o upgrade para o Plus,
+vou ter que pagar a partir de quando?
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Próxima etapa: revisar as permissões do RH
+
+Antes de avançarmos para a autorização dos endpoints, precisamos discutir uma regra de negócio.
+
+Atualmente, o RH possui as mesmas quatro permissões do `MASTER_ADMIN`.
+Isso significa que pode criar, consultar, desabilitar e habilitar usuários.
+
+Minha recomendação inicial seria:
+
+| Permissão    | MASTER_ADMIN | RH  |
+| ------------ | ------------ | --- |
+| USER_CREATE  | Sim          | Sim |
+| USER_READ    | Sim          | Sim |
+| USER_DISABLE | Sim          | Não |
+| USER_ENABLE  | Sim          | Não |
+
+Assim, o RH administra os colaboradores, mas não controla a habilitação das contas.
+
+Você prefere manter as quatro permissões para o RH ou restringir `USER_DISABLE` e `USER_ENABLE`
+ao `MASTER_ADMIN`? Essa decisão definirá a próxima alteração no projeto.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Vamos analisar o que será definido para o role (grupo) do 'RH':
+Atualmente, a role 'RH' possui as mesmas quatro permissões do `MASTER_ADMIN`.
+Isso significa que o usuario que ganhar a role 'RH' pode criar, consultar, desabilitar e habilitar usuários.
+Esta definição esta certa porque segue o analise inicial proposto aqui.
+O que não pode acontecer é o usuario que ganhou a role "RH" interferir no escopo de permissoes do `MASTER_ADMIN`.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Sua observação esclarece uma distinção fundamental na arquitetura de segurança do JulyTurAdm:
+
+O RH pode administrar usuários, mas não pode administrar ou modificar as permissões do sistema.
+
+Portanto, podemos manter as quatro permissões atuais para os dois perfis.
+
+O problema não está nas permissões de usuários, mas em quem terá autoridade para gerenciar o 
+catálogo de permissões e suas associações.
+
+1. Separação de responsabilidades
+
+Vamos estabelecer esta regra:
+
+| Responsabilidade               | MASTER_ADMIN | RH  |
+| ------------------------------ | ------------ | --- |
+| Criar usuários                 | Sim          | Sim |
+| Consultar usuários             | Sim          | Sim |
+| Desabilitar usuários           | Sim          | Sim |
+| Habilitar usuários             | Sim          | Sim |
+| Criar perfis (roles)           | Sim          | Não |
+| Alterar perfis existentes      | Sim          | Não |
+| Criar permissões               | Sim          | Não |
+| Alterar permissões existentes  | Sim          | Não |
+| Associar permissões aos perfis | Sim          | Não |
+| Atribuir perfis aos usuários   | Sim          | Não |
+
+A última linha merece atenção: a atribuição de perfis aos usuários também precisa ser protegida.
+
+Caso contrário, um usuário RH poderia conceder privilégios administrativos a outra pessoa.
+
+2. Uma distinção importante na implementação
+
+Hoje temos quatro permissões:
+
+```
+USER_CREATE
+USER_READ
+USER_DISABLE
+USER_ENABLE
+```
+
+Elas controlam operações sobre usuários.
+
+Precisaremos futuramente criar outro conjunto de permissões para administrar a segurança
+do sistema, por exemplo:
+
+```
+ROLE_CREATE
+ROLE_READ
+ROLE_UPDATE
+ROLE_DELETE
+
+PERMISSION_CREATE
+PERMISSION_READ
+PERMISSION_UPDATE
+PERMISSION_DELETE
+
+USER_ROLE_ASSIGN
+USER_ROLE_REMOVE
+
+ROLE_PERMISSION_ASSIGN
+ROLE_PERMISSION_REMOVE
+```
+
+Essas permissões administrativas não devem ser concedidas ao RH.
+
+3. Proteção em duas camadas
+
+Não basta esconder funcionalidades na interface.
+
+Precisamos implementar:
+
+- Backend: Spring Security deve impedir operações administrativas feitas por usuários RH, mesmo que
+  tentem acessar diretamente os endpoints.
+
+- Camada de serviço: os métodos que alteram perfis, permissões e associações também devem validar
+  as autorizações.
+
+Além disso, não devemos permitir que um administrador remova acidentalmente suas próprias 
+capacidades administrativas ou deixe o sistema sem um administrador válido.
+
+4. Decisão para o estado atual do projeto
+
+Manter configuração atual
+
+Não precisamos alterar o `DataInitializer` agora.
+
+Ele continuará criando:
+
+- `MASTER_ADMIN` com as quatro permissões de usuários.
+- `RH` com as mesmas quatro permissões de usuários.
+
+Mais adiante, acrescentaremos as permissões administrativas e as concederemos exclusivamente ao
+`MASTER_ADMIN`.
+
+Minha recomendação para a próxima etapa: antes de implementar novos endpoints, vamos formalizar
+a matriz de autorização do JulyTurAdm.
+
+Assim, teremos uma política de segurança clara para orientar os próximos serviços e controllers.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+O projeto administrativo te por objetivo o controle de acessos que deve atender a uma empresa de 
+pequeno e medio porte, pela minha experiencia esses tipos de empresas podem ter de 10 a 200 
+funcionarios, cada funcionario é relacionado a um setor.
+Toda empresa de pequeno e medio porte com certeza tem um `MASTER_ADMIN` que é a pessoa que possui
+um conhecimento de informatica a nivel de banco de dados e conhecimento operacional de como está 
+organizada a estrutura funcional da empresa.
+
+Vamos para um exemplo mais operacional, como nasce o `MASTER_ADMIN`:
+Aqui entra um personagem importante que é o analista que possui o conhecimento do sistema administrativo.
+O analista entrega um documento para o DBA responsavel do banco de dados da empresa, este caso de
+uso possui todo o processo para cadastrar o usuario `MASTER_ADMIN`, as roles e as permissoes.
+1- O DBA deve criar as 4 permissoes USER_CREATE, USER_READ, USER_DISABLE e USER_ENABLE.
+2- O DBA deve criar a role `ADMIN` e as demais roles.
+3- O DBA deve relacionar as permissoes à role `ADMIN` e relacionar as permissoes as demais roles.
+4- O DBA deve criar o usuario `MASTER_ADMIN` e relacionar a role `ADMIN` ao usuario `MASTER_ADMIN`.
+
+Como nasce o usuario do `RH`:
+1- o `MASTER_ADMIN` deve relacionar as permissoes à role `RH`.
+2- o `MASTER_ADMIN` deve criar o usuario `RH` e relacionar a role `RH` ao usuario do `RH`.
+
+Como nascen os usuario do sistema:
+A entrada de um usuario ao sistema é de responsabilidade do setor de RH, é ele que vai escolher
+se este usuario pertence ao setor de Contas a Pagar, Contabilidade, Cobranças ou Vendas.
+
+No caso, vamos criar o usuario do setor de `COBRANÇAS`:
+1- o usuario do `RH` deve criar o usuario `COBRANÇAS` e relacionar a role `COBRANÇAS` ao usuario do
+`COBRANÇAS`.
+
+E se um gerente quer ter mais privilegios que um usuario do seu setor?
+Neste caso deve encaminhar o pedido para o RH, o RH passa o pedido para o `MASTER_ADMIN`, o `MASTER_ADMIN`
+deve avaliar a necessidade deste pedido, se for aceito, o `MASTER_ADMIN` envia a ordem para que o 
+DBA para criar a nova permissão.
+
+Conforme o estado atual do projeto, eu entendo que podemos manter as configuração atuais, não precisamos
+alterar a classe DataInitializer esta classe pode ser o DBA do sistema ou seja pode cadastrar o usuario
+`MASTER_ADMIN` (os dados são conhecidos pelo administrador do sistema), cadastrar as roles 
+(`ADMIN`, `RH`, `CONTAS PAGAR`, `COBRANÇA`, `CONTABILIDADE`, `VENDAS`), cadastrar as 4 permissoes
+`USER_CREATE`, `USER_READ`, `USER_DISABLE` e `USER_ENABLE` e relacionar as 4 permissoes a cada role.
+Avalie este analise e gere seu parecer.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Sua análise apresenta uma visão operacional bastante coerente com a realidade de pequenas e médias
+empresas.
+O ponto mais importante é que você está definindo não apenas quem pode acessar o sistema, mas quem
+tem autoridade para administrar a estrutura de segurança da empresa e quem é responsável pela gestão
+dos funcionários.
+
+Minha avaliação é favorável à arquitetura proposta, mas existem alguns pontos que eu ajustaria antes
+de consolidarmos o modelo no código.
+
+1. Avaliação geral da proposta
+
+Concordo com a separação dos três personagens:
+
+- DBA: responsável pela preparação inicial da estrutura de segurança do sistema, seguindo as 
+  instruções do analista.
+
+- MASTER_ADMIN: responsável pela administração dos acessos e pela aprovação das alterações na
+  estrutura de permissões.
+
+- RH: responsável pela entrada dos funcionários no sistema e pela atribuição dos perfis 
+  funcionais.
+
+Essa separação é importante porque evita que o RH tenha autoridade para modificar as regras de
+segurança que ele próprio utiliza.
+
+Também considero adequada a decisão de utilizar a role `ADMIN`, em vez de `MASTER_ADMIN`, para
+representar o perfil administrativo.
+
+Temos, portanto, duas coisas diferentes:
+
+| Elemento | Identificação | Significado                                    |
+| -------- | ------------- | ---------------------------------------------- |
+| Usuário  | MASTER_ADMIN  | Conta da pessoa responsável pela administração |
+| Role     | ADMIN         | Perfil de acesso administrativo                |
+| Usuário  | RH            | Conta da pessoa responsável pelo RH            |
+| Role     | RH            | Perfil de acesso do setor de Recursos Humanos  |
+
+Essa distinção deve ser mantida em todo o projeto.
+
+2. Como eu organizaria a inicialização do sistema
+
+Sua proposta é:
+
+1. DBA cadastra quatro permissões.
+2. DBA cadastra as seis roles.
+3. DBA associa as permissões às roles.
+4. DBA cria o usuário MASTER_ADMIN e associa a role ADMIN.
+
+As seis roles seriam:
+
+| Role          | Finalidade                          |
+| ------------- | ----------------------------------- |
+| ADMIN         | Administração dos acessos           |
+| RH            | Gestão dos usuários e colaboradores |
+| CONTAS_PAGAR  | Acesso ao setor de Contas a Pagar   |
+| COBRANCA      | Acesso ao setor de Cobranças        |
+| CONTABILIDADE | Acesso ao setor de Contabilidade    |
+| VENDAS        | Acesso ao setor de Vendas           |
+
+A estrutura é adequada como ponto de partida.
+
+Entretanto, existe uma questão importante na distribuição das quatro permissões.
+
+3. Atenção à distribuição das permissões
+
+Você propôs relacionar as quatro permissões a todas as seis roles:
+
+- `USER_CREATE`
+- `USER_READ`
+- `USER_DISABLE`
+- `USER_ENABLE`
+
+Eu não recomendo essa distribuição.
+
+Imagine que um funcionário do setor de Cobranças receba a role `COBRANCA`.
+
+Se essa role possuir `USER_DISABLE`, o funcionário poderá receber autorização para desabilitar
+usuários, dependendo de como implementarmos o controle dos endpoints.
+
+Isso não corresponde ao processo operacional que você descreveu, no qual essa responsabilidade
+pertence ao RH.
+
+Minha recomendação seria:
+
+| Permissão    | ADMIN | RH  | CONTAS_PAGAR | COBRANCA | CONTABILIDADE | VENDAS |
+| ------------ | ----- | --- | ------------ | -------- | ------------- | ------ |
+| USER_CREATE  | Sim   | Sim | Não          | Não      | Não           | Não    |
+| USER_READ    | Sim   | Sim | Não          | Não      | Não           | Não    |
+| USER_DISABLE | Sim   | Sim | Não          | Não      | Não           | Não    |
+| USER_ENABLE  | Sim   | Sim | Não          | Não      | Não           | Não    |
+
+Assim, mantemos integralmente as quatro permissões para ADMIN e RH.
+
+Os demais setores não recebem permissões de administração de usuários.
+
+Isso não significa que esses funcionários não poderão acessar seus módulos.
+
+Significa apenas que ainda precisamos definir as permissões próprias de cada módulo.
+
+4. Como funcionará a entrada dos funcionários:
+
+Consideremos seu exemplo do setor de Cobranças.
+
+Fluxo de criação de um funcionário.
+
+1. RH acessa o sistema
+   O usuário RH está autenticado e possui as permissões de administração de usuários.
+
+2. RH cadastra o funcionário
+   Informa nome, e-mail e demais dados necessários.
+
+3. RH seleciona o perfil
+   Seleciona `COBRANCA` entre os perfis disponíveis.
+
+4. Sistema associa o perfil
+   Registra a associação entre o funcionário e a role `COBRANCA`.
+
+5. Funcionário acessa o sistema
+   Suas autorizações são determinadas pelas permissões associadas à role.
+
+Um detalhe importante: o RH pode atribuir as roles que o MASTER_ADMIN disponibilizou, mas não pode
+criar novas roles nem modificar suas permissões.
+
+5. O processo de solicitação de novas permissões
+
+Também concordo com o fluxo que você descreveu para um gerente que precisa de privilégios adicionais.
+
+Exemplo: o gerente de Cobranças precisa consultar informações que os demais funcionários não podem consultar.
+
+O processo seria:
+
+1. Gerente solicita o privilégio ao RH.
+2. RH encaminha a solicitação ao MASTER_ADMIN.
+3. MASTER_ADMIN avalia a necessidade.
+4. Se aprovada, solicita ao DBA a criação da nova permissão.
+5. A nova permissão é cadastrada no sistema.
+6. MASTER_ADMIN associa a permissão à role adequada.
+
+Há uma distinção importante: o DBA prepara a estrutura técnica, mas a decisão sobre quem recebe o 
+privilégio continua sendo do MASTER_ADMIN.
+
+Isso preserva a separação de responsabilidades.
+
+6. Um ponto arquitetural que precisamos considerar: setor não é necessariamente role
+
+Aqui está uma observação que considero particularmente importante para o futuro do JulyTurAdm.
+
+Você está utilizando as roles para representar os setores da empresa:
+
+- CONTAS_PAGAR
+- COBRANCA
+- CONTABILIDADE
+- VENDAS
+
+Isso funciona inicialmente, mas setor organizacional e perfil de acesso são conceitos diferentes.
+
+Por exemplo:
+
+Uma empresa pode ter:
+
+- 15 funcionários no setor de Cobranças.
+- 1 gerente de Cobranças.
+- 14 operadores de Cobranças.
+
+Todos pertencem ao mesmo setor, mas o gerente pode precisar de privilégios adicionais.
+
+Uma estrutura mais flexível seria:
+
+| Conceito | Exemplo           |
+| -------- | ----------------- |
+| Setor    | COBRANCA          |
+| Role     | COBRANCA_OPERADOR |
+| Role     | COBRANCA_GERENTE  |
+| Usuário  | Funcionário A     |
+| Usuário  | Gerente B         |
+
+Assim, o setor identifica a estrutura organizacional e a role define o perfil de acesso.
+
+Não precisamos implementar essa separação agora, mas devemos evitar que o modelo atual impeça essa
+evolução.
+
+7. O que eu mudaria no DataInitializer
+
+Sua ideia de utilizar o `DataInitializer` para preparar os dados iniciais é válida, mas faria uma separação.
+
+DataInitializer — catálogo inicial
+
+- Criar as seis roles.
+- Criar as quatro permissões.
+- Associar as permissões às roles ADMIN e RH.
+- Não criar contas de funcionários.
+
+Bootstrap do MASTER_ADMIN — primeiro acesso
+- Criar a conta MASTER_ADMIN.
+- Gerar ou receber a senha inicial de maneira segura.
+- Aplicar BCrypt antes de armazenar a senha.
+- Associar a role ADMIN.
+- Impedir a criação de uma segunda conta inicial inadvertidamente.
+
+Por que separar?
+
+Porque o cadastro das roles e permissões é uma operação de preparação do sistema.
+
+Já a criação do usuário MASTER_ADMIN envolve credenciais e precisa de cuidados adicionais.
+
+Não devemos colocar uma senha fixa no código, no Git ou em um arquivo de configuração versionado.
+
+Podemos utilizar uma variável de ambiente protegida e um procedimento de inicialização de uso único.
+
+8. Meu parecer final
+
+Aprovar a direção arquitetural.
+
+Considero que a proposta está adequada ao público-alvo do JulyTurAdm: empresas com aproximadamente
+10 a 200 funcionários.
+
+Minha recomendação é manter o seguinte modelo:
+
+| Elemento            | Decisão                                                  |
+| ------------------- | -------------------------------------------------------- |
+| Roles iniciais      | ADMIN, RH, CONTAS_PAGAR, COBRANCA, CONTABILIDADE, VENDAS |
+| Permissões iniciais | USER_CREATE, USER_READ, USER_DISABLE, USER_ENABLE        |
+| ADMIN               | Recebe as quatro permissões                              |
+| RH                  | Recebe as quatro permissões                              |
+| Demais setores      | Não recebem permissões de administração de usuários      |
+| MASTER_ADMIN        | Usuário associado à role ADMIN                           |
+| RH                  | Usuário associado à role RH                              |
+| DBA                 | Responsável pela preparação técnica inicial              |
+| MASTER_ADMIN        | Responsável pela administração dos acessos               |
+
+Minha conclusão: podemos manter a arquitetura atual de cinco tabelas
+(`users`, `roles`, `permissions`, `users_roles` e `roles_permissions`).
+
+Ela atende ao primeiro estágio do projeto.
+
+Não vejo necessidade de introduzir agora uma estrutura mais complexa.
+
+Mas existem dois cuidados fundamentais para a próxima implementação:
+
+1. O RH não pode modificar o catálogo de permissões, as roles ou as associações de segurança.
+
+2. Um funcionário de um setor não pode receber permissões administrativas simplesmente por possuir
+a role daquele setor.
+
+O modelo deve garantir isso no backend, não apenas na interface.
+
+Assim, teremos uma base consistente para evoluir o JulyTurAdm sem precisar reconstruir sua estrutura
+de segurança quando surgirem novos setores, gerentes e necessidades de acesso.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Conforme parecer final, vamos continuar com a arquitectura atual de 5 tabelas, foram observados dois
+pontos que devem ser implementados com muito cuidado:
+
+1. O RH não pode modificar o catálogo de permissões, as roles ou as associações de segurança.
+2. Um funcionário de um setor não pode receber permissões administrativas simplesmente por possuir
+   a role daquele setor.
+O modelo deve garantir isso no backend, não apenas na interface.
+Desta maneira vamos para o proximo passo.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Vamos avançar. Com as decisões que acabamos de consolidar, o próximo passo é ajustar o catálogo 
+inicial de roles e permissões, antes de implementar as regras de autorização dos endpoints.
+
+A arquitetura continuará com as cinco tabelas existentes.
+
+Não precisamos criar novas entidades ou alterar os relacionamentos JPA.
+
+1. Consolidar a regra de acesso
+
+Primeiro, precisamos distinguir duas associações:
+
+- `roles_permissions`: define quais permissões pertencem a cada role.
+   Somente ADMIN poderá administrar essas associações.
+
+- `users_roles`: define quais roles pertencem a cada usuário.
+   O RH poderá atribuir os perfis funcionais disponíveis, mas não poderá atribuir a role `ADMIN`.
+
+Essa distinção permite que o RH cadastre funcionários e escolha seus setores sem adquirir autoridade
+administrativa.
+
+A matriz inicial será:
+
+| Role          | USER_CREATE | USER_READ | USER_DISABLE | USER_ENABLE |
+| ------------- | ----------- | --------- | ------------ | ----------- |
+| ADMIN         | Sim         | Sim       | Sim          | Sim         |
+| RH            | Sim         | Sim       | Sim          | Sim         |
+| CONTAS_PAGAR  | Não         | Não       | Não          | Não         |
+| COBRANCA      | Não         | Não       | Não          | Não         |
+| CONTABILIDADE | Não         | Não       | Não          | Não         |
+| VENDAS        | Não         | Não       | Não          | Não         |
+
+As quatro permissões são exclusivamente para administração de usuários.
+
+As permissões operacionais de cada setor serão definidas posteriormente.
+
+2. Alterar o DataInitializer
+
+Vamos substituir a implementação atual por esta versão.
+
+Arquivo: `src/main/java/com/julyturadm/initializer/DataInitializer.java`
+
+```
+
+package com.julyturadm.initializer;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+
+import lombok.RequiredArgsConstructor;
+
+//---
+// Proteção inicial, quando formos executar o cadastro dos dados, também 
+// verificaremos o banco de destino e a estratégia de execução.
+//---
+@Component
+@ConditionalOnProperty(
+        prefix = "julyturadm.initializer",
+        name = "enabled",
+        havingValue = "true"
+)
+@RequiredArgsConstructor
+public class DataInitializer implements CommandLineRunner {
+
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
+
+    //--
+    // - `@Transactional` garante que a inicialização seja executada como uma única transação: se ocorrer
+    //                    uma falha, as alterações serão revertidas.
+    //---
+    @Override
+    @Transactional
+    public void run(String... args) {
+
+        System.out.println("Inicializando dados básicos do JulyTurAdm...");
+
+        // 1. Criar ou recuperar as roles.
+        Role admin = findOrCreateRole("ADMIN");
+        Role rh = findOrCreateRole("RH");
+
+        findOrCreateRole("CONTAS_PAGAR");
+        findOrCreateRole("COBRANCA");
+        findOrCreateRole("CONTABILIDADE");
+        findOrCreateRole("VENDAS");
+
+        // 2. Criar ou recuperar as permissões.
+        Permission userCreate = findOrCreatePermission("USER_CREATE");
+        Permission userRead = findOrCreatePermission("USER_READ");
+        Permission userDisable = findOrCreatePermission("USER_DISABLE");
+        Permission userEnable = findOrCreatePermission("USER_ENABLE");
+
+        // 3. Associar permissões administrativas de usuários.
+        // Somente ADMIN e RH recebem essas quatro permissões.
+        grantPermission(admin, userCreate);
+        grantPermission(admin, userRead);
+        grantPermission(admin, userDisable);
+        grantPermission(admin, userEnable);
+
+        grantPermission(rh, userCreate);
+        grantPermission(rh, userRead);
+        grantPermission(rh, userDisable);
+        grantPermission(rh, userEnable);
+
+        System.out.println("Dados básicos inicializados com sucesso.");
+    }
+      
+    // `findOrCreateRole()` e `findOrCreatePermission()` evitam criar registros duplicados.
+    private Role findOrCreateRole(String name) {
+
+        return roleRepository.findByName(name)
+                .orElseGet(() -> roleRepository.save(Role.create(name)));
+    }
+
+    // `findOrCreateRole()` e `findOrCreatePermission()` evitam criar registros duplicados.
+    private Permission findOrCreatePermission(String name) {
+
+        return permissionRepository.findByName(name)
+                .orElseGet(() -> permissionRepository.save(Permission.create(name)));
+    }
+
+    // - `grantPermission()` verifica se a associação já existe antes de gravá-la.
+    // - `RolePermission.create()` recebe entidades já persistidas, com seus IDs disponíveis.
+    private void grantPermission(Role role, Permission permission) {
+
+        boolean alreadyExists =
+                rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                        role.getId(),
+                        permission.getId()
+                );
+
+        if (!alreadyExists) {
+            RolePermission association =
+                    RolePermission.create(role, permission);
+
+            rolePermissionRepository.save(association);
+        }
+    }
+}
+
+```
+
+Observe que não estamos criando o usuário `MASTER_ADMIN` ainda.
+
+Essa etapa terá um procedimento próprio de bootstrap, com credenciais protegidas e associação
+à role `ADMIN`.
+
+Não colocaremos senha fixa no código.
+
+3. Atualizar o teste de integração
+
+O teste anterior procura a role `MASTER_ADMIN`, que agora não será mais uma role.
+
+Precisamos atualizar `DataInitializerIntegrationTest.java`.
+
+No primeiro teste, substitua o método por:
+
+```
+
+@Test
+void shouldCreateInitialRolesPermissionsAndRelationships() {
+
+    assertTrue(roleRepository.existsByName("ADMIN"));
+    assertTrue(roleRepository.existsByName("RH"));
+    assertTrue(roleRepository.existsByName("CONTAS_PAGAR"));
+    assertTrue(roleRepository.existsByName("COBRANCA"));
+    assertTrue(roleRepository.existsByName("CONTABILIDADE"));
+    assertTrue(roleRepository.existsByName("VENDAS"));
+
+    assertTrue(permissionRepository.existsByName("USER_CREATE"));
+    assertTrue(permissionRepository.existsByName("USER_READ"));
+    assertTrue(permissionRepository.existsByName("USER_DISABLE"));
+    assertTrue(permissionRepository.existsByName("USER_ENABLE"));
+
+    var admin = roleRepository.findByName("ADMIN").orElseThrow();
+    var rh = roleRepository.findByName("RH").orElseThrow();
+
+    assertEquals(4,
+            rolePermissionRepository.findAllByRole_Id(admin.getId()).size());
+
+    assertEquals(4,
+            rolePermissionRepository.findAllByRole_Id(rh.getId()).size());
+
+    for (String roleName : new String[]{
+            "CONTAS_PAGAR",
+            "COBRANCA",
+            "CONTABILIDADE",
+            "VENDAS"
+    }) {
+        var role = roleRepository.findByName(roleName).orElseThrow();
+
+        assertEquals(0,
+                rolePermissionRepository.findAllByRole_Id(role.getId()).size());
+    }
+}
+
+```
+
+O teste de idempotência pode permanecer como está.
+
+4. Executar os testes
+
+Depois das alterações, execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=DataInitializerIntegrationTest test
+```
+
+Resultado esperado
+
+- 6 roles.
+- 4 permissões.
+- 8 associações.
+- 4 roles funcionais sem permissões administrativas.
+- Segunda execução sem duplicações.
+
+Não altere `initializer.enabled: false` no `application.yml`.
+
+Quando os dois testes passarem, avançaremos para a implementação das restrições no backend: autorização por role e permissão, incluindo a proteção contra atribuição da role `ADMIN` pelo RH.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=DataInitializerIntegrationTest test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.initializer.DataInitializerIntegrationTest
+---
+2026-11-10T15:23:05.520-03:00  INFO 61024 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-10T15:23:05.870-03:00  INFO 61024 --- [julyturadm-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-11-10T15:23:06.505-03:00  INFO 61024 --- [julyturadm-backend] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-11-10T15:23:06.505-03:00  WARN 61024 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+2026-11-10T15:23:07.363-03:00  INFO 61024 --- [julyturadm-backend] [           main] c.j.i.DataInitializerIntegrationTest     : Started DataInitializerIntegrationTest in 23.147 seconds (process running for 25.571)
+Inicializando dados básicos do JulyTurAdm...
+Dados básicos inicializados com sucesso.
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+Inicializando dados básicos do JulyTurAdm...
+Dados básicos inicializados com sucesso.
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 25.82 s -- in com.julyturadm.initializer.DataInitializerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  37.885 s
+[INFO] Finished at: 2026-11-10T15:23:16-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Excelente! Os dois testes de integração do `DataInitializerIntegrationTest` passaram.
+
+Isso confirma que:
+
+1. As seis roles são criadas corretamente:
+   - `ADMIN`
+   - `RH`
+   - `CONTAS_PAGAR`
+   - `COBRANCA`
+   - `CONTABILIDADE`
+   - `VENDAS`
+
+2. As quatro permissões de gestão de usuários são criadas:
+   - `USER_CREATE`
+   - `USER_READ`
+   - `USER_DISABLE`
+   - `USER_ENABLE`
+
+3. `ADMIN` e `RH` recebem as quatro permissões.
+
+4. As quatro roles funcionais não recebem permissões de gestão de usuários.
+
+5. Executar novamente o inicializador não duplica os registros.
+
+Próxima etapa: autorização dos usuários
+
+Agora precisamos garantir que as regras definidas no banco sejam efetivamente aplicadas
+pelo Spring Security.
+
+Minha sugestão é seguir esta sequência:
+
+1. Revisar o `JwtAuthenticationConverter`: confirmar que as permissões das roles são convertidas
+   em authorities do Spring Security.
+
+2. Proteger os endpoints de usuários: usar `hasAuthority("USER_CREATE")`, `hasAuthority("USER_READ")`
+   etc.
+
+3. Proteger a atribuição de roles: RH poderá atribuir roles funcionais, mas nunca `ADMIN`.
+
+4. Restringir o catálogo de segurança: somente ADMIN poderá alterar roles, permissions e associações
+   em `roles_permissions`.
+
+Vamos começar pelo primeiro item, sem alterar código antes de conferir a implementação atual.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/security/JwtAuthenticationConverter.java
+```
+
+Se o arquivo estiver em outro pacote ou tiver outro nome, mostre também:
+
+```
+find src/main/java/com/julyturadm -iname '*Jwt*' -o -iname '*SecurityConfig*'
+```
+
+Assim avançamos sem modificar algo que já esteja funcionando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/security/JwtAuthenticationConverter.java
+cat: src/main/java/com/julyturadm/security/JwtAuthenticationConverter.java: Arquivo ou diretório inexistente
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm -iname '*Jwt*' -o -iname '*SecurityConfig*'
+src/main/java/com/julyturadm/config/JwtConfig.java
+src/main/java/com/julyturadm/config/SecurityConfig.java
+src/main/java/com/julyturadm/security/JwtService.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito.
+
+Encontramos os arquivos, mas o `JwtAuthenticationConverter` não está no pacote `security` — e também
+não apareceu na busca com esse nome.
+
+Antes de criar qualquer classe, vamos verificar como a autenticação JWT está configurada atualmente.
+
+É possível que a conversão das permissões esteja implementada diretamente no `SecurityConfig` ou 
+em outro componente.
+
+Execute estes comandos e compartilhe o resultado:
+
+1. SecurityConfig.java
+
+```
+cat src/main/java/com/julyturadm/config/SecurityConfig.java
+```
+
+2. JwtConfig.java
+
+```
+cat src/main/java/com/julyturadm/config/JwtConfig.java
+```
+
+3. JwtService.java
+
+```
+cat src/main/java/com/julyturadm/security/JwtService.java
+```
+
+4. Localizar referências à conversão de authorities
+
+```
+grep -RniE 'JwtAuthenticationConverter|JwtGrantedAuthoritiesConverter|GrantedAuthority|authorities|setAuthorities' src/main/java/com/julyturadm
+```
+
+Com esses arquivos, vamos identificar se as permissões `USER_CREATE`, `USER_READ`,
+`USER_DISABLE` e `USER_ENABLE` já chegam ao contexto de segurança após a validação do token.
+
+Importante: por enquanto, não crie nem altere arquivos.
+
+Primeiro vamos entender a implementação existente para evitar duplicar configurações.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/config/SecurityConfig.java
+package com.julyturadm.config;
+
+import com.julyturadm.security.CustomUserDetailsService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.http.HttpMethod;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    // `CustomUserDetailsService`: localiza o usuário e suas autoridades.
+    private final CustomUserDetailsService userDetailsService;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(
+            PasswordEncoder passwordEncoder) {
+
+        // `DaoAuthenticationProvider`: valida as credenciais utilizando BCrypt.
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+
+        provider.setPasswordEncoder(passwordEncoder);
+
+        return provider;
+    }
+
+    // ---
+    // O metodo `AuthenticationManager` será o ponto de entrada para validar as
+    // credenciais:
+    // `AuthenticationService → AuthenticationManager → DaoAuthenticationProvider →
+    // CustomUserDetailsService → UserRepository`
+    // O `PasswordEncoder` fará a comparação com o hash BCrypt armazenado no banco.
+    // ---
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration)
+            throws Exception {
+
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationProvider authenticationProvider,
+            JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+
+        http
+                .csrf(csrf -> csrf.disable())
+
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .authenticationProvider(authenticationProvider)
+
+                // ----------------------------------------
+                // Requisição Acesso
+                // ----------------------------------------
+                // POST /api/auth/login Público
+                // POST /api/users Protegido
+                // GET /api/users Protegido
+                // PATCH /api/users/{id}/disable Protegido
+                // Demais endpoints Protegido
+                // ----------------------------------------
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/auth/login")
+                        .permitAll()
+                        .anyRequest().authenticated())
+
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+                        .authenticationEntryPoint(
+                                new BearerTokenAuthenticationEntryPoint())
+                        .accessDeniedHandler(
+                                new BearerTokenAccessDeniedHandler()));
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+
+        Converter<Jwt, Collection<GrantedAuthority>> authoritiesConverter = jwt -> {
+
+            Set<GrantedAuthority> authorities = new LinkedHashSet<>();
+
+            addClaimAuthorities(jwt, "roles", authorities);
+            addClaimAuthorities(jwt, "permissions", authorities);
+
+            return authorities;
+        };
+
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+
+        return converter;
+    }
+
+    private void addClaimAuthorities(
+            Jwt jwt,
+            String claimName,
+            Set<GrantedAuthority> authorities) {
+
+        Object claim = jwt.getClaims().get(claimName);
+
+        if (claim instanceof Collection<?> values) {
+            values.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .map(SimpleGrantedAuthority::new)
+                    .forEach(authorities::add);
+        }
+    }
+
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/config/JwtConfig.java
+package com.julyturadm.config;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
+import java.util.Base64;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+
+// O objetivo será configurar dois componentes:
+//- JwtEncoder: assina os tokens emitidos pela aplicação.
+//- JwtDecoder: valida os tokens recebidos pela API.
+@Configuration
+public class JwtConfig {
+
+    @Value("${julyturadm.security.jwt.secret}")
+    private String jwtSecret;
+
+    // jwtSecretKey()	Decodifica a chave Base64
+    @Bean
+    public SecretKey jwtSecretKey() {
+
+        byte[] decodedKey = Base64.getDecoder().decode(jwtSecret);
+
+        return new SecretKeySpec(
+            decodedKey,
+            "HmacSHA256"
+        );
+    }
+
+    // jwtEncoder()	Assina os tokens com HS256
+    @Bean
+    public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
+
+        return new NimbusJwtEncoder(
+            new ImmutableSecret<>(jwtSecretKey)
+        );
+    }
+
+    // jwtDecoder()	Valida a assinatura dos tokens com HS256
+    @Bean
+    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {
+
+        return NimbusJwtDecoder
+            .withSecretKey(jwtSecretKey)
+            .macAlgorithm(MacAlgorithm.HS256)
+            .build();
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/security/JwtService.java
+package com.julyturadm.security;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+
+//---
+//A classe JwtService.java gera tokens JWT assinados com HS256, incluindo:
+//- Identificação do usuário (sub).
+//- Data de emissão (iat).
+//- Expiração em 30 minutos (exp).
+//- Papéis funcionais (roles).
+//- Permissões granulares (permissions).
+//---
+// `JwtEncoder`: assina os tokens com HS256.
+// `JwtDecoder`: valida a assinatura com HS256.
+// `JWT_SECRET`: é carregado por variável de ambiente, sem expor a chave no código.
+// O `application.yml`: está apontando corretamente para `${JWT_SECRET}`.
+//---
+@Service
+@RequiredArgsConstructor
+public class JwtService {
+
+    private static final long TOKEN_EXPIRATION_MINUTES = 30;
+
+    private final JwtEncoder jwtEncoder;
+
+    public String generateToken(UserDetails userDetails) {
+
+        Instant issuedAt = Instant.now();
+
+        Instant expiresAt = issuedAt.plus(
+                TOKEN_EXPIRATION_MINUTES,
+                ChronoUnit.MINUTES
+        );
+
+        List<String> authorities = userDetails.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<String> roles = authorities.stream()
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .toList();
+
+        List<String> permissions = authorities.stream()
+                .filter(authority -> !authority.startsWith("ROLE_"))
+                .toList();
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject(userDetails.getUsername())
+                .issuedAt(issuedAt)
+                .expiresAt(expiresAt)
+                .claim("roles", roles)
+                .claim("permissions", permissions)
+                .build();
+
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+
+        return jwtEncoder.encode(
+                JwtEncoderParameters.from(header, claims)
+        ).getTokenValue();
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -RniE 'JwtAuthenticationConverter|JwtGrantedAuthoritiesConverter|GrantedAuthority|authorities|setAuthorities' src/main/java/com/julyturadm
+src/main/java/com/julyturadm/config/SecurityConfig.java:30:import org.springframework.security.core.GrantedAuthority;
+src/main/java/com/julyturadm/config/SecurityConfig.java:31:import org.springframework.security.core.authority.SimpleGrantedAuthority;
+src/main/java/com/julyturadm/config/SecurityConfig.java:33:import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+src/main/java/com/julyturadm/config/SecurityConfig.java:78:            JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+src/main/java/com/julyturadm/config/SecurityConfig.java:105:                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+src/main/java/com/julyturadm/config/SecurityConfig.java:115:    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+src/main/java/com/julyturadm/config/SecurityConfig.java:117:        Converter<Jwt, Collection<GrantedAuthority>> authoritiesConverter = jwt -> {
+src/main/java/com/julyturadm/config/SecurityConfig.java:119:            Set<GrantedAuthority> authorities = new LinkedHashSet<>();
+src/main/java/com/julyturadm/config/SecurityConfig.java:121:            addClaimAuthorities(jwt, "roles", authorities);
+src/main/java/com/julyturadm/config/SecurityConfig.java:122:            addClaimAuthorities(jwt, "permissions", authorities);
+src/main/java/com/julyturadm/config/SecurityConfig.java:124:            return authorities;
+src/main/java/com/julyturadm/config/SecurityConfig.java:127:        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+src/main/java/com/julyturadm/config/SecurityConfig.java:128:        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+src/main/java/com/julyturadm/config/SecurityConfig.java:133:    private void addClaimAuthorities(
+src/main/java/com/julyturadm/config/SecurityConfig.java:136:            Set<GrantedAuthority> authorities) {
+src/main/java/com/julyturadm/config/SecurityConfig.java:144:                    .map(SimpleGrantedAuthority::new)
+src/main/java/com/julyturadm/config/SecurityConfig.java:145:                    .forEach(authorities::add);
+src/main/java/com/julyturadm/security/JwtService.java:7:import org.springframework.security.core.GrantedAuthority;
+src/main/java/com/julyturadm/security/JwtService.java:48:        List<String> authorities = userDetails.getAuthorities()
+src/main/java/com/julyturadm/security/JwtService.java:50:                .map(GrantedAuthority::getAuthority)
+src/main/java/com/julyturadm/security/JwtService.java:55:        List<String> roles = authorities.stream()
+src/main/java/com/julyturadm/security/JwtService.java:59:        List<String> permissions = authorities.stream()
+src/main/java/com/julyturadm/security/CustomUserDetailsService.java:10:import org.springframework.security.core.authority.SimpleGrantedAuthority;
+src/main/java/com/julyturadm/security/CustomUserDetailsService.java:53:        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+src/main/java/com/julyturadm/security/CustomUserDetailsService.java:58:            authorities.add(
+src/main/java/com/julyturadm/security/CustomUserDetailsService.java:59:                    new SimpleGrantedAuthority("ROLE_" + role.getName())
+src/main/java/com/julyturadm/security/CustomUserDetailsService.java:68:                authorities.add(
+src/main/java/com/julyturadm/security/CustomUserDetailsService.java:69:                        new SimpleGrantedAuthority(permissionName)
+src/main/java/com/julyturadm/security/CustomUserDetailsService.java:78:                .authorities(authorities)
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Agora encontramos a implementação: o `JwtAuthenticationConverter` já existe dentro do `SecurityConfig.java`.
+
+Não precisamos criar uma classe separada.
+
+A estrutura atual está coerente:
+
+1. `CustomUserDetailsService` carrega as roles e permissões do usuário.
+
+2. `JwtService` separa as authorities em duas claims:
+   - `roles`: authorities que começam com `ROLE_`.
+   - `permissions`: as demais authorities.
+
+3. `SecurityConfig` lê essas duas claims e converte seus valores em `SimpleGrantedAuthority`.
+
+4. O `SecurityFilterChain` utiliza esse conversor para autenticar as requisições com JWT.
+
+Portanto, o caminho de conversão das permissões já está implementado.
+
+Há um detalhe importante: a claim `roles` precisa conter valores como `ROLE_ADMIN` e `ROLE_RH`,
+enquanto `permissions` contém valores como `USER_CREATE` e `USER_READ`.
+
+O código atual respeita essa convenção, desde que o `CustomUserDetailsService` continue prefixando
+as roles com `ROLE_`.
+
+Um ponto que precisamos verificar
+
+O `SecurityConfig` ainda não apresenta:
+
+```
+@EnableMethodSecurity
+```
+
+Essa configuração será necessária quando protegermos os métodos dos controllers e serviços
+com `@PreAuthorize`, por exemplo:
+
+```
+@PreAuthorize("hasAuthority('USER_CREATE')")
+```
+
+Ainda não vamos adicioná-la.
+
+Primeiro precisamos conferir como as authorities são carregadas e se os testes já cobrem a geração
+e a leitura do JWT.
+
+Próximo passo
+
+Execute:
+
+1. CustomUserDetailsService.java
+
+```
+cat src/main/java/com/julyturadm/security/CustomUserDetailsService.java
+```
+
+2. Localizar os testes relacionados à autenticação e ao JWT
+
+```
+find src/test/java/com/julyturadm -type f | sort | grep -Ei 'jwt|security|auth|userdetails'
+```
+
+3. Verificar se já existe habilitação de segurança por método
+
+```
+grep -RniE 'EnableMethodSecurity|PreAuthorize|PostAuthorize' src/main/java/com/julyturadm
+```
+
+Com isso, vamos confirmar três coisas antes de avançar:
+
+- Se as permissões vêm corretamente das associações `users_roles` e `roles_permissions`.
+- Se o JWT contém as authorities esperadas.
+- Se já existe alguma proteção por método que precisamos preservar.
+
+Não altere nenhum arquivo ainda. Vamos aproveitar a implementação existente e evitar duplicações.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/security/CustomUserDetailsService.java
+package com.julyturadm.security;
+
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.domain.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+// Integra o usuário ao Spring Security.
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String email)
+            throws UsernameNotFoundException {
+
+        // 1. Busca o usuário e carrega seus papéis.
+        User user = userRepository
+                .findByEmailWithRoles(email)
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "Credenciais inválidas."
+                ));
+
+        // 2. Impede autenticação de usuário desativado.
+        if (!Boolean.TRUE.equals(user.getEnabled())) {
+            throw new UsernameNotFoundException(
+                    "Credenciais inválidas."
+            );
+        }
+
+        // 3. Busca os papéis e suas permissões.
+        List<Role> roles = roleRepository
+                .findAllByUserEmailWithPermissions(email);
+
+        // 4. Constrói as autoridades do usuário.
+        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+
+        for (Role role : roles) {
+
+            // Papel funcional.
+            authorities.add(
+                    new SimpleGrantedAuthority("ROLE_" + role.getName())
+            );
+
+            // Permissões granulares.
+            role.getRolePermissions().forEach(rolePermission -> {
+
+                String permissionName =
+                        rolePermission.getPermission().getName();
+
+                authorities.add(
+                        new SimpleGrantedAuthority(permissionName)
+                );
+            });
+        }
+
+        // 5. Retorna o usuário para o Spring Security.
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getEmail())
+                .password(user.getPassword())
+                .authorities(authorities)
+                .disabled(false)
+                .build();
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/test/java/com/julyturadm -type f | sort | grep -Ei 'jwt|security|auth|userdetails'
+src/test/java/com/julyturadm/config/JwtAuthenticationConverterTest.java
+src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java
+src/test/java/com/julyturadm/security/CustomUserDetailsServiceTest.java
+src/test/java/com/julyturadm/service/AuthenticationServiceTest.java
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -RniE 'EnableMethodSecurity|PreAuthorize|PostAuthorize' src/main/java/com/julyturadm
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. Agora temos uma visão mais completa da autenticação do JulyTurAdm.
+
+Conclusão da análise: o carregamento das authorities está implementado corretamente na estrutura
+atual.
+
+O `CustomUserDetailsService`:
+
+- Busca o usuário pelo e-mail.
+- Carrega suas roles.
+- Rejeita usuários desativados.
+- Consulta as roles com suas permissões.
+- Converte cada role em `ROLE_NOME`.
+- Converte cada permissão em sua authority original, por exemplo `USER_CREATE`.
+
+Isso é compatível com o `JwtService` e com o conversor que encontramos no `SecurityConfig`.
+
+Também confirmamos que:
+
+- Existe um teste específico para `JwtAuthenticationConverter`.
+- Existe um teste para `CustomUserDetailsService`.
+- Ainda não existe `@EnableMethodSecurity`, `@PreAuthorize` ou `@PostAuthorize` no código de
+  produção.
+
+Ou seja, temos a base de autenticação, mas ainda precisamos implementar a autorização efetiva dos
+endpoints.
+
+Próxima verificação: os testes de segurança:
+
+Antes de habilitar `@EnableMethodSecurity`, quero conferir se os testes existentes validam os dois
+lados da autenticação:
+
+1. A conversão das claims `roles` e `permissions` em authorities.
+2. A montagem das authorities a partir das roles e permissões cadastradas no banco.
+
+Execute:
+
+1. JwtAuthenticationConverterTest.java
+
+```
+cat src/test/java/com/julyturadm/config/JwtAuthenticationConverterTest.java
+```
+
+2. CustomUserDetailsServiceTest.java
+
+```
+cat src/test/java/com/julyturadm/security/CustomUserDetailsServiceTest.java
+```
+
+Com esses dois testes, poderemos decidir se precisamos complementar a cobertura antes de implementar
+a autorização.
+
+Nossa próxima mudança será habilitar a segurança por método e proteger os endpoints, mas somente
+depois de verificar os testes atuais.
+
+Não altere nada ainda.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/test/java/com/julyturadm/config/JwtAuthenticationConverterTest.java
+package com.julyturadm.config;
+
+import com.julyturadm.security.CustomUserDetailsService;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+
+class JwtAuthenticationConverterTest {
+
+    private JwtAuthenticationConverter converter;
+
+    @BeforeEach
+    void setUp() {
+        SecurityConfig securityConfig =
+                new SecurityConfig(mock(CustomUserDetailsService.class));
+
+        converter = securityConfig.jwtAuthenticationConverter();
+    }
+
+    private Jwt createJwt(Object roles, Object permissions) {
+        return Jwt.withTokenValue("token-teste")
+                .header("alg", "HS256")
+                .claim("roles", roles)
+                .claim("permissions", permissions)
+                .build();
+    }
+
+    private Set<String> getAuthorities(Jwt jwt) {
+        return converter.convert(jwt)
+                .getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
+    }
+
+    @Test
+    void shouldConvertRolesAndPermissionsIntoAuthorities() {
+
+        Jwt jwt = createJwt(
+                List.of("ROLE_ADMIN"),
+                List.of("USER_CREATE", "USER_UPDATE")
+        );
+
+        Set<String> authorities = getAuthorities(jwt);
+
+        assertEquals(3, authorities.size());
+        assertTrue(authorities.contains("ROLE_ADMIN"));
+        assertTrue(authorities.contains("USER_CREATE"));
+        assertTrue(authorities.contains("USER_UPDATE"));
+    }
+
+    @Test
+    void shouldRemoveDuplicateAuthorities() {
+
+        Jwt jwt = createJwt(
+                List.of("ROLE_ADMIN", "ROLE_ADMIN"),
+                List.of("USER_CREATE", "USER_CREATE")
+        );
+
+        Set<String> authorities = getAuthorities(jwt);
+
+        assertEquals(2, authorities.size());
+        assertTrue(authorities.contains("ROLE_ADMIN"));
+        assertTrue(authorities.contains("USER_CREATE"));
+    }
+
+    @Test
+    void shouldReturnEmptyAuthoritiesWhenClaimsAreMissing() {
+
+        Jwt jwt = createJwt(null, null);
+
+        Set<String> authorities = getAuthorities(jwt);
+
+        assertTrue(authorities.isEmpty());
+    }
+
+    @Test
+    void shouldIgnoreClaimsThatAreNotCollectionsOfStrings() {
+
+        Jwt jwt = createJwt(
+                "ROLE_ADMIN",
+                List.of("USER_CREATE", 123, true)
+        );
+
+        Set<String> authorities = getAuthorities(jwt);
+
+        assertEquals(1, authorities.size());
+        assertTrue(authorities.contains("USER_CREATE"));
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/test/java/com/julyturadm/security/CustomUserDetailsServiceTest.java
+package com.julyturadm.security;
+
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.domain.repository.UserRepository;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import java.util.Optional;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+
+class CustomUserDetailsServiceTest {
+
+    private UserRepository userRepository;
+    private RoleRepository roleRepository;
+    private CustomUserDetailsService userDetailsService;
+
+    @BeforeEach
+    void setUp() {
+        userRepository = mock(UserRepository.class);
+        roleRepository = mock(RoleRepository.class);
+
+        userDetailsService = new CustomUserDetailsService(
+                userRepository,
+                roleRepository);
+    }
+
+    @Test
+    void shouldRejectUserThatDoesNotExist() {
+
+        when(userRepository.findByEmailWithRoles("inexistente@email.com"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername(
+                        "inexistente@email.com"));
+
+        verifyNoInteractions(roleRepository);
+    }
+
+    @Test
+    void shouldRejectDisabledUser() {
+
+        User user = mock(User.class);
+
+        when(userRepository.findByEmailWithRoles("desativado@email.com"))
+                .thenReturn(Optional.of(user));
+
+        when(user.getEnabled()).thenReturn(false);
+
+        assertThrows(
+                UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername(
+                        "desativado@email.com"));
+
+        verifyNoInteractions(roleRepository);
+    }
+
+    @Test
+    void shouldLoadActiveUserWithoutRoles() {
+
+        User user = mock(User.class);
+
+        when(userRepository.findByEmailWithRoles("semperfil@email.com"))
+                .thenReturn(Optional.of(user));
+
+        when(user.getEnabled()).thenReturn(true);
+        when(user.getEmail()).thenReturn("semperfil@email.com");
+        when(user.getPassword()).thenReturn("$2a$10$senhaCriptografada");
+
+        when(roleRepository.findAllByUserEmailWithPermissions(
+                "semperfil@email.com")).thenReturn(List.of());
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername("semperfil@email.com");
+
+        assertEquals("semperfil@email.com", userDetails.getUsername());
+        assertTrue(userDetails.isEnabled());
+        assertTrue(userDetails.getAuthorities().isEmpty());
+    }
+      
+    @Test
+    void shouldLoadActiveUserWithRolesAndPermissions() {
+
+        // Usuário ativo.
+        User user = mock(User.class);
+
+        when(userRepository.findByEmailWithRoles("admin@email.com"))
+                .thenReturn(Optional.of(user));
+
+        when(user.getEnabled()).thenReturn(true);
+        when(user.getEmail()).thenReturn("admin@email.com");
+        when(user.getPassword()).thenReturn("$2a$10$senhaCriptografada");
+
+        // Perfil funcional ADMIN.
+        Role role = mock(Role.class);
+        when(role.getName()).thenReturn("ADMIN");
+
+        // Primeira permissão.
+        Permission permissionCreate = mock(Permission.class);
+        when(permissionCreate.getName()).thenReturn("USER_CREATE");
+
+        RolePermission rolePermissionCreate = mock(RolePermission.class);
+        when(rolePermissionCreate.getPermission())
+                .thenReturn(permissionCreate);
+
+        // Segunda permissão.
+        Permission permissionUpdate = mock(Permission.class);
+        when(permissionUpdate.getName()).thenReturn("USER_UPDATE");
+
+        RolePermission rolePermissionUpdate = mock(RolePermission.class);
+        when(rolePermissionUpdate.getPermission())
+                .thenReturn(permissionUpdate);
+
+        when(role.getRolePermissions()).thenReturn(
+                List.of(rolePermissionCreate, rolePermissionUpdate));
+
+        when(roleRepository.findAllByUserEmailWithPermissions(
+                "admin@email.com")).thenReturn(List.of(role));
+
+        // Execução.
+        UserDetails userDetails = userDetailsService.loadUserByUsername("admin@email.com");
+
+        // Verificações.
+        assertEquals("admin@email.com", userDetails.getUsername());
+
+        assertTrue(userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
+
+        assertTrue(userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("USER_CREATE")));
+
+        assertTrue(userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("USER_UPDATE")));
+
+        assertEquals(3, userDetails.getAuthorities().size());
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente. Os dois testes confirmam que a base de autenticação está bem coberta.
+
+1. O que os testes já garantem
+
+| Componente                       | Cobertura atual                            |
+| -------------------------------- | ------------------------------------------ |
+| `JwtAuthenticationConverterTest` | Converte roles e permissões em authorities |
+|                                  | Elimina duplicidades                       |
+|                                  | Trata claims ausentes                      |
+|                                  | Ignora valores de tipo inválido            |
+| `CustomUserDetailsServiceTest`   | Rejeita usuário inexistente                |
+|                                  | Rejeita usuário desativado                 |
+|                                  | Carrega usuário sem roles                  |
+|                                  | Carrega usuário com role e permissões      |
+
+
+Há, porém, um detalhe: o teste `CustomUserDetailsServiceTest` usa `USER_UPDATE`, enquanto nosso
+catálogo inicial atual contém `USER_CREATE`, `USER_READ`, `USER_DISABLE` e `USER_ENABLE`.
+
+Isso não causa falha técnica, mas recomendo alinhar o teste ao catálogo atual para manter a 
+coerência do projeto.
+
+2. Pequeno ajuste recomendado
+
+Vamos alterar somente o teste `CustomUserDetailsServiceTest.java`.
+
+No método `shouldLoadActiveUserWithRolesAndPermissions()`, substitua as duas ocorrências
+de `USER_UPDATE` por `USER_READ`.
+
+O trecho ficará assim:
+
+```
+// Segunda permissão.
+Permission permissionRead = mock(Permission.class);
+when(permissionRead.getName()).thenReturn("USER_READ");
+
+RolePermission rolePermissionRead = mock(RolePermission.class);
+when(rolePermissionRead.getPermission())
+        .thenReturn(permissionRead);
+
+when(role.getRolePermissions()).thenReturn(
+        List.of(rolePermissionCreate, rolePermissionRead));
+```
+
+E a verificação correspondente:
+
+```
+assertTrue(userDetails.getAuthorities().stream()
+        .anyMatch(a -> a.getAuthority().equals("USER_READ")));
+```
+
+Não precisamos modificar o `JwtAuthenticationConverterTest`: ele verifica a conversão genérica das
+claims, e `USER_UPDATE` é válido como exemplo de authority nesse teste.
+
+3. Executar os testes
+
+Depois da alteração:
+
+```
+mvn -Dtest=CustomUserDetailsServiceTest,JwtAuthenticationConverterTest test
+```
+
+Se tudo passar, nossa próxima alteração será adicionar `@EnableMethodSecurity`
+à classe `SecurityConfig` e começar a proteger os endpoints com `@PreAuthorize`.
+
+Vamos fazer isso em etapas, preservando a autenticação JWT que já está funcionando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=CustomUserDetailsServiceTest,JwtAuthenticationConverterTest test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.config.JwtAuthenticationConverterTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.905 s -- in com.julyturadm.config.JwtAuthenticationConverterTest
+[INFO] Running com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.698 s -- in com.julyturadm.security.CustomUserDetailsServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.158 s
+[INFO] Finished at: 2026-11-10T21:32:10-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Excelente! Os 8 testes passaram, sem falhas ou erros.
+
+| Teste                            | Resultado   |
+| -------------------------------- | ----------- |
+| `JwtAuthenticationConverterTest` | 4 aprovados |
+| `CustomUserDetailsServiceTest`   | 4 aprovados |
+| Total                            | 8 aprovados |
+
+Nossa autenticação JWT está com a cobertura básica validada. Agora podemos avançar para a autorização.
+
+Próxima etapa: habilitar segurança por método
+
+Vamos adicionar `@EnableMethodSecurity` à classe `SecurityConfig`.
+
+Abra:
+
+`src/main/java/com/julyturadm/config/SecurityConfig.java`
+
+Acrescente este import:
+
+```
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+```
+
+E coloque a anotação na classe:
+
+```
+@Configuration
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+```
+
+O que isso habilita?
+
+Passamos a poder proteger métodos com anotações como:
+
+```
+@PreAuthorize("hasAuthority('USER_CREATE')")
+```
+
+Assim, não basta o usuário estar autenticado: ele também precisa ter a permissão necessária.
+
+Depois da alteração
+
+Execute:
+
+```
+mvn test
+```
+
+Vamos validar a suíte completa antes de começar a proteger os controllers.
+
+Importante: ainda não vamos alterar as regras de acesso dos endpoints.
+
+Primeiro habilitamos o mecanismo e verificamos se ele não interfere nos testes existentes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 20.32 s -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 38, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:20 min
+[INFO] Finished at: 2026-11-10T21:42:08-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Excelente! O resultado confirma que a inclusão de `@EnableMethodSecurity` não quebrou a aplicação
+nem os testes existentes.
+
+Estado atual do JulyTurAdm
+
+Testes executados: 38
+Falhas: 0
+Erros: 0
+
+Segurança por método
+
+Habilitada
+
+Próxima etapa: proteger os endpoints de usuários
+
+Agora vamos implementar as permissões nos controllers.
+
+Nossa regra será:
+
+| Operação           | Permissão      |
+| ------------------ | -------------- |
+| Criar usuário      | `USER_CREATE`  |
+| Consultar usuários | `USER_READ`    |
+| Desativar usuário  | `USER_DISABLE` |
+| Reativar usuário   | `USER_ENABLE`  |
+
+Com isso, tanto `ADMIN` quanto `RH` poderão administrar usuários, conforme as permissões cadastradas.
+
+Os usuários com roles funcionais não terão esses acessos.
+
+Primeiro, preciso conferir o controller atual.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/controller/UserController.java
+```
+
+E também:
+
+```
+cat src/main/java/com/julyturadm/controller/AuthController.java
+```
+
+Vamos começar pelo `UserController`, preservando os endpoints, DTOs e regras de negócio que já
+implementamos. Não altere nada ainda.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/controller/UserController.java
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+import com.julyturadm.service.UserService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+
+        UserResponse response = userService.createUser(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> findUserById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.findUserById(id)
+        );
+    }
+
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserResponse> findUserByEmail(
+            @PathVariable String email) {
+
+        return ResponseEntity.ok(
+            userService.findUserByEmail(email)
+        );
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserResponse>> findAllActiveUsers() {
+
+        return ResponseEntity.ok(
+            userService.findAllActiveUsers()
+        );
+    }
+
+    @PatchMapping("/{id}/disable")
+    public ResponseEntity<UserResponse> disableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.disableUser(id)
+        );
+    }
+
+    @PatchMapping("/{id}/enable")
+    public ResponseEntity<UserResponse> enableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.enableUser(id)
+        );
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/controller/AuthController.java
+package com.julyturadm.controller;
+
+import com.julyturadm.dto.request.LoginRequest;
+import com.julyturadm.dto.response.LoginResponse;
+import com.julyturadm.service.AuthenticationService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthenticationService authenticationService;
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request) {
+
+        LoginResponse response =
+                authenticationService.authenticate(request);
+
+        return ResponseEntity.ok(response);
+    }
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito.
+
+O `UserController` está organizado e tem os seis endpoints que precisamos proteger.
+
+O `AuthController` contém apenas o login, que continuará público.
+
+Vamos aplicar a autorização diretamente no controller, sem modificar o `UserService` neste primeiro
+momento.
+
+1. Regras de autorização
+
+| Endpoint                   | Método HTTP | Authority necessária |
+| -------------------------- | ----------- | -------------------- |
+| `/api/users`               | POST        | `USER_CREATE`        |
+| `/api/users/{id}`          | GET         | `USER_READ`          |
+| `/api/users/email/{email}` | GET         | `USER_READ`          |
+| `/api/users`               | GET         | `USER_READ`          |
+| `/api/users/{id}/disable`  | PATCH       | `USER_DISABLE`       |
+| `/api/users/{id}/enable`   | PATCH       | `USER_ENABLE`        |
+
+Usaremos `hasAuthority`, e não `hasRole`, porque estamos verificando permissões granulares,
+não nomes de roles.
+
+2. Alterar o UserController
+
+Arquivo:
+
+`src/main/java/com/julyturadm/controller/UserController.java`
+
+Acrescente o import:
+
+```
+import org.springframework.security.access.prepost.PreAuthorize;
+```
+
+Agora inclua `@PreAuthorize` em cada método. O controller completo ficará assim:
+
+```
+
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+import com.julyturadm.service.UserService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('USER_CREATE')")
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+
+        UserResponse response = userService.createUser(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<UserResponse> findUserById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.findUserById(id)
+        );
+    }
+
+    @GetMapping("/email/{email}")
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<UserResponse> findUserByEmail(
+            @PathVariable String email) {
+
+        return ResponseEntity.ok(
+            userService.findUserByEmail(email)
+        );
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<List<UserResponse>> findAllActiveUsers() {
+
+        return ResponseEntity.ok(
+            userService.findAllActiveUsers()
+        );
+    }
+
+    @PatchMapping("/{id}/disable")
+    @PreAuthorize("hasAuthority('USER_DISABLE')")
+    public ResponseEntity<UserResponse> disableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.disableUser(id)
+        );
+    }
+
+    @PatchMapping("/{id}/enable")
+    @PreAuthorize("hasAuthority('USER_ENABLE')")
+    public ResponseEntity<UserResponse> enableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.enableUser(id)
+        );
+    }
+}
+
+```
+
+3. O que esperamos com essa alteração
+
+- Usuário autenticado sem `USER_CREATE` não poderá criar usuários.
+- Usuário com `USER_READ` poderá consultar usuários.
+- Usuário sem `USER_DISABLE` não poderá desativar contas.
+- Usuário sem `USER_ENABLE` não poderá reativar contas.
+- Requisições sem autenticação continuarão sendo rejeitadas.
+
+O login em `/api/auth/login` permanece público.
+
+Atenção: ainda precisaremos implementar uma proteção específica para impedir que RH atribua
+a role `ADMIN` durante a criação ou alteração de usuários.
+
+A permissão `USER_CREATE`, sozinha, não resolve essa regra de negócio.
+
+4. Executar os testes
+
+Depois de salvar o arquivo:
+
+```
+mvn test
+```
+
+Envie o resultado, inclusive eventuais falhas.
+
+Na próxima etapa, vamos criar testes de autorização para verificar que um usuário com permissão
+consegue executar a operação e outro sem permissão recebe HTTP 403.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+2026-11-10T22:09:34.737-03:00  INFO 51011 --- [julyturadm-backend] [           main] c.j.c.AuthControllerIntegrationTest      : Started AuthControllerIntegrationTest in 20.139 seconds (process running for 69.275)
+
+MockHttpServletRequest:
+      HTTP Method = POST
+      Request URI = /api/auth/login
+       Parameters = {}
+          Headers = [Content-Type:"application/json;charset=UTF-8", Content-Length:"90"]
+             Body = {"email":"auth_1227257e-209d-4da4-8755-85e967811710@teste.com","password":"SenhaTeste123"}
+    Session Attrs = {}
+
+Handler:
+             Type = com.julyturadm.controller.AuthController
+           Method = com.julyturadm.controller.AuthController#login(LoginRequest)
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 200
+    Error message = null
+          Headers = [Content-Type:"application/json", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = application/json
+             Body = {"accessToken":"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhdXRoXzEyMjcyNTdlLTIwOWQtNGRhNC04NzU1LTg1ZTk2NzgxMTcxMEB0ZXN0ZS5jb20iLCJleHAiOjE3OTQzNjExNzcsImlhdCI6MTc5NDM1OTM3NywicGVybWlzc2lvbnMiOlsiVVNFUl9SRUFEXzEyMjcyNTdlLTIwOWQtNGRhNC04NzU1LTg1ZTk2NzgxMTcxMCJdLCJyb2xlcyI6WyJST0xFX1RFU1RfQURNSU5fMTIyNzI1N2UtMjA5ZC00ZGE0LTg3NTUtODVlOTY3ODExNzEwIl19.3P-qWTM3pGdJZKir8jN7PaBlTTLdXD6dkdZIaSE9gsQ","tokenType":"Bearer","expiresIn":1800}
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+
+MockHttpServletRequest:
+      HTTP Method = GET
+      Request URI = /api/users
+       Parameters = {}
+          Headers = [Authorization:"Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhdXRoXzEyMjcyNTdlLTIwOWQtNGRhNC04NzU1LTg1ZTk2NzgxMTcxMEB0ZXN0ZS5jb20iLCJleHAiOjE3OTQzNjExNzcsImlhdCI6MTc5NDM1OTM3NywicGVybWlzc2lvbnMiOlsiVVNFUl9SRUFEXzEyMjcyNTdlLTIwOWQtNGRhNC04NzU1LTg1ZTk2NzgxMTcxMCJdLCJyb2xlcyI6WyJST0xFX1RFU1RfQURNSU5fMTIyNzI1N2UtMjA5ZC00ZGE0LTg3NTUtODVlOTY3ODExNzEwIl19.3P-qWTM3pGdJZKir8jN7PaBlTTLdXD6dkdZIaSE9gsQ"]
+             Body = null
+    Session Attrs = {}
+
+Handler:
+             Type = com.julyturadm.controller.UserController
+           Method = com.julyturadm.controller.UserController#findAllActiveUsers()
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 403
+    Error message = null
+          Headers = [WWW-Authenticate:"Bearer error="insufficient_scope", error_description="The request requires higher privileges than provided by the access token.", error_uri="https://tools.ietf.org/html/rfc6750#section-3.1"", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = null
+             Body = 
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+[ERROR] Tests run: 9, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 22.78 s <<< FAILURE! -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[ERROR] com.julyturadm.controller.AuthControllerIntegrationTest.shouldAllowAccessingUsersWithValidJwt -- Time elapsed: 0.262 s <<< FAILURE!
+java.lang.AssertionError: Status expected:<200> but was:<403>
+	at org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)
+	at org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)
+	at org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)
+	at org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)
+	at com.julyturadm.controller.AuthControllerIntegrationTest.shouldAllowAccessingUsersWithValidJwt(AuthControllerIntegrationTest.java:302)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   AuthControllerIntegrationTest.shouldAllowAccessingUsersWithValidJwt:302 Status expected:<200> but was:<403>
+[INFO] 
+[ERROR] Tests run: 38, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:17 min
+[INFO] Finished at: 2026-11-10T22:09:41-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project backend-api: There are test failures.
+[ERROR] 
+[ERROR] See /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Encontramos uma pista importante no log.
+
+O problema não parece estar no JWT nem no `JwtAuthenticationConverter`: o token foi aceito, mas não
+contém a authority exigida pelo endpoint.
+
+Observe as claims do token:
+
+```
+permissions:
+USER_READ_1227257e-209d-4da4-8755-85e967811710
+
+roles:
+ROLE_TEST_ADMIN_1227257e-209d-4da4-8755-85e967811710
+```
+
+Mas o `UserController` agora exige:
+
+```
+@PreAuthorize("hasAuthority('USER_READ')")
+```
+
+O Spring Security compara os valores exatamente. Portanto:
+
+- `USER_READ_1227257e-...` não é igual a `USER_READ`.
+- O resultado correto dessa verificação é HTTP 403.
+
+Vamos corrigir a origem, não contornar a segurança
+
+Precisamos verificar como o teste `AuthControllerIntegrationTest` cria suas permissões.
+
+Execute:
+
+```
+sed -n '1,180p' src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java
+```
+
+E também:
+
+```
+sed -n '250,330p' src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java
+```
+
+Minha hipótese é que o teste cria permissões com identificadores UUID para evitar conflitos entre testes.
+
+Se confirmado, vamos ajustar os dados de teste para utilizar a authority exata `USER_READ`, sem alterar a regra de autorização do controller.
+
+Não remova o `@PreAuthorize` e não altere o `SecurityConfig` por enquanto. A proteção está fazendo justamente o que deveria fazer.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sed -n '1,180p' src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java
+package com.julyturadm.controller;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import com.julyturadm.domain.entity.id.UserRoleId;
+
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.domain.repository.UserRepository;
+import com.julyturadm.domain.repository.UserRoleRepository;
+
+import com.julyturadm.dto.request.LoginRequest;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Constructor;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class AuthControllerIntegrationTest {
+
+        private static final String LOGIN_URL = "/api/auth/login";
+        private static final String PASSWORD = "SenhaTeste123";
+
+        @Autowired
+        private MockMvc mockMvc;
+
+        @Autowired
+        private ObjectMapper objectMapper;
+
+        @Autowired
+        private PasswordEncoder passwordEncoder;
+
+        @Autowired
+        private JwtDecoder jwtDecoder;
+
+        @Autowired
+        private UserRepository userRepository;
+
+        @Autowired
+        private RoleRepository roleRepository;
+
+        @Autowired
+        private PermissionRepository permissionRepository;
+
+        @Autowired
+        private UserRoleRepository userRoleRepository;
+
+        @Autowired
+        private RolePermissionRepository rolePermissionRepository;
+
+        @PersistenceContext
+        private EntityManager entityManager;
+
+        private User user;
+        private String permissionName;
+        private String roleName;
+
+        @BeforeEach
+        void setUp() throws Exception {
+
+                String uniqueId = UUID.randomUUID().toString();
+
+                // 1. Cria o usuário com senha BCrypt.
+                user = User.create(
+                                "Usuario Teste",
+                                "auth_" + uniqueId + "@teste.com",
+                                passwordEncoder.encode(PASSWORD));
+
+                user = userRepository.saveAndFlush(user);
+
+                // 2. Cria o perfil.
+                Role role = createEntity(Role.class);
+                role.setName("TEST_ADMIN_" + uniqueId);
+                roleName = role.getName();
+
+                role = roleRepository.saveAndFlush(role);
+
+                // 3. Cria a permissão.
+                Permission permission = createEntity(Permission.class);
+
+                permissionName = "USER_READ_" + uniqueId;
+                permission.setName(permissionName);
+
+                permission = permissionRepository.saveAndFlush(permission);
+
+                // 4. Associa o usuário ao perfil.
+                UserRole userRole = createEntity(UserRole.class);
+
+                userRole.setId(
+                                new UserRoleId(user.getId(), role.getId()));
+
+                userRole.setUser(user);
+                userRole.setRole(role);
+
+                userRoleRepository.saveAndFlush(userRole);
+
+                // 5. Associa a permissão ao perfil.
+                RolePermission rolePermission = createEntity(RolePermission.class);
+
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
+
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
+
+                rolePermissionRepository.saveAndFlush(rolePermission);
+
+                // Garante que os próximos acessos recarreguem as entidades do banco.
+                entityManager.flush();
+                entityManager.clear();
+
+        }
+
+        private <T> T createEntity(Class<T> type) throws Exception {
+
+                Constructor<T> constructor = type.getDeclaredConstructor();
+                constructor.setAccessible(true);
+
+                return constructor.newInstance();
+        }
+
+        private String createLoginJson(String email, String password)
+                        throws Exception {
+
+                return objectMapper.writeValueAsString(
+                                new LoginRequest(email, password));
+        }
+
+        private String obtainAccessToken() throws Exception {
+
+                String responseBody = mockMvc.perform(
+                                post(LOGIN_URL)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(createLoginJson(
+                                                                user.getEmail(),
+                                                                PASSWORD)))
+                                .andExpect(status().isOk())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString();
+
+                JsonNode response = objectMapper.readTree(responseBody);
+
+                return response.get("accessToken").asText();
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sed -n '250,330p' src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java
+                                post(LOGIN_URL)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(createLoginJson(
+                                                                "email-invalido",
+                                                                PASSWORD)))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400));
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenEmailIsBlank() throws Exception {
+
+                mockMvc.perform(
+                                post(LOGIN_URL)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(createLoginJson(
+                                                                "",
+                                                                PASSWORD)))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400));
+        }
+
+        @Test
+        void shouldReturnBadRequestWhenPasswordIsBlank() throws Exception {
+
+                mockMvc.perform(
+                                post(LOGIN_URL)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(createLoginJson(
+                                                                user.getEmail(),
+                                                                "")))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.status").value(400));
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenAccessingUsersWithoutJwt()
+                        throws Exception {
+
+                mockMvc.perform(get("/api/users"))
+                                .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void shouldAllowAccessingUsersWithValidJwt()
+                        throws Exception {
+
+                String accessToken = obtainAccessToken();
+
+                mockMvc.perform(
+                                get("/api/users")
+                                                .header("Authorization", "Bearer " + accessToken))
+                                .andExpect(status().isOk());
+        }
+
+        @Test
+        void shouldReturnUnauthorizedWhenAccessingUsersWithInvalidJwt()
+                        throws Exception {
+
+                mockMvc.perform(
+                                get("/api/users")
+                                                .header("Authorization", "Bearer token-invalido"))
+                                .andExpect(status().isUnauthorized());
+        }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Encontramos a causa exata do `403`.
+
+O problema está no fixture do teste, não no `JwtAuthenticationConverter` nem no `SecurityConfig`.
+
+No `setUp()`, você cria a permissão com um nome dinâmico:
+
+```
+permissionName = "USER_READ_" + uniqueId;
+```
+
+Mas o `UserController` exige exatamente:
+
+```
+@PreAuthorize("hasAuthority('USER_READ')")
+```
+
+Como o Spring Security compara as autoridades pelo nome exato, `USER_READ_<UUID>` não satisfaz `USER_READ`.
+
+1. Corrigir uma única linha
+
+Abra:
+
+`src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java`
+
+Substitua:
+
+```
+permissionName = "USER_READ_" + uniqueId;
+```
+
+Por:
+
+```
+permissionName = "USER_READ";
+```
+
+Mantenha o nome do perfil com UUID:
+
+```
+role.setName("TEST_ADMIN_" + uniqueId);
+```
+
+Assim, cada teste continua tendo seu próprio perfil, mas a permissão corresponde ao catálogo real da aplicação.
+
+2. Executar somente o teste de integração
+
+No terminal:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=AuthControllerIntegrationTest test
+```
+
+Envie o resultado, principalmente a seção `Results`.
+
+Não altere as anotações `@PreAuthorize`: elas estão fazendo justamente o trabalho de proteção que
+queremos validar.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 26.62 s -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  34.816 s
+[INFO] Finished at: 2026-11-10T22:25:44-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Excelente! Os 9 testes de `AuthControllerIntegrationTest` passaram.
+
+Isso confirma que:
+
+- O login continua funcionando e emitindo o JWT.
+- O acesso a `/api/users` sem token é bloqueado.
+- O acesso com token válido e permissão `USER_READ` é autorizado.
+- Tokens inválidos continuam sendo rejeitados.
+- A autorização por `@PreAuthorize` está funcionando com a autoridade esperada.
+
+A correção ficou restrita ao teste: não foi necessário enfraquecer a segurança da aplicação.
+
+Próxima etapa: executar a suíte completa
+
+Agora precisamos confirmar que a alteração não afetou os demais testes.
+
+Execute no diretório `backend-api`:
+
+```
+mvn test
+```
+
+Não precisa repetir o `source ../.env` se as variáveis ainda estiverem carregadas no terminal.
+
+Se abriu outro terminal, carregue-as novamente antes.
+
+Meta: todos os testes passando, sem falhas ou erros.
+
+Envie o resumo final do Maven. Se tudo passar, avançaremos para revisar a autorização dos demais
+endpoints e validar as regras de acesso de ADMIN e RH.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 24.34 s -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 38, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:17 min
+[INFO] Finished at: 2026-11-10T22:29:30-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+38/38 testes aprovados
+
+BUILD SUCCESS!
+
+Ótimo resultado.
+Agora temos uma suíte completa passando, incluindo os testes de autenticação, JWT, repositórios,
+inicialização de dados e autorização dos endpoints.
+
+Onde estamos no JulyTurAdm
+
+A camada básica de segurança já está funcionando:
+
+- Login com email e senha.
+- Senhas protegidas com BCrypt.
+- Geração e validação de JWT.
+- Conversão de roles e permissions em authorities.
+- Proteção dos endpoints com `@PreAuthorize`.
+- Testes de integração executados com o banco `bd_paytur_test`.
+
+Próxima etapa: autorização por perfil e regras de negócio
+
+Minha sugestão é avançar para a validação das regras que definimos:
+
+1. ADMIN: pode administrar usuários, perfis e permissões.
+2. RH: pode criar, consultar, desativar e reativar usuários.
+3. RH: pode atribuir perfis funcionais, mas não pode atribuir `ADMIN`.
+4. Setores: não devem receber permissões de administração de usuários.
+
+O próximo passo será revisar os serviços e endpoints de gerenciamento de roles e permissions,
+verificando se essas regras estão realmente protegidas no backend.
+
+Podemos começar por essa revisão, mantendo a abordagem incremental: um arquivo por vez, uma alteração
+por vez e testes antes de avançar.
+
+Continua no arquivo: [Chat-Gpt:Etapa1-24-Testes_Permissoes:`MASTER_ADMIN`_e_`RH`_OK.txt]
+
+-------------------------------------------------fim-----------------------------------------------
+

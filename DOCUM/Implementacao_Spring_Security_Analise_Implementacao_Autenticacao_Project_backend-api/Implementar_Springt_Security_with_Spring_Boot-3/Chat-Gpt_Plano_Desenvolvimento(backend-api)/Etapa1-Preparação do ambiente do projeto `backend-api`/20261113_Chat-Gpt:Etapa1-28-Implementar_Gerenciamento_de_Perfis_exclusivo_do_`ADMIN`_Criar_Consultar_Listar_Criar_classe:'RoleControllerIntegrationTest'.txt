@@ -1,0 +1,951 @@
+﻿
+13/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt:Etapa1-28-Implementar_Gerenciamento_de_Perfis_exclusivo_do_`ADMIN`_Criar_Consultar_Listar
+Criar_classe:'RoleControllerIntegrationTest'
+---------------------------------------------------------------------------------------------------
+
+Para lembrar dos codigos HTTP combinados com os verbos do HTTP:
+
+• 200 OK: A requisição foi bem-sucedida. O significado do sucesso depende do método HTTP utilizado
+  (ex: em um GET, os dados solicitados são retornados no corpo da resposta).
+
+• 204 No Content: A requisição foi processada com sucesso, mas não há conteúdo para retornar no
+  corpo da resposta (altamente utilizado em requisições DELETE ou PUT/PATCH quando não há necessidade
+  de devolver o objeto atualizado).
+
+• 401 Unauthorized: O cliente precisa se autenticar para obter a resposta solicitada 
+  (falta de token ou credenciais inválidas).
+
+• 403 Forbidden: O cliente foi autenticado, mas não tem direitos de acesso ao recurso 
+  (permissão insuficiente).
+
+• 409 Conflict: A requisição não pôde ser concluída devido a um conflito com o estado atual do 
+  servidor (ex: tentar cadastrar um usuário com um e-mail que já existe).
+
+
+-------------------------------------------------------------------------------------------------
+Resumo do arquivo:
+
+Foram implementados três testes:
+1. ADMIN atualiza um perfil.
+2. ADMIN não consegue renomear um perfil para um nome já utilizado por outro.
+3. ADMIN recebe 404 ao tentar atualizar um perfil inexistente.
+
+---
+
+O CRUD do catálogo de perfis (`RoleController`) passou em todos os testes de integração, sem falhas,
+erros ou testes ignorados.
+
+---
+
+O que já validamos
+
+| Funcionalidade                           | Resultado        |
+| ---------------------------------------- | ---------------- |
+| Criar perfil                             | 201 Created      |
+| Consultar perfil por ID                  | 200 OK           |
+| Listar perfis                            | 200 OK           |
+| Atualizar perfil                         | 200 OK           |
+| Impedir nome duplicado                   | 409 Conflict     |
+| Excluir perfil sem associações           | 204 No Content   |
+| Impedir exclusão com usuário associado   | 409 Conflict     |
+| Impedir exclusão com permissão associada | 409 Conflict     |
+| Perfil inexistente                       | 404 Not Found    |
+| Bloquear acesso de RH e setor            | 403 Forbidden    |
+| Bloquear acesso sem autenticação         | 401 Unauthorized |
+
+Também confirmamos que a exclusão não remove automaticamente associações: o serviço impede a operação
+quando há registros relacionados.
+
+Próxima etapa do JulyTurAdm
+
+Agora podemos avançar para o gerenciamento do catálogo de permissões (`Permission`), também restrito
+ao `ADMIN`.
+
+-----------------------------------------fim do resumo---------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 34.29 s -- in com.julyturadm.controller.RoleControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  45.485 s
+[INFO] Finished at: 2026-11-13T20:50:02-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente! 
+
+6/6 testes aprovados
+
+O RoleController passou nos primeiros testes de integração:
+
+Teste	Resultado
+ADMIN cria perfil	OK
+ADMIN consulta perfil por ID	OK
+ADMIN lista perfis	OK
+RH não acessa catálogo	OK
+Usuário setorial não acessa catálogo	OK
+Não autenticado não acessa catálogo	OK
+
+Isso confirma que as cinco rotas estão protegidas corretamente contra acessos não autorizados,
+e que as operações básicas de consulta e criação funcionam.
+
+Próxima etapa: atualização do perfil
+
+Atualização_perfil_'ADMIN'_atualizando_classe:'RoleControllerIntegrationTest'
+
+Vamos acrescentar três testes agora:
+1. ADMIN atualiza um perfil.
+2. ADMIN não consegue renomear um perfil para um nome já utilizado por outro.
+3. ADMIN recebe 404 ao tentar atualizar um perfil inexistente.
+
+Abra RoleControllerIntegrationTest.java e acrescente estes métodos antes da última chave }:
+
+@Test
+void adminShouldUpdateRole() throws Exception {
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    String requestBody = """
+            {
+                "name": "RH_ATUALIZADO"
+            }
+            """;
+
+    mockMvc.perform(put("/api/roles/{id}", rhRole.getId())
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("RH_ATUALIZADO"));
+}
+
+@Test
+void adminShouldNotUpdateRoleWithDuplicateName() throws Exception {
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    String requestBody = """
+            {
+                "name": "ADMIN"
+            }
+            """;
+
+    mockMvc.perform(put("/api/roles/{id}", rhRole.getId())
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
+            .andExpect(status().isConflict());
+}
+
+@Test
+void adminShouldNotUpdateNonexistentRole() throws Exception {
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    String requestBody = """
+            {
+                "name": "PERFIL_INEXISTENTE"
+            }
+            """;
+
+    mockMvc.perform(put("/api/roles/{id}", 999999L)
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody))
+            .andExpect(status().isNotFound());
+}
+
+
+Depois de acrescentar, não execute os testes ainda.
+
+Envie a saída de:
+
+tail -n 100 src/test/java/com/julyturadm/controller/RoleControllerIntegrationTest.java
+
+Vamos conferir a posição dos métodos e as chaves antes de executar.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Foram, acrescentados três testes, 3 métodos na classe RoleControllerIntegrationTest.java
+1. ADMIN atualiza um perfil.
+2. ADMIN não consegue renomear um perfil para um nome já utilizado por outro.
+3. ADMIN recebe 404 ao tentar atualizar um perfil inexistente.
+
+Segue a saída de:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ tail -n 100 src/test/java/com/julyturadm/controller/RoleControllerIntegrationTest.java
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(rhRole.getId()))
+                .andExpect(jsonPath("$.name").value("RH"));
+    }
+
+    @Test
+    void adminShouldFindAllRoles() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        mockMvc.perform(get("/api/roles")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3));
+    }
+
+    @Test
+    void rhShouldNotAccessRoleCatalog() throws Exception {
+
+        String token = obtainAccessToken(rhUser.getEmail());
+
+        mockMvc.perform(get("/api/roles")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void sectorUserShouldNotAccessRoleCatalog() throws Exception {
+
+        String token = obtainAccessToken(sectorUser.getEmail());
+
+        mockMvc.perform(get("/api/roles")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void unauthenticatedUserShouldNotAccessRoleCatalog() throws Exception {
+
+        mockMvc.perform(get("/api/roles"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ---
+    @Test
+    void adminShouldUpdateRole() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        String requestBody = """
+                {
+                    "name": "RH_ATUALIZADO"
+                }
+                """;
+
+        mockMvc.perform(put("/api/roles/{id}", rhRole.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("RH_ATUALIZADO"));
+    }
+
+    @Test
+    void adminShouldNotUpdateRoleWithDuplicateName() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        String requestBody = """
+                {
+                    "name": "ADMIN"
+                }
+                """;
+
+        mockMvc.perform(put("/api/roles/{id}", rhRole.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void adminShouldNotUpdateNonexistentRole() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        String requestBody = """
+                {
+                    "name": "PERFIL_INEXISTENTE"
+                }
+                """;
+
+        mockMvc.perform(put("/api/roles/{id}", 999999L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isNotFound());
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! Os três métodos foram acrescentados corretamente à classe `RoleControllerIntegrationTest`.
+
+Conferi a estrutura:
+
+- Os três testes estão dentro da classe.
+- As chaves estão corretamente posicionadas.
+- Os métodos utilizam `PUT /api/roles/{id}`.
+- Os cenários de sucesso, conflito (409) e não encontrado (404) estão contemplados.
+
+Estrutura correta
+
+Próximo passo: executar os testes
+
+No terminal, execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=RoleControllerIntegrationTest test
+```
+
+Agora esperamos 9 testes aprovados, sem falhas ou erros.
+
+Envie o resultado final.
+
+Se tudo passar, seguiremos para os testes de exclusão de perfis, incluindo a proteção contra 
+exclusão de perfis associados a usuários ou permissões.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 29.42 s -- in com.julyturadm.controller.RoleControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  37.653 s
+[INFO] Finished at: 2026-11-13T21:43:43-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente!
+
+9/9 testes aprovados
+
+As operações de criação, consulta e atualização do catálogo de perfis estão funcionando.
+
+Também confirmamos:
+
+- Nome duplicado na atualização retorna 409 Conflict.
+- Perfil inexistente retorna 404 Not Found.
+- RH e usuários setoriais não conseguem acessar o catálogo.
+- Usuários não autenticados recebem 401 Unauthorized.
+
+Próxima etapa: exclusão de perfis:
+
+Vamos testar quatro situações:
+
+1. ADMIN exclui um perfil sem associações.
+2. ADMIN não consegue excluir um perfil associado a um usuário.
+3. ADMIN não consegue excluir um perfil que possui permissões associadas.
+4. ADMIN recebe 404 ao tentar excluir um perfil inexistente.
+
+Antes de acrescentar os testes, precisamos confirmar como a entidade `Permission` é criada
+e como a associação `RolePermission` é construída.
+
+Execute:
+
+```
+sed -n '1,220p' src/main/java/com/julyturadm/domain/entity/Permission.java
+
+sed -n '1,180p' src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+sed -n '1,160p' src/main/java/com/julyturadm/domain/entity/UserRole.java
+```
+
+Envie a saída desses três arquivos.
+
+Assim construiremos os testes usando os métodos reais das entidades, sem presumir assinaturas ou
+alterar o modelo de dados.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sed -n '1,220p' src/main/java/com/julyturadm/domain/entity/Permission.java
+
+sed -n '1,180p' src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+sed -n '1,160p' src/main/java/com/julyturadm/domain/entity/UserRole.java
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Permission {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 80)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "permission",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+
+    // Esse método permite criar uma permissão sem expor publicamente o construtor da entidade.    
+    public static Permission create(String name) {
+
+        Permission permission = new Permission();
+
+        permission.setName(name);
+
+        return permission;
+    }
+
+}
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    // - `RolePermissionId` recebe os IDs dos dois registros.
+    @EmbeddedId
+    private RolePermissionId id;
+
+    // ---
+    // - `setRole()` estabelece o relacionamento com o perfil.
+    // - `@MapsId` mantém os campos da chave composta sincronizados com os
+    //    relacionamentos no momento da persistência.
+    // ---
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(name = "role_id", nullable = false, foreignKey = @ForeignKey(name = "FK_rp_role"))
+    private Role role;
+
+    // ---
+    // - `setPermission()` estabelece o relacionamento com a permissão.
+    // - `@MapsId` mantém os campos da chave composta sincronizados com os
+    //    relacionamentos no momento da persistência.
+    // ---
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(name = "permission_id", nullable = false, foreignKey = @ForeignKey(name = "FK_rp_permission"))
+    private Permission permission;
+       
+    // ---
+    // Esse método permite criar uma role e uma permissao sem expor publicamente o 
+    // construtor da entidade.
+    // ---    
+    public static RolePermission create(
+            Role role,
+            Permission permission) {
+
+        RolePermission rolePermission = new RolePermission();
+
+        rolePermission.setId(
+                new RolePermissionId(
+                        role.getId(),
+                        permission.getId()));
+
+        rolePermission.setRole(role);
+        rolePermission.setPermission(permission);
+
+        return rolePermission;
+    }
+
+}package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.UserRoleId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "users_roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class UserRole {
+
+    @EmbeddedId
+    private UserRoleId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("userId")
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "FK_ur_user"))
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(name = "role_id", nullable = false, foreignKey = @ForeignKey(name = "FK_ur_role"))
+    private Role role;
+
+    public static UserRole create(User user, Role role) {
+        UserRole userRole = new UserRole();
+
+        userRole.setId(new UserRoleId(user.getId(), role.getId()));
+        userRole.setUser(user);
+        userRole.setRole(role);
+
+        return userRole;
+    }
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo! Agora temos as assinaturas reais das entidades.
+
+Confirmamos que:
+
+- `Permission.create(String name)` cria uma permissão.
+- `RolePermission.create(Role role, Permission permission)` cria a associação entre perfil e permissão.
+- `UserRole.create(User user, Role role)` cria a associação entre usuário e perfil.
+
+Podemos construir os testes sem modificar as entidades nem o banco de dados.
+
+1. Acrescentar os quatro testes
+
+Abra:
+
+`src/test/java/com/julyturadm/controller/RoleControllerIntegrationTest.java`
+
+Acrescente os métodos abaixo antes da última chave `}`:
+
+```
+@Test
+void adminShouldDeleteRoleWithoutAssociations() throws Exception {
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    Role roleToDelete = roleRepository.save(
+            Role.create("PERFIL_PARA_EXCLUIR"));
+
+    mockMvc.perform(delete("/api/roles/{id}", roleToDelete.getId())
+                    .header("Authorization", "Bearer " + token))
+            .andExpect(status().isNoContent());
+
+    assertEquals(false, roleRepository.existsById(roleToDelete.getId()));
+}
+
+@Test
+void adminShouldNotDeleteRoleAssociatedWithUser() throws Exception {
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    Role roleToDelete = roleRepository.save(
+            Role.create("PERFIL_COM_USUARIO"));
+
+    userRoleRepository.save(
+            UserRole.create(sectorUser, roleToDelete));
+
+    entityManager.flush();
+
+    mockMvc.perform(delete("/api/roles/{id}", roleToDelete.getId())
+                    .header("Authorization", "Bearer " + token))
+            .andExpect(status().isConflict());
+}
+
+@Test
+void adminShouldNotDeleteRoleWithAssociatedPermission() throws Exception {
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    Role roleToDelete = roleRepository.save(
+            Role.create("PERFIL_COM_PERMISSAO"));
+
+    Permission permission = permissionRepository.save(
+            Permission.create("PERMISSAO_TESTE_EXCLUSAO"));
+
+    rolePermissionRepository.save(
+            RolePermission.create(roleToDelete, permission));
+
+    entityManager.flush();
+
+    mockMvc.perform(delete("/api/roles/{id}", roleToDelete.getId())
+                    .header("Authorization", "Bearer " + token))
+            .andExpect(status().isConflict());
+}
+
+@Test
+void adminShouldNotDeleteNonexistentRole() throws Exception {
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    mockMvc.perform(delete("/api/roles/{id}", 999999L)
+                    .header("Authorization", "Bearer " + token))
+            .andExpect(status().isNotFound());
+}
+```
+
+Observação: mantive o padrão de respostas já definido no projeto: `204`, `409` e `404`.
+
+O primeiro teste também verifica diretamente no repositório se o perfil realmente foi excluído.
+
+2. Conferir antes de executar
+
+Depois de acrescentar os métodos, execute:
+
+```
+tail -n 130 src/test/java/com/julyturadm/controller/RoleControllerIntegrationTest.java
+```
+
+Envie a saída para conferirmos a estrutura. Ainda não execute os testes.
+
+Se tudo estiver correto, teremos 13 testes de integração para o catálogo de perfis, cobrindo 
+criação, consulta, atualização e exclusão.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ tail -n 130 src/test/java/com/julyturadm/controller/RoleControllerIntegrationTest.java
+
+    @Test
+    void unauthenticatedUserShouldNotAccessRoleCatalog() throws Exception {
+
+        mockMvc.perform(get("/api/roles"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ---
+    @Test
+    void adminShouldUpdateRole() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        String requestBody = """
+                {
+                    "name": "RH_ATUALIZADO"
+                }
+                """;
+
+        mockMvc.perform(put("/api/roles/{id}", rhRole.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("RH_ATUALIZADO"));
+    }
+
+    @Test
+    void adminShouldNotUpdateRoleWithDuplicateName() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        String requestBody = """
+                {
+                    "name": "ADMIN"
+                }
+                """;
+
+        mockMvc.perform(put("/api/roles/{id}", rhRole.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void adminShouldNotUpdateNonexistentRole() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        String requestBody = """
+                {
+                    "name": "PERFIL_INEXISTENTE"
+                }
+                """;
+
+        mockMvc.perform(put("/api/roles/{id}", 999999L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isNotFound());
+    }
+
+    //---
+    @Test
+    void adminShouldDeleteRoleWithoutAssociations() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        Role roleToDelete = roleRepository.save(
+                Role.create("PERFIL_PARA_EXCLUIR"));
+
+        mockMvc.perform(delete("/api/roles/{id}", roleToDelete.getId())
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        assertEquals(false, roleRepository.existsById(roleToDelete.getId()));
+    }
+
+    @Test
+    void adminShouldNotDeleteRoleAssociatedWithUser() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        Role roleToDelete = roleRepository.save(
+                Role.create("PERFIL_COM_USUARIO"));
+
+        userRoleRepository.save(
+                UserRole.create(sectorUser, roleToDelete));
+
+        entityManager.flush();
+
+        mockMvc.perform(delete("/api/roles/{id}", roleToDelete.getId())
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void adminShouldNotDeleteRoleWithAssociatedPermission() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        Role roleToDelete = roleRepository.save(
+                Role.create("PERFIL_COM_PERMISSAO"));
+
+        Permission permission = permissionRepository.save(
+                Permission.create("PERMISSAO_TESTE_EXCLUSAO"));
+
+        rolePermissionRepository.save(
+                RolePermission.create(roleToDelete, permission));
+
+        entityManager.flush();
+
+        mockMvc.perform(delete("/api/roles/{id}", roleToDelete.getId())
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void adminShouldNotDeleteNonexistentRole() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        mockMvc.perform(delete("/api/roles/{id}", 999999L)
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito! Conferi os quatro novos métodos. A estrutura está correta:
+
+- Os métodos estão dentro da classe.
+- As chaves estão corretamente posicionadas.
+- As associações são criadas usando os métodos `create()` das entidades.
+- O teste de exclusão simples verifica também a remoção efetiva no banco.
+- Os testes de integridade verificam que o sistema impede a exclusão quando existem associações.
+
+Pronto para executar
+
+Executar os 13 testes
+
+No terminal, execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=RoleControllerIntegrationTest test
+```
+
+Envie o resultado completo, especialmente se houver falhas.
+
+Se os 13 testes passarem, teremos validado o CRUD do catálogo de perfis e suas principais regras
+de integridade referencial.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 29.88 s -- in com.julyturadm.controller.RoleControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  35.890 s
+[INFO] Finished at: 2026-11-13T21:53:15-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente!
+
+13/13 testes aprovados
+
+O CRUD do catálogo de perfis (`RoleController`) passou em todos os testes de integração, sem falhas,
+erros ou testes ignorados.
+
+O que já validamos
+
+| Funcionalidade                           | Resultado        |
+| ---------------------------------------- | ---------------- |
+| Criar perfil                             | 201 Created      |
+| Consultar perfil por ID                  | 200 OK           |
+| Listar perfis                            | 200 OK           |
+| Atualizar perfil                         | 200 OK           |
+| Impedir nome duplicado                   | 409 Conflict     |
+| Excluir perfil sem associações           | 204 No Content   |
+| Impedir exclusão com usuário associado   | 409 Conflict     |
+| Impedir exclusão com permissão associada | 409 Conflict     |
+| Perfil inexistente                       | 404 Not Found    |
+| Bloquear acesso de RH e setor            | 403 Forbidden    |
+| Bloquear acesso sem autenticação         | 401 Unauthorized |
+
+Também confirmamos que a exclusão não remove automaticamente associações: o serviço impede a operação
+quando há registros relacionados.
+
+Próxima etapa do JulyTurAdm
+
+Agora podemos avançar para o gerenciamento do catálogo de permissões (`Permission`), também restrito
+ao `ADMIN`.
+
+Minha sugestão é seguir esta sequência:
+
+1. Implementar `PermissionService`.
+2. Criar os DTOs de criação, atualização e resposta.
+3. Implementar `PermissionController`.
+4. Criar testes de integração para CRUD, validações e autorização.
+5. Depois, implementar o gerenciamento das associações entre perfis e permissões (`roles_permissions`).
+
+Assim completaremos as três áreas administrativas previstas: usuários, perfis e permissões.
+
+Primeiro passo: vamos verificar o que já existe para não duplicar código.
+
+Execute:
+
+```
+find src/main/java/com/julyturadm -type f | sort | grep -E 'Permission|RolePermission'
+```
+
+Envie a saída. A partir dela, definiremos exatamente o próximo arquivo a implementar.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm -type f | sort | grep -E 'Permission|RolePermission'
+src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+src/main/java/com/julyturadm/domain/entity/Permission.java
+src/main/java/com/julyturadm/domain/entity/RolePermission.java
+src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito.
+
+A estrutura confirma que já temos as entidades e os repositórios de permissões, mas ainda não existem
+serviços, DTOs ou controllers específicos para esse catálogo.
+
+Vamos seguir o mesmo padrão que usamos no `RoleService` e no `RoleController`, mantendo a arquitetura
+consistente.
+
+Etapa 1 — Verificar o repositório de permissões
+
+Antes de implementar o serviço, quero conferir os métodos já disponíveis em `PermissionRepository`.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+```
+
+Envie o conteúdo.
+
+Com isso, definiremos as operações necessárias para o CRUD de permissões, evitando criar métodos
+duplicados ou incompatíveis com o repositório existente.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.Permission;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface PermissionRepository
+        extends JpaRepository<Permission, Long> {
+
+    Optional<Permission> findByName(String name);
+
+    boolean existsByName(String name);
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. O `PermissionRepository` já possui os métodos necessários para criar, consultar, listar e 
+verificar nomes duplicados.
+
+Para permitir a atualização sem conflito com o próprio registro, precisamos acrescentar um método,
+seguindo o mesmo padrão utilizado em `RoleRepository`.
+
+Etapa 2 — Atualizar PermissionRepository
+
+Continua no arquivo: [20261113_Chat-Gpt:Etapa2-29-Atualizar_PermissionRepository.txt]
+
+-------------------------------------------------fim-----------------------------------------------
+

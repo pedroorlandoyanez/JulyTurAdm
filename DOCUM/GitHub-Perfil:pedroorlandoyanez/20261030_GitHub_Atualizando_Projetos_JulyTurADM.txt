@@ -29,7 +29,9 @@ OBS: Se for a primeira atualização do projeto via terminal, recomando seguir o
 
 git init
 git add .
-git commit -m "03-11-2026,Atualizando Projeto backend, API da JulyturAdm - Hystory, Project Spring-Boot-Docker Mysql-Camadas repository,Service,Controller e Config AWT"
+//git commit -m "05-11-2026,Atualizando Projeto backend, API da JulyturAdm - Hystory, Project Spring-Boot-Docker Mysql-Camadas repository,Service,Controller, Segurity e Config AWT"
+
+git commit -m "18-11-2026,Atualizando Projeto backend, API backend-api JulyturAdm - Hystory, Project Spring-Boot-Docker Mysql-Camadas repository,Service,Controller, Segurity e Config AWT"
 
 // para se conectar ao repositorio do GitHub, pois ainda o git da sua maquina desconhece.
 git remote add origin https://github.com/pedroorlandoyanez/JulyTurAdm.git

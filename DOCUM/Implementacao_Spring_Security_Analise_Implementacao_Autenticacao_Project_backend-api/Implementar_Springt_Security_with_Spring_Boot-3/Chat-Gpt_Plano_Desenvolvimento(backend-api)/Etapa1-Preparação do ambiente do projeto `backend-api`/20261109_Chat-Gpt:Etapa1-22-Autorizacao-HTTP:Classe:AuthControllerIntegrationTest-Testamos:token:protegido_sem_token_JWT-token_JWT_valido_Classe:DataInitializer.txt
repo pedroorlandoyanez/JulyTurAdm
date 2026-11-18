@@ -1,0 +1,1138 @@
+﻿
+09/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt:Etapa1-22-Autorizacao HTTP Classe: AuthControllerIntegrationTest.java Testamos token 
+protegido, token sem token JWT - token JWT valido Criação da Classe:DataInitializer.java
+---------------------------------------------------------------------------------------------------
+
+Foi criada a classe `DataInitializer.java` para inicializar os valores padroes do ADM-MASTER a 
+classe esta em producação, compilada corretamente com Java 17 e Maven.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -DskipTests compile
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 30 source files with javac [debug parameters release 17] to target/classes
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.826 s
+[INFO] Finished at: 2026-11-09T10:25:00-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+Ótimo! O `DataInitializer` compilou corretamente com Java 17 e Maven.
+
+Isso confirma que as dependências, os métodos dos repositórios e as chamadas às factories estão 
+compatíveis.
+
+Agora precisamos testar o comportamento sem habilitar o inicializador na aplicação normal e, 
+principalmente, sem tocar no banco `bd_paytur`.
+
+Próximo passo: executar a suíte de testes existente
+
+Como o inicializador permanece desabilitado, podemos verificar se a nova classe não afetou a 
+autenticação, os repositórios ou os demais componentes.
+
+Execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn test
+```
+
+Esse comando executa a suíte completa. Os testes de integração existentes usam o perfil `test`,
+que aponta para `bd_paytur_test`, com `create-drop`.
+
+Importante: não habilite o inicializador e não altere a configuração do banco principal.
+
+Envie o resultado, especialmente o resumo `Tests run`, `Failures`, `Errors` e `BUILD SUCCESS` 
+ou `BUILD FAILURE`.
+
+Depois vamos criar testes específicos para o `DataInitializer`, incluindo a verificação de que uma
+segunda execução não duplica perfis, permissões ou associações.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ set -a
+source ../.env
+set +a
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 7 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.config.JwtAuthenticationConverterTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.595 s -- in com.julyturadm.config.JwtAuthenticationConverterTest
+[INFO] Running com.julyturadm.service.AuthenticationServiceTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.348 s -- in com.julyturadm.service.AuthenticationServiceTest
+[INFO] Running com.julyturadm.service.UserServiceTest
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.327 s -- in com.julyturadm.service.UserServiceTest
+[INFO] Running com.julyturadm.domain.repository.RepositoryIntegrationTest
+10:44:47.175 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.julyturadm.domain.repository.RepositoryIntegrationTest]: RepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:44:47.391 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.julyturadm.JulyTurAdmApplication for test class com.julyturadm.domain.repository.RepositoryIntegrationTest
+10:44:48.311 [main] ERROR org.springframework.boot.SpringApplication -- Application run failed
+org.yaml.snakeyaml.constructor.DuplicateKeyException: while constructing a mapping
+ in 'reader', line 1, column 1:
+    spring:
+    ^
+found duplicate key julyturadm
+ in 'reader', line 24, column 1:
+    julyturadm:
+    ^
+
+INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Errors: 
+[ERROR]   AuthControllerIntegrationTest.shouldAllowAccessingUsersWithValidJwt » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldAuthenticateUserAndReturnValidJwt » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldReturnBadRequestWhenEmailIsBlank » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldReturnBadRequestWhenEmailIsInvalid » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldReturnBadRequestWhenPasswordIsBlank » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldReturnUnauthorizedWhenAccessingUsersWithInvalidJwt » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldReturnUnauthorizedWhenAccessingUsersWithoutJwt » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldReturnUnauthorizedWhenPasswordIsIncorrect » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   AuthControllerIntegrationTest.shouldReturnUnauthorizedWhenUserDoesNotExist » IllegalState Failed to load ApplicationContext for [WebMergedContextConfiguration@72b0a004 testClass = com.julyturadm.controller.AuthControllerIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@4cdba2ed key = [org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientWebSecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration, com.julyturadm.config.TestDatabaseSafetyConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.reactive.WebTestClientAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcWebDriverAutoConfiguration, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration, org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration, org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@4b3fa0b3, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   RepositoryIntegrationTest.shouldConnectOnlyToTestDatabase » IllegalState Failed to load ApplicationContext for [WebMergedContextConfiguration@2ed71727 testClass = com.julyturadm.domain.repository.RepositoryIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@5261ec9 key = [com.julyturadm.config.TestDatabaseSafetyConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   RepositoryIntegrationTest.shouldLoadUserWithRolesAndPermissionsForAuthentication » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@2ed71727 testClass = com.julyturadm.domain.repository.RepositoryIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@5261ec9 key = [com.julyturadm.config.TestDatabaseSafetyConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   RepositoryIntegrationTest.shouldPersistAndFindPermission » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@2ed71727 testClass = com.julyturadm.domain.repository.RepositoryIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@5261ec9 key = [com.julyturadm.config.TestDatabaseSafetyConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   RepositoryIntegrationTest.shouldPersistAndFindRole » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@2ed71727 testClass = com.julyturadm.domain.repository.RepositoryIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@5261ec9 key = [com.julyturadm.config.TestDatabaseSafetyConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   RepositoryIntegrationTest.shouldPersistAndFindUserByEmail » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@2ed71727 testClass = com.julyturadm.domain.repository.RepositoryIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@5261ec9 key = [com.julyturadm.config.TestDatabaseSafetyConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   RepositoryIntegrationTest.shouldPersistRolePermissionRelationship » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@2ed71727 testClass = com.julyturadm.domain.repository.RepositoryIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@5261ec9 key = [com.julyturadm.config.TestDatabaseSafetyConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   RepositoryIntegrationTest.shouldPersistUserRoleRelationship » IllegalState ApplicationContext failure threshold (1) exceeded: skipping repeated attempt to load context for [WebMergedContextConfiguration@2ed71727 testClass = com.julyturadm.domain.repository.RepositoryIntegrationTest, locations = [], classes = [com.julyturadm.JulyTurAdmApplication], contextInitializerClasses = [], activeProfiles = ["test"], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [[ImportsContextCustomizer@5261ec9 key = [com.julyturadm.config.TestDatabaseSafetyConfiguration]], org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@a518813, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@1d75e7af, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@3ce53f6a, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@3cbf1ba4, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@7c1e32c9, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@c35af2a, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@80700f55], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[INFO] 
+[ERROR] Tests run: 36, Failures: 0, Errors: 16, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  10.351 s
+[INFO] Finished at: 2026-11-09T10:44:48-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project backend-api: 
+[ERROR] 
+[ERROR] See /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Identificamos o problema.
+
+Os testes unitários passaram, mas os testes de integração falharam porque o Spring não conseguiu 
+carregar a configuração YAML.
+
+BUILD FAILURE
+
+A causa está identificada: existe uma chave `julyturadm:` duplicada no arquivo de configuração YAML.
+O erro aparece explicitamente no log:
+
+```
+org.yaml.snakeyaml.constructor.DuplicateKeyException:
+found duplicate key julyturadm
+in 'reader', line 24, column 1:
+    julyturadm:
+```
+
+Isso não é um erro do `DataInitializer` nem dos repositórios.
+
+É um problema de organização do `application-test.yml` ou de outro YAML que está sendo carregado.
+
+1. Vamos inspecionar o arquivo antes de alterar
+
+No terminal, execute:
+
+```
+printf '\n===== APPLICATION TEST =====\n'
+nl -ba src/main/resources/application-test.yml
+
+printf '\n===== APPLICATION PRINCIPAL =====\n'
+nl -ba src/main/resources/application.yml
+```
+
+Envie os dois resultados.
+
+2. O que provavelmente aconteceu?
+
+No YAML, não podemos declarar a mesma chave principal duas vezes no mesmo nível.
+
+Por exemplo, isto causa o erro:
+
+```
+spring:
+  datasource:
+    ...
+
+julyturadm:
+  security:
+    ...
+
+julyturadm:
+  initializer:
+    enabled: false
+```
+
+O correto é reunir as propriedades sob uma única chave:
+
+```
+julyturadm:
+  security:
+    ...
+  initializer:
+    enabled: false
+```
+
+Mas não vamos modificar nada até conferir os dois arquivos.
+
+Importante: os 20 testes unitários passaram; os 16 erros estão relacionados ao carregamento do contexto de integração. Vamos corrigir o YAML e repetir a suíte completa, mantendo o inicializador desabilitado.
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== APPLICATION TEST =====\n'
+nl -ba src/main/resources/application-test.yml
+
+printf '\n===== APPLICATION PRINCIPAL =====\n'
+nl -ba src/main/resources/application.yml
+
+===== APPLICATION TEST =====
+     1	spring:
+     2	  datasource:
+     3	    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+     4	    username: ${MYSQL_USER}
+     5	    password: ${MYSQL_PASSWORD}
+     6	    driver-class-name: com.mysql.cj.jdbc.Driver
+     7	
+     8	  jpa:
+     9	    hibernate:
+    10	      ddl-auto: create-drop
+    11	    open-in-view: false
+    12	
+    13	server:
+    14	  port: 0
+
+===== APPLICATION PRINCIPAL =====
+     1	spring:
+     2	  application:
+     3	    name: julyturadm-backend
+     4	
+     5	  datasource:
+     6	    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/${MYSQL_DATABASE}
+     7	    username: ${MYSQL_USER}
+     8	    password: ${MYSQL_PASSWORD}
+     9	    driver-class-name: com.mysql.cj.jdbc.Driver
+    10	
+    11	  jpa:
+    12	    hibernate:
+    13	      ddl-auto: none
+    14	    open-in-view: false
+    15	
+    16	server:
+    17	  port: 8081
+    18	
+    19	julyturadm:
+    20	  security:
+    21	    jwt:
+    22	      secret: ${JWT_SECRET}
+    23	
+    24	julyturadm:
+    25	  initializer:
+    26	    enabled: false
+    27	
+    28	          
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Encontramos a causa exata! Está no `application.yml`, não no `application-test.yml`.
+
+Você declarou `julyturadm:` duas vezes, nas linhas 19 e 24.
+
+O YAML não aceita essa duplicidade no mesmo nível.
+
+1. Corrigir o `application.yml`
+
+Substitua somente o trecho das linhas 19 a 26 por este:
+
+```
+julyturadm:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+
+  initializer:
+    enabled: false
+```
+
+Assim teremos uma única chave `julyturadm:`, contendo as duas configurações.
+
+2. Conferir o resultado
+
+Execute:
+
+```
+nl -ba src/main/resources/application.yml
+```
+
+A estrutura deverá ficar assim:
+
+```
+julyturadm:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+  initializer:
+    enabled: false
+```
+
+3. Repetir os testes
+
+Depois execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn test
+```
+
+Segurança preservada
+
+O inicializador continua desabilitado (`false`) e o banco principal `bd_paytur` permanece protegido.
+
+Envie o resultado dos testes. Se tudo passar, avançaremos para os testes específicos do `DataInitializer`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 26.40 s -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 36, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  59.729 s
+[INFO] Finished at: 2026-11-09T11:08:17-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+
+36 testes aprovados
+
+Excelente! Agora temos uma base estável novamente:
+
+- 36 testes executados
+- 0 falhas
+- 0 erros
+- 0 testes ignorados
+
+A duplicidade do YAML foi corrigida e a aplicação voltou a carregar normalmente nos testes de integração.
+
+O `DataInitializer` continua desabilitado por padrão.
+
+Portanto, ainda não criamos registros automaticamente no banco principal.
+
+Próxima etapa: testar o DataInitializer
+
+Vamos criar testes específicos para verificar três comportamentos:
+
+1. Criação dos perfis e das permissões quando ainda não existem.
+2. Criação das associações entre perfis e permissões.
+3. Segunda execução sem duplicar registros.
+
+Antes de escrever os testes, vamos conferir a estrutura atual para aproveitar as convenções do 
+projeto e manter a proteção do banco de produção.
+
+1. Inspecione os testes existentes
+
+Execute:
+
+```
+printf '\n===== TESTES EXISTENTES =====\n'
+find src/test/java/com/julyturadm -type f -name '*Test.java' | sort
+
+printf '\n===== TESTE DE INTEGRAÇÃO DOS REPOSITÓRIOS =====\n'
+sed -n '1,240p' src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+
+printf '\n===== PROTEÇÃO DO BANCO DE TESTES =====\n'
+find src/test/java -name '*Safety*' -o -name '*Configuration*'
+```
+
+2. Confira o inicializador atual
+
+```
+cat src/main/java/com/julyturadm/initializer/DataInitializer.java
+```
+
+Envie os resultados.
+
+Por que essa conferência? Quero que os novos testes usem o perfil `test`, validem o banco
+`bd_paytur_test` e não dependam de habilitar o inicializador na configuração principal.
+
+Também vamos verificar a idempotência com uma segunda execução real, em vez de apenas simular o
+comportamento com mocks.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== TESTES EXISTENTES =====\n'
+find src/test/java/com/julyturadm -type f -name '*Test.java' | sort
+
+printf '\n===== TESTE DE INTEGRAÇÃO DOS REPOSITÓRIOS =====\n'
+sed -n '1,240p' src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+
+printf '\n===== PROTEÇÃO DO BANCO DE TESTES =====\n'
+find src/test/java -name '*Safety*' -o -name '*Configuration*'
+
+===== TESTES EXISTENTES =====
+src/test/java/com/julyturadm/config/JwtAuthenticationConverterTest.java
+src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java
+src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+src/test/java/com/julyturadm/security/CustomUserDetailsServiceTest.java
+src/test/java/com/julyturadm/service/AuthenticationServiceTest.java
+src/test/java/com/julyturadm/service/UserServiceTest.java
+
+===== TESTE DE INTEGRAÇÃO DOS REPOSITÓRIOS =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import com.julyturadm.domain.entity.id.UserRoleId;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Constructor;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class RepositoryIntegrationTest {
+
+        @Autowired
+        private JdbcTemplate jdbcTemplate;
+
+        @Autowired
+        private UserRepository userRepository;
+
+        @Autowired
+        private RoleRepository roleRepository;
+
+        @Autowired
+        private PermissionRepository permissionRepository;
+
+        @Autowired
+        private UserRoleRepository userRoleRepository;
+
+        @Autowired
+        private RolePermissionRepository rolePermissionRepository;
+
+        @Autowired
+        private EntityManager entityManager;
+
+        private <T> T createEntity(Class<T> type) throws Exception {
+                Constructor<T> constructor = type.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+        }
+
+        private String uniqueValue(String prefix) {
+                return prefix + "_" + UUID.randomUUID();
+        }
+
+        @Test
+        void shouldConnectOnlyToTestDatabase() {
+
+                String database = jdbcTemplate.queryForObject(
+                                "SELECT DATABASE()",
+                                String.class);
+
+                assertEquals("bd_paytur_test", database);
+        }
+
+        @Test
+        void shouldPersistAndFindUserByEmail() throws Exception {
+
+                User user = createEntity(User.class);
+
+                String email = uniqueValue("user") + "@test.com";
+
+                user.setName("Usuario Teste");
+                user.setEmail(email);
+                user.setPassword("password-test");
+                user.setEnabled(true);
+
+                User savedUser = userRepository.saveAndFlush(user);
+
+                assertNotNull(savedUser.getId());
+
+                assertTrue(userRepository.existsByEmail(email));
+
+                User foundUser = userRepository.findByEmail(email)
+                                .orElseThrow();
+
+                assertEquals(email, foundUser.getEmail());
+                assertEquals("Usuario Teste", foundUser.getName());
+                assertTrue(foundUser.getEnabled());
+
+                assertTrue(
+                                userRepository.findAllByEnabledTrue()
+                                                .stream()
+                                                .anyMatch(item -> item.getId().equals(savedUser.getId())));
+        }
+
+        @Test
+        void shouldPersistAndFindRole() throws Exception {
+
+                Role role = createEntity(Role.class);
+
+                String roleName = uniqueValue("ROLE_TEST");
+
+                role.setName(roleName);
+
+                Role savedRole = roleRepository.saveAndFlush(role);
+
+                assertNotNull(savedRole.getId());
+                assertTrue(roleRepository.existsByName(roleName));
+
+                Role foundRole = roleRepository.findByName(roleName)
+                                .orElseThrow();
+
+                assertEquals(roleName, foundRole.getName());
+        }
+
+        @Test
+        void shouldPersistAndFindPermission() throws Exception {
+
+                Permission permission = createEntity(Permission.class);
+
+                String permissionName = uniqueValue("PERMISSION_TEST");
+
+                permission.setName(permissionName);
+
+                Permission savedPermission = permissionRepository.saveAndFlush(permission);
+
+                assertNotNull(savedPermission.getId());
+                assertTrue(permissionRepository.existsByName(permissionName));
+
+                Permission foundPermission = permissionRepository.findByName(permissionName)
+                                .orElseThrow();
+
+                assertEquals(permissionName, foundPermission.getName());
+        }
+
+        @Test
+        void shouldPersistUserRoleRelationship() throws Exception {
+
+                User user = createEntity(User.class);
+
+                user.setName("Usuario Relacionamento");
+                user.setEmail(uniqueValue("relationship") + "@test.com");
+                user.setPassword("password-test");
+                user.setEnabled(true);
+
+                user = userRepository.saveAndFlush(user);
+
+                Role role = createEntity(Role.class);
+
+                // role.setName(uniqueValue("ROLE_USER_TEST"));
+                role.setName(uniqueValue("RU"));
+
+                role = roleRepository.saveAndFlush(role);
+
+                UserRole userRole = createEntity(UserRole.class);
+
+                userRole.setId(new UserRoleId(user.getId(), role.getId()));
+                userRole.setUser(user);
+                userRole.setRole(role);
+
+                userRoleRepository.saveAndFlush(userRole);
+
+                UserRoleId id = new UserRoleId(
+                                user.getId(),
+                                role.getId());
+
+                assertTrue(userRoleRepository.existsById(id));
+
+                assertTrue(
+                                userRoleRepository.existsByUser_IdAndRole_Id(
+                                                user.getId(),
+                                                role.getId()));
+
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByUser_Id(user.getId()).size());
+
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByRole_Id(role.getId()).size());
+        }
+
+        @Test
+        void shouldPersistRolePermissionRelationship() throws Exception {
+
+                Role role = createEntity(Role.class);
+
+                // role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
+                role.setName(uniqueValue("RP"));
+
+                role = roleRepository.saveAndFlush(role);
+
+                Permission permission = createEntity(Permission.class);
+
+                permission.setName(uniqueValue("PERMISSION_ROLE_TEST"));
+
+                permission = permissionRepository.saveAndFlush(permission);
+
+                RolePermission rolePermission = createEntity(RolePermission.class);
+
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
+
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
+
+                rolePermissionRepository.saveAndFlush(rolePermission);
+
+                RolePermissionId id = new RolePermissionId(
+                                role.getId(),
+                                permission.getId());
+
+                assertTrue(rolePermissionRepository.existsById(id));
+
+                assertTrue(
+                                rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                                                role.getId(),
+                                                permission.getId()));
+
+                assertEquals(
+                                1,
+                                rolePermissionRepository.findAllByRole_Id(role.getId()).size());
+
+                assertEquals(
+                                1,
+                                rolePermissionRepository
+                                                .findAllByPermission_Id(permission.getId()).size());
+        }
+
+===== PROTEÇÃO DO BANCO DE TESTES =====
+src/test/java/com/julyturadm/config/TestDatabaseSafetyConfiguration.java
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/initializer/DataInitializer.java
+package com.julyturadm.initializer;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+
+import lombok.RequiredArgsConstructor;
+
+//---
+// Proteção inicial, quando formos executar o cadastro dos dados, também 
+// verificaremos o banco de destino e a estratégia de execução.
+//---
+@Component
+@ConditionalOnProperty(
+        prefix = "julyturadm.initializer",
+        name = "enabled",
+        havingValue = "true"
+)
+@RequiredArgsConstructor
+public class DataInitializer implements CommandLineRunner {
+
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
+
+    //--
+    // - `@Transactional` garante que a inicialização seja executada como uma única transação: se ocorrer
+    //                    uma falha, as alterações serão revertidas.
+    //---
+    @Override
+    @Transactional
+    public void run(String... args) {
+
+        System.out.println("Inicializando dados básicos do JulyTurAdm...");
+
+        // 1. Criar ou recuperar os perfis.
+        Role masterAdmin = findOrCreateRole("MASTER_ADMIN");
+        Role rh = findOrCreateRole("RH");
+
+        // 2. Criar ou recuperar as permissões.
+        Permission userCreate = findOrCreatePermission("USER_CREATE");
+        Permission userRead = findOrCreatePermission("USER_READ");
+        Permission userDisable = findOrCreatePermission("USER_DISABLE");
+        Permission userEnable = findOrCreatePermission("USER_ENABLE");
+
+        // 3. Associar permissões aos perfis.
+        grantPermission(masterAdmin, userCreate);
+        grantPermission(masterAdmin, userRead);
+        grantPermission(masterAdmin, userDisable);
+        grantPermission(masterAdmin, userEnable);
+
+        grantPermission(rh, userCreate);
+        grantPermission(rh, userRead);
+        grantPermission(rh, userDisable);
+        grantPermission(rh, userEnable);
+
+        System.out.println("Dados básicos inicializados com sucesso.");
+    }
+
+    // `findOrCreateRole()` e `findOrCreatePermission()` evitam criar registros duplicados.
+    private Role findOrCreateRole(String name) {
+
+        return roleRepository.findByName(name)
+                .orElseGet(() -> roleRepository.save(Role.create(name)));
+    }
+
+    // `findOrCreateRole()` e `findOrCreatePermission()` evitam criar registros duplicados.
+    private Permission findOrCreatePermission(String name) {
+
+        return permissionRepository.findByName(name)
+                .orElseGet(() -> permissionRepository.save(Permission.create(name)));
+    }
+
+    // - `grantPermission()` verifica se a associação já existe antes de gravá-la.
+    // - `RolePermission.create()` recebe entidades já persistidas, com seus IDs disponíveis.
+    private void grantPermission(Role role, Permission permission) {
+
+        boolean alreadyExists =
+                rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                        role.getId(),
+                        permission.getId()
+                );
+
+        if (!alreadyExists) {
+            RolePermission association =
+                    RolePermission.create(role, permission);
+
+            rolePermissionRepository.save(association);
+        }
+    }
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Recebi a saída dos comandos. A estrutura está adequada para avançarmos.
+
+Há três pontos importantes:
+
+1. O `RepositoryIntegrationTest` já importa `TestDatabaseSafetyConfiguration` e confirma que o banco
+   utilizado é `bd_paytur_test`.
+
+2. O `DataInitializer` está protegido por `@ConditionalOnProperty`, portanto só é criado quando `julyturadm.initializer.enabled=true`.
+
+3. O método `run()` já está transacional e verifica as associações antes de inseri-las.
+
+Vamos testar o comportamento real do inicializador, sem habilitá-lo na configuração normal.
+
+Próxima conferência: proteção do banco
+
+Antes de ativar o inicializador em um contexto de teste, quero verificar como a proteção existente
+funciona.
+
+Execute:
+
+```
+printf '\n===== PROTEÇÃO DO BANCO =====\n'
+cat src/test/java/com/julyturadm/config/TestDatabaseSafetyConfiguration.java
+
+printf '\n===== CONFIGURAÇÃO DE TESTE =====\n'
+cat src/main/resources/application-test.yml
+
+printf '\n===== CONFIGURAÇÃO PRINCIPAL =====\n'
+cat src/main/resources/application.yml
+```
+
+Envie a saída.
+
+Com isso, vamos criar `DataInitializerIntegrationTest.java` em:
+
+`src/test/java/com/julyturadm/initializer/`
+
+O teste deverá comprovar que:
+
+- Os dois perfis são criados.
+- As quatro permissões são criadas.
+- Cada perfil recebe as quatro associações previstas.
+- Uma segunda execução não duplica os registros.
+
+Não altere `enabled: false` no `application.yml`.
+
+A ativação será restrita à configuração do teste, mantendo o banco principal protegido.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== PROTEÇÃO DO BANCO =====\n'
+cat src/test/java/com/julyturadm/config/TestDatabaseSafetyConfiguration.java
+
+printf '\n===== CONFIGURAÇÃO DE TESTE =====\n'
+cat src/main/resources/application-test.yml
+
+printf '\n===== CONFIGURAÇÃO PRINCIPAL =====\n'
+cat src/main/resources/application.yml
+
+===== PROTEÇÃO DO BANCO =====
+package com.julyturadm.config;
+
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+
+@TestConfiguration
+public class TestDatabaseSafetyConfiguration {
+
+    @Bean
+    static BeanFactoryPostProcessor databaseSafetyGuard(Environment environment) {
+
+        return beanFactory -> {
+            String url = environment.getProperty(
+                "spring.datasource.url",
+                ""
+            );
+
+            boolean isTestDatabase = url.matches(
+                "jdbc:mysql://[^/]+/bd_paytur_test(?:\\?.*)?"
+            );
+
+            if (!isTestDatabase) {
+                throw new IllegalStateException(
+                    "TESTE INTERROMPIDO: o banco configurado não é bd_paytur_test. "
+                    + "URL encontrada: " + url
+                );
+            }
+        };
+    }
+}
+===== CONFIGURAÇÃO DE TESTE =====
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+server:
+  port: 0
+
+===== CONFIGURAÇÃO PRINCIPAL =====
+spring:
+  application:
+    name: julyturadm-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/${MYSQL_DATABASE}
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+server:
+  port: 8081
+
+julyturadm:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+
+  initializer:
+    enabled: false
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. A proteção está bem implementada e podemos utilizá-la nos testes do inicializador.
+
+Confirme estes pontos:
+
+- `TestDatabaseSafetyConfiguration` interrompe a execução se o banco não for `bd_paytur_test`.
+- `application-test.yml` utiliza `bd_paytur_test`.
+- `ddl-auto: create-drop` está restrito ao perfil de teste.
+- `application.yml` mantém `ddl-auto: none` e `initializer.enabled: false`.
+
+Uma melhoria importante: vamos adicionar a proteção explicitamente ao novo teste, usando
+`@Import(TestDatabaseSafetyConfiguration.class)`.
+
+Assim, não dependeremos de outros testes para proteger o banco.
+
+1. Criar o teste de integração
+
+Crie o diretório, caso ainda não exista:
+
+```
+mkdir -p src/test/java/com/julyturadm/initializer
+```
+
+Crie o arquivo:
+
+`src/test/java/com/julyturadm/initializer/DataInitializerIntegrationTest.java`
+
+Insira:
+
+```
+
+package com.julyturadm.initializer;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest(properties = {
+        "julyturadm.initializer.enabled=true"
+})
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+class DataInitializerIntegrationTest {
+
+    @Autowired
+    private DataInitializer dataInitializer;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
+    @Test
+    void shouldCreateInitialRolesPermissionsAndRelationships() {
+
+        assertTrue(roleRepository.existsByName("MASTER_ADMIN"));
+        assertTrue(roleRepository.existsByName("RH"));
+
+        assertTrue(permissionRepository.existsByName("USER_CREATE"));
+        assertTrue(permissionRepository.existsByName("USER_READ"));
+        assertTrue(permissionRepository.existsByName("USER_DISABLE"));
+        assertTrue(permissionRepository.existsByName("USER_ENABLE"));
+
+        var masterAdmin = roleRepository.findByName("MASTER_ADMIN")
+                .orElseThrow();
+
+        var rh = roleRepository.findByName("RH")
+                .orElseThrow();
+
+        assertEquals(4,
+                rolePermissionRepository.findAllByRole_Id(masterAdmin.getId()).size());
+
+        assertEquals(4,
+                rolePermissionRepository.findAllByRole_Id(rh.getId()).size());
+    }
+
+    @Test
+    void shouldNotDuplicateDataWhenInitializerRunsAgain() {
+
+        long rolesBefore = roleRepository.count();
+        long permissionsBefore = permissionRepository.count();
+        long relationshipsBefore = rolePermissionRepository.count();
+
+        dataInitializer.run();
+
+        assertEquals(rolesBefore, roleRepository.count());
+        assertEquals(permissionsBefore, permissionRepository.count());
+        assertEquals(relationshipsBefore, rolePermissionRepository.count());
+    }
+}
+
+```
+
+2. O que esses testes verificam?
+
+| Teste                                                 | Resultado esperado                     |
+| ----------------------------------------------------- | -------------------------------------- |
+| `shouldCreateInitialRolesPermissionsAndRelationships` | 2 perfis, 4 permissões e 8 associações |
+| `shouldNotDuplicateDataWhenInitializerRunsAgain`      | Nenhum registro duplicado              |
+
+O Spring executará o `DataInitializer` automaticamente na inicialização do contexto de teste, 
+porque habilitamos a propriedade somente nessa classe.
+
+O segundo teste executará novamente o método `run()` para verificar a idempotência.
+
+3. Executar somente os novos testes
+
+No terminal:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=DataInitializerIntegrationTest test
+```
+
+Não altere o `application.yml`.
+
+Envie o resultado antes de avançarmos.
+
+Se os testes passarem, teremos uma primeira validação real da inicialização dos dados básicos, 
+isolada no banco de testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 24.78 s -- in com.julyturadm.initializer.DataInitializerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  37.351 s
+[INFO] Finished at: 2026-11-09T11:25:27-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+BUILD SUCCESS
+
+2 testes aprovados
+
+Excelente! Os dois testes específicos do `DataInitializer` passaram.
+
+Isso comprova que:
+
+1. Os perfis `MASTER_ADMIN` e `RH` são criados.
+2. As quatro permissões são cadastradas.
+3. As oito associações entre perfis e permissões são criadas.
+4. Uma segunda execução não duplica os registros.
+
+Temos agora uma inicialização idempotente, validada no banco de testes.
+
+Próxima etapa: revisar as permissões do RH
+
+Antes de avançarmos para a autorização dos endpoints, precisamos discutir uma regra de negócio.
+
+Atualmente, o RH possui as mesmas quatro permissões do `MASTER_ADMIN`.
+Isso significa que pode criar, consultar, desabilitar e habilitar usuários.
+
+Minha recomendação inicial seria:
+
+| Permissão    | MASTER_ADMIN | RH  |
+| ------------ | ------------ | --- |
+| USER_CREATE  | Sim          | Sim |
+| USER_READ    | Sim          | Sim |
+| USER_DISABLE | Sim          | Não |
+| USER_ENABLE  | Sim          | Não |
+
+Assim, o RH administra os colaboradores, mas não controla a habilitação das contas.
+
+Você prefere manter as quatro permissões para o RH ou restringir `USER_DISABLE` e `USER_ENABLE`
+ao `MASTER_ADMIN`? Essa decisão definirá a próxima alteração no projeto.
+
+
+Continua no arquivo: [
+
+-------------------------------------------------fim-----------------------------------------------
+

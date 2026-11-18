@@ -1,0 +1,30 @@
+﻿
+08/11/2026
+
+---------------------------------------------------------------------------------------------------
+API REST, principais métodos HTTP (também chamados de verbos)
+---------------------------------------------------------------------------------------------------
+
+Principais_metodos-HTTP(verbos)_API-REST
+
+Em uma API REST, os principais métodos HTTP (também chamados de verbos) são baseados nas 
+especificações do protocolo HTTP e mapeados para as operações do tipo CRUD (Criar, Ler, Atualizar e
+Excluir):
+
+Os Métodos HTTP mais comuns em REST
+
+• GET: Solicita a recuperação de um ou mais recursos do servidor (operação de leitura, idempotente).
+
+• POST: Envia uma nova entidade para o servidor, geralmente criando um novo recurso (operação de 
+  criação).
+
+• PUT: Substitui todas as informações de um recurso existente ou cria um novo recurso caso ele não 
+  exista (atualização completa).
+
+• PATCH: Aplica modificações parciais a um recurso (atualização parcial).
+
+• DELETE: Remove um recurso específico do servidor (operação de exclusão)
+
+
+-------------------------------------------------fim-----------------------------------------------
+

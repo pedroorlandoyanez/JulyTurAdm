@@ -35,4 +35,15 @@ public class Permission {
         fetch = FetchType.LAZY
     )
     private List<RolePermission> rolePermissions = new ArrayList<>();
+
+    // Esse método permite criar uma permissão sem expor publicamente o construtor da entidade.    
+    public static Permission create(String name) {
+
+        Permission permission = new Permission();
+
+        permission.setName(name);
+
+        return permission;
+    }
+
 }

@@ -1,0 +1,1739 @@
+﻿
+10/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt:Etapa1-24-Testes_Permissoes:`MASTER_ADMIN`_e_`RH`_OK
+---------------------------------------------------------------------------------------------------
+
+O ChatGpt esta me questionando com esta mensagem:
+"Você está usando a versão gratuita do ChatGPT. Faça upgrade para ter acesso a modelos avançados,
+memória aprimorada e criação de imagens de maior qualidade." Se eu fizer, o upgrade para o Plus,
+vou ter que pagar a partir de quando?
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 24.34 s -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 38, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:17 min
+[INFO] Finished at: 2026-11-10T22:29:30-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+38/38 testes aprovados
+
+BUILD SUCCESS!
+
+Ótimo resultado.
+Agora temos uma suíte completa passando, incluindo os testes de autenticação, JWT, repositórios,
+inicialização de dados e autorização dos endpoints.
+
+Onde estamos no JulyTurAdm
+
+A camada básica de segurança já está funcionando:
+
+- Login com email e senha.
+- Senhas protegidas com BCrypt.
+- Geração e validação de JWT.
+- Conversão de roles e permissions em authorities.
+- Proteção dos endpoints com `@PreAuthorize`.
+- Testes de integração executados com o banco `bd_paytur_test`.
+
+Próxima etapa: autorização por perfil e regras de negócio
+
+Minha sugestão é avançar para a validação das regras que definimos:
+
+1. ADMIN: pode administrar usuários, perfis e permissões.
+2. RH: pode criar, consultar, desativar e reativar usuários.
+3. RH: pode atribuir perfis funcionais, mas não pode atribuir `ADMIN`.
+4. Setores: não devem receber permissões de administração de usuários.
+
+O próximo passo será revisar os serviços e endpoints de gerenciamento de roles e permissions,
+verificando se essas regras estão realmente protegidas no backend.
+
+Podemos começar por essa revisão, mantendo a abordagem incremental: um arquivo por vez, uma alteração
+por vez e testes antes de avançar.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Analisando a autorização por perfil e as regras de negócio, segue lista de pontos importantes que 
+foram negociados:
+1. ADMIN: pode administrar usuários, perfis e permissões. OK
+2. RH: pode criar, consultar, desativar e reativar usuários. OK
+3. RH: pode atribuir perfis funcionais, mas não pode atribuir `ADMIN`. OK
+4. Setores: não devem receber permissões de administração de usuários. OK
+Entendo que devemos ir para o próximo passo, revisar os serviços e endpoints de gerenciamento de 
+roles e permissions, verificando se essas regras estão realmente protegidas no backend.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Concordo.
+
+Com os 38 testes passando e as quatro regras de negócio definidas, podemos iniciar a revisão da 
+autorização de `roles` e `permissions`.
+
+Há um ponto importante nessa análise: não basta proteger os endpoints com `@PreAuthorize`.
+
+Também precisamos verificar se as regras de negócio são aplicadas nos serviços, para impedir que
+uma operação indevida seja executada por outro caminho.
+
+Plano de revisão
+
+Vamos seguir esta ordem:
+
+1. Controllers: identificar os endpoints de gerenciamento de roles e permissions e verificar
+   quem pode acessá-los.
+
+2. Services: verificar se as operações respeitam as regras de ADMIN e RH.
+
+3. Atribuição de roles: confirmar que RH pode atribuir perfis funcionais, mas nunca `ADMIN`.
+
+4. Associações: verificar a proteção das operações sobre `roles_permissions`.
+
+5. Testes: criar ou ajustar testes para comprovar os acessos permitidos e negados.
+
+
+Primeiro passo — identificar os arquivos
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+find src/main/java/com/julyturadm \
+  -type f \
+  \( -path '*/controller/*' -o -path '*/service/*' \) \
+  | sort
+```
+
+Envie a saída.
+
+A partir dessa lista, selecionaremos o primeiro controller e seu respectivo service para analisar juntos.
+
+Importante: não vamos alterar nada antes de compreender o código existente.
+
+Preservaremos a arquitetura atual, as cinco tabelas e as regras já negociadas.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm \
+  -type f \
+  \( -path '*/controller/*' -o -path '*/service/*' \) \
+  | sort
+src/main/java/com/julyturadm/controller/AuthController.java
+src/main/java/com/julyturadm/controller/UserController.java
+src/main/java/com/julyturadm/service/AuthenticationService.java
+src/main/java/com/julyturadm/service/UserService.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+A saída revelou algo importante: ainda não existem controllers nem services específicos para 
+gerenciamento de `Role` e `Permission`.
+
+Atualmente temos:
+
+| Componente                                   | Situação          |
+| -------------------------------------------- | ----------------- |
+| `AuthController`                             | Implementado      |
+| `UserController`                             | Implementado      |
+| `AuthenticationService`                      | Implementado      |
+| `UserService`                                | Implementado      |
+| `RoleController` / `RoleService`             | Ainda não existem |
+| `PermissionController` / `PermissionService` | Ainda não existem |
+
+Portanto, antes de criar novos endpoints, precisamos revisar como as entidades e os repositórios
+estão organizados.
+
+Próximo passo — analisar os repositórios
+
+Execute:
+
+```
+find src/main/java/com/julyturadm/domain/repository \
+  -type f -name "*.java" | sort
+```
+
+Depois:
+
+```
+cat src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+cat src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+```
+
+Envie as saídas.
+
+O que vamos verificar: quais operações já estão disponíveis para consultar, criar e associar roles
+e permissions.
+
+Com isso, poderemos desenhar os serviços e endpoints sem duplicar funcionalidades nem permitir que
+o RH altere o catálogo de permissões.
+
+Não faremos alterações nesta etapa.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm/domain/repository \
+  -type f -name "*.java" | sort
+src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+src/main/java/com/julyturadm/domain/repository/UserRepository.java
+src/main/java/com/julyturadm/domain/repository/UserRoleRepository.java
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+cat src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.Role;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.util.List;
+
+public interface RoleRepository extends JpaRepository<Role, Long> {
+
+    Optional<Role> findByName(String name);
+
+    boolean existsByName(String name);
+
+    //---
+    // `JOIN r.userRoles ur`: identifica os papéis associados ao usuário.
+    // `LEFT JOIN FETCH r.rolePermissions`: carrega as permissões desses papéis.
+    // `LEFT JOIN FETCH rp.permission`: carrega os dados de cada permissão.
+    //---
+    @Query("""
+        SELECT DISTINCT r
+        FROM Role r
+        JOIN r.userRoles ur
+        LEFT JOIN FETCH r.rolePermissions rp
+        LEFT JOIN FETCH rp.permission
+        WHERE ur.user.email = :email
+    """)
+    List<Role> findAllByUserEmailWithPermissions(
+    @Param("email") String email
+    );
+}package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.Permission;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface PermissionRepository
+        extends JpaRepository<Permission, Long> {
+
+    Optional<Permission> findByName(String name);
+
+    boolean existsByName(String name);
+}package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface RolePermissionRepository
+        extends JpaRepository<RolePermission, RolePermissionId> {
+
+    List<RolePermission> findAllByRole_Id(Long roleId);
+
+    List<RolePermission> findAllByPermission_Id(Long permissionId);
+
+    boolean existsByRole_IdAndPermission_Id(
+            Long roleId,
+            Long permissionId
+    );
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo.
+
+Os três repositórios estão bem encaminhados.
+
+Já temos as operações básicas necessárias para construir o gerenciamento de perfis e permissões.
+
+1. Análise dos repositórios
+
+`RoleRepository`
+
+- `findByName`: localizar perfil pelo nome.
+- `existsByName`: verificar duplicidade.
+- `findAllByUserEmailWithPermissions`: carregar os perfis de um usuário e suas permissões.
+
+`PermissionRepository`
+
+- `findByName`: localizar permissão pelo nome.
+- `existsByName`: verificar duplicidade.
+
+`RolePermissionRepository`
+
+- `findAllByRole_Id`: listar permissões de um perfil.
+- `findAllByPermission_Id`: localizar perfis que possuem determinada permissão.
+- `existsByRole_IdAndPermission_Id`: verificar associação existente.
+
+Minha avaliação: não precisamos adicionar métodos aos repositórios neste momento.
+
+Primeiro vamos conhecer as entidades e os serviços existentes.
+
+2. Próxima análise — entidades
+
+Quero verificar principalmente os relacionamentos e os métodos de criação das entidades.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/domain/entity/Role.java
+```
+
+Depois:
+
+```
+cat src/main/java/com/julyturadm/domain/entity/Permission.java
+```
+
+E, por último:
+
+```
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+```
+
+3. O que vamos decidir
+
+Com essas três entidades, vamos definir a responsabilidade dos futuros serviços:
+
+| Serviço                 | Responsabilidade                        |
+| ----------------------- | --------------------------------------- |
+| `RoleService`           | Criar, consultar e administrar perfis   |
+| `PermissionService`     | Criar e consultar permissões            |
+| `RolePermissionService` | Associar e remover permissões de perfis |
+
+As regras serão:
+
+- ADMIN administra o catálogo de perfis e permissões.
+- RH não administra o catálogo.
+- RH não altera associações `roles_permissions`.
+- Perfis funcionais não recebem permissões de administração de usuários.
+
+Ainda não vamos criar código.
+
+Primeiro vamos validar se o modelo atual sustenta essas regras sem precisar modificar a estrutura
+das cinco tabelas.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/Role.java
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+
+    // Esse método permite criar um perfil sem expor publicamente o construtor da entidade.
+    public static Role create(String name) {
+
+        Role role = new Role();
+
+        role.setName(name);
+
+        return role;
+    }
+
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/Permission.java
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Permission {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 80)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "permission",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+
+    // Esse método permite criar uma permissão sem expor publicamente o construtor da entidade.    
+    public static Permission create(String name) {
+
+        Permission permission = new Permission();
+
+        permission.setName(name);
+
+        return permission;
+    }
+
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    // - `RolePermissionId` recebe os IDs dos dois registros.
+    @EmbeddedId
+    private RolePermissionId id;
+
+    // ---
+    // - `setRole()` estabelece o relacionamento com o perfil.
+    // - `@MapsId` mantém os campos da chave composta sincronizados com os
+    //    relacionamentos no momento da persistência.
+    // ---
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(name = "role_id", nullable = false, foreignKey = @ForeignKey(name = "FK_rp_role"))
+    private Role role;
+
+    // ---
+    // - `setPermission()` estabelece o relacionamento com a permissão.
+    // - `@MapsId` mantém os campos da chave composta sincronizados com os
+    //    relacionamentos no momento da persistência.
+    // ---
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(name = "permission_id", nullable = false, foreignKey = @ForeignKey(name = "FK_rp_permission"))
+    private Permission permission;
+       
+    // ---
+    // Esse método permite criar uma role e uma permissao sem expor publicamente o 
+    // construtor da entidade.
+    // ---    
+    public static RolePermission create(
+            Role role,
+            Permission permission) {
+
+        RolePermission rolePermission = new RolePermission();
+
+        rolePermission.setId(
+                new RolePermissionId(
+                        role.getId(),
+                        permission.getId()));
+
+        rolePermission.setRole(role);
+        rolePermission.setPermission(permission);
+
+        return rolePermission;
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente.
+
+Agora podemos confirmar que o modelo de dados atual permite implementar as quatro regras negociadas sem criar novas tabelas.
+
+1. Análise das entidades
+
+`Role`
+
+A entidade possui:
+
+- Identificador e nome único.
+- Datas de auditoria.
+- Relacionamento `OneToMany` com `UserRole`.
+- Relacionamento `OneToMany` com `RolePermission`.
+- Método `create()` para criação controlada.
+
+`Permission`
+
+Também está adequada:
+
+- Identificador e nome único.
+- Datas de auditoria.
+- Relacionamento com `RolePermission`.
+- Método `create()`.
+
+`RolePermission`
+
+É a entidade que materializa a associação entre perfil e permissão:
+
+- Chave composta `role_id + permission_id`.
+- Relacionamentos `ManyToOne`.
+- `@MapsId` para sincronizar os relacionamentos com a chave composta.
+- Método `create()`.
+
+Modelo aprovado
+
+Não vejo necessidade de alterar essas três entidades para implementar a autorização prevista.
+
+Um detalhe importante: as entidades possuem `@Setter` público.
+
+Isso não é necessariamente um problema, mas significa que a proteção não pode depender das entidades.
+
+Os serviços deverão controlar quais alterações são permitidas e para quem.
+
+2. Próxima etapa — revisar o serviço de usuários
+
+Antes de criar `RoleService`, precisamos verificar como o projeto atualmente cria usuários e associa perfis.
+
+Essa é uma parte essencial da regra que impede o RH de atribuir `ADMIN`.
+
+Vamos começar pelo arquivo:
+
+`src/main/java/com/julyturadm/service/UserService.java`
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/service/UserService.java
+```
+
+Envie o conteúdo completo.
+
+Quero verificar especialmente:
+
+- Se já existe atribuição de roles na criação de usuários.
+- Se o serviço aceita nomes de perfis enviados pelo cliente.
+- Se existe alguma validação que impeça a atribuição de `ADMIN`.
+- Se as operações estão protegidas por transações.
+
+Depois analisaremos o `UserController` e definiremos a implementação dos serviços de gerenciamento
+de perfis e permissões.
+
+Por enquanto, nenhuma alteração no código.
+
+Vamos preservar o que já funciona e implementar as regras nos pontos corretos.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/service/UserService.java
+package com.julyturadm.service;
+
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.repository.UserRepository;
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.julyturadm.common.exception.BusinessException;
+
+import java.util.List;
+import com.julyturadm.common.exception.ResourceNotFoundException;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserResponse createUser(UserCreateRequest request) {
+
+        if (userRepository.existsByEmail(request.email())) {
+            throw new BusinessException(
+                    "Já existe um usuário cadastrado com este e-mail.");
+        }
+
+        String encodedPassword = passwordEncoder.encode(request.password());
+
+        User user = User.create(request.name(), request.email(), encodedPassword);
+
+        User savedUser = userRepository.save(user);
+
+        return toResponse(savedUser);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse findUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado com o ID: " + id));
+
+        return toResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse findUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado com o e-mail: " + email));
+
+        return toResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> findAllActiveUsers() {
+        return userRepository.findAllByEnabledTrue()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public UserResponse disableUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado com o ID: " + id));
+
+        user.setEnabled(false);
+
+        User updatedUser = userRepository.save(user);
+
+        return toResponse(updatedUser);
+    }
+
+    public UserResponse enableUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário não encontrado com o ID: " + id));
+
+        user.setEnabled(true);
+
+        User updatedUser = userRepository.save(user);
+
+        return toResponse(updatedUser);
+    }
+    
+    private UserResponse toResponse(User user) {
+
+        return new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getEnabled(),
+                user.getCreatedAt(),
+                user.getUpdatedAt());
+    }
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. A análise do `UserService` revelou um ponto importante para nossa próxima implementação.
+
+1. O que já está correto
+
+O serviço possui:
+
+- `@Service` e `@RequiredArgsConstructor`.
+- `@Transactional` na classe.
+- Verificação de email duplicado.
+- Criptografia BCrypt da senha.
+- Consulta de usuários.
+- Desativação e reativação.
+- Conversão de entidade para DTO, sem expor a entidade JPA.
+
+A estrutura está coerente com a arquitetura que estamos construindo.
+
+2. O que ainda falta
+
+Ponto de atenção
+
+O `UserService` ainda não possui operações de atribuição ou remoção de perfis.
+
+Além disso, `createUser()` atualmente cria o usuário sem associar nenhuma role.
+
+Isso significa que a regra:
+
+> RH pode atribuir perfis funcionais, mas não pode atribuir ADMIN.
+
+Ainda não está implementada nesse serviço.
+
+Minha recomendação é não modificar `createUser()` agora.
+
+Primeiro precisamos decidir como será o fluxo de atribuição de perfis, inclusive para usuários já
+cadastrados.
+
+3. Próxima análise — UserController
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/controller/UserController.java
+```
+
+Quero verificar os endpoints existentes e identificar onde poderemos incluir futuramente:
+
+- Atribuição de perfil a um usuário.
+- Remoção de perfil de um usuário.
+- Consulta dos perfis associados ao usuário.
+
+Depois examinaremos `UserRoleRepository` e `UserRole`, pois são eles que representam o relacionamento
+entre usuários e perfis.
+
+Decisão arquitetural importante: a validação que impede RH de atribuir `ADMIN` ficará no serviço,
+além da autorização no controller.
+
+Assim, mesmo que alguém tente contornar a interface ou chamar diretamente a API, a regra de negócio
+continuará protegida.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/controller/UserController.java
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+import com.julyturadm.service.UserService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+
+//---
+//- Usuário autenticado sem `USER_CREATE` não poderá criar usuários.
+//- Usuário com `USER_READ` poderá consultar usuários.
+//- Usuário sem `USER_DISABLE` não poderá desativar contas.
+//- Usuário sem `USER_ENABLE` não poderá reativar contas.
+//- Requisições sem autenticação continuarão sendo rejeitadas.
+//---
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('USER_CREATE')")
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+
+        UserResponse response = userService.createUser(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<UserResponse> findUserById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.findUserById(id)
+        );
+    }
+
+    @GetMapping("/email/{email}")
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<UserResponse> findUserByEmail(
+            @PathVariable String email) {
+
+        return ResponseEntity.ok(
+            userService.findUserByEmail(email)
+        );
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('USER_READ')")
+    public ResponseEntity<List<UserResponse>> findAllActiveUsers() {
+
+        return ResponseEntity.ok(
+            userService.findAllActiveUsers()
+        );
+    }
+
+    @PatchMapping("/{id}/disable")
+    @PreAuthorize("hasAuthority('USER_DISABLE')")
+    public ResponseEntity<UserResponse> disableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.disableUser(id)
+        );
+    }
+
+    @PatchMapping("/{id}/enable")
+    @PreAuthorize("hasAuthority('USER_ENABLE')")
+    public ResponseEntity<UserResponse> enableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.enableUser(id)
+        );
+    }
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Muito bem.
+
+O `UserController` confirma que a proteção dos endpoints de usuários está implementada por permissões
+específicas, e não simplesmente pelo nome do perfil.
+
+1. Análise do UserController
+
+| Endpoint                        | Autorização    | Avaliação |
+| ------------------------------- | -------------- | --------- |
+| `POST /api/users`               | `USER_CREATE`  | Correto   |
+| `GET /api/users/{id}`           | `USER_READ`    | Correto   |
+| `GET /api/users/email/{email}`  | `USER_READ`    | Correto   |
+| `GET /api/users`                | `USER_READ`    | Correto   |
+| `PATCH /api/users/{id}/disable` | `USER_DISABLE` | Correto   |
+| `PATCH /api/users/{id}/enable`  | `USER_ENABLE`  | Correto   |
+
+O controller está coerente com a arquitetura RBAC (Role-Based Access Control) que estamos implementando.
+
+Uma observação: como ADMIN e RH recebem as quatro permissões de administração de usuários, ambos conseguem
+executar essas operações.
+
+Os perfis setoriais não recebem essas permissões.
+
+2. Próxima análise — associação entre usuário e perfil
+
+Agora precisamos verificar como a associação é representada no banco e quais operações o repositório disponibiliza.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/domain/entity/UserRole.java
+```
+
+Depois:
+
+```
+cat src/main/java/com/julyturadm/domain/repository/UserRoleRepository.java
+```
+
+E também:
+
+```
+cat src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java
+```
+
+3. O que vamos definir depois
+
+Com esses arquivos, poderemos desenhar o fluxo de atribuição de perfis:
+
+1. Localizar o usuário.
+2. Localizar o perfil solicitado.
+3. Verificar se o perfil existe.
+4. Impedir que RH atribua `ADMIN`.
+5. Verificar se a associação já existe.
+6. Persistir a associação.
+
+Também precisamos decidir como ADMIN e RH consultarão os perfis associados a cada usuário.
+
+Ainda não altere nenhum arquivo. Estamos fazendo a revisão da arquitetura antes de implementar
+as operações.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/UserRole.java
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.UserRoleId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "users_roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class UserRole {
+
+    @EmbeddedId
+    private UserRoleId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("userId")
+    @JoinColumn(
+        name = "user_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_user")
+    )
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_role")
+    )
+    private Role role;
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/repository/UserRoleRepository.java
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.UserRoleId;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface UserRoleRepository
+        extends JpaRepository<UserRole, UserRoleId> {
+
+    List<UserRole> findAllByUser_Id(Long userId);
+
+    List<UserRole> findAllByRole_Id(Long roleId);
+
+    boolean existsByUser_IdAndRole_Id(Long userId, Long roleId);
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/id/UserRoleId.javaa
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserRoleId implements Serializable {
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "role_id")
+    private Long roleId;
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Agora temos a visão completa do relacionamento entre usuários e perfis.
+
+1. Análise de UserRole
+
+A entidade `UserRole` está corretamente estruturada:
+
+- Utiliza chave composta `UserRoleId`.
+- Relaciona `User` e `Role` por `ManyToOne`.
+- Usa `@MapsId` para sincronizar os identificadores.
+- Mantém os relacionamentos com carregamento `LAZY`.
+
+A classe `UserRoleId` também está adequada: implementa `Serializable`, possui construtores e implementa `equals()` e `hashCode()`.
+
+2. Análise de UserRoleRepository
+
+Os métodos existentes são suficientes para a primeira implementação:
+
+| Método                      | Finalidade                      |
+| --------------------------- | ------------------------------- |
+| `findAllByUser_Id`          | Consultar perfis de um usuário  |
+| `findAllByRole_Id`          | Consultar usuários de um perfil |
+| `existsByUser_IdAndRole_Id` | Evitar associação duplicada     |
+
+Não precisamos acrescentar métodos agora.
+
+3. Como isso será aplicado nas regras de negócio
+
+O futuro serviço de atribuição de perfis deverá:
+
+1. Localizar o usuário e o perfil.
+2. Verificar se ambos existem.
+3. Identificar as permissões do usuário autenticado que está realizando a operação.
+4. Se for RH, rejeitar a atribuição de `ADMIN`.
+5. Se for ADMIN, permitir a atribuição de qualquer perfil previsto.
+6. Impedir associações duplicadas.
+7. Persistir a associação dentro de uma transação.
+
+Também teremos uma operação de remoção de perfil, sujeita às mesmas regras de autorização.
+
+Um cuidado adicional: não devemos confiar em um campo enviado pelo cliente dizendo que o solicitante
+é ADMIN ou RH.
+
+Essa informação precisa vir da autenticação validada pelo Spring Security.
+
+4. Próximo passo — verificar UserRepository
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/domain/repository/UserRepository.java
+```
+
+Quero confirmar os métodos de busca disponíveis para o serviço de atribuição.
+
+Depois disso, teremos os elementos necessários para desenhar o `UserRoleService` ou incorporar 
+essas operações ao `UserService`, mantendo a arquitetura simples e sem criar serviços desnecessários.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/repository/UserRepository.java
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    List<User> findAllByEnabledTrue();
+
+    // ----------------------------------------------------------------------------------
+    // Por que essa consulta?
+    // - Recupera o usuário pelo e-mail.
+    // - Carrega os papéis associados.
+    // - Carrega as permissões de cada papel.
+    // - Usa `LEFT JOIN FETCH` para não excluir usuários que ainda não possuem
+    // papéis.
+    // - Usa `DISTINCT` para evitar usuários duplicados no resultado.
+    // ----------------------------------------------------------------------------------
+    // @Query("""
+    // SELECT DISTINCT u
+    // FROM User u
+    // LEFT JOIN FETCH u.userRoles ur
+    // LEFT JOIN FETCH ur.role r
+    // LEFT JOIN FETCH r.rolePermissions rp
+    // LEFT JOIN FETCH rp.permission
+    // WHERE u.email = :email
+    // """)
+    // Optional<User> findByEmailWithRolesAndPermissions(
+    // @Param("email") String email
+    // );
+    @Query("""
+        SELECT DISTINCT u
+        FROM User u
+        LEFT JOIN FETCH u.userRoles ur
+        LEFT JOIN FETCH ur.role
+        WHERE u.email = :email
+        """)
+    Optional<User> findByEmailWithRoles(
+    @Param("email") String email);
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. Agora temos os repositórios necessários para implementar a associação entre usuários e perfis.
+
+1. Avaliação do UserRepository
+
+Os métodos existentes atendem às necessidades:
+
+- `findByEmail()`: localizar usuário pelo email.
+- `existsByEmail()`: verificar duplicidade.
+- `findAllByEnabledTrue()`: listar usuários ativos.
+- `findByEmailWithRoles()`: carregar usuário e seus perfis para autenticação.
+
+Não vejo necessidade de alterar esse repositório neste momento.
+
+2. Decisão arquitetural
+
+Minha recomendação é manter a estrutura simples:
+
+| Classe                  | Responsabilidade                                 |
+| ----------------------- | ------------------------------------------------ |
+| `UserService`           | Criar, consultar, desativar e reativar usuários  |
+| `UserRoleService`       | Atribuir, remover e consultar perfis de usuários |
+| `RoleService`           | Criar e consultar perfis                         |
+| `PermissionService`     | Criar e consultar permissões                     |
+| `RolePermissionService` | Associar e remover permissões de perfis          |
+
+Assim, não misturamos o ciclo de vida do usuário com o gerenciamento dos seus perfis.
+
+3. Uma decisão importante antes de implementar
+
+Precisamos definir uma proteção adicional: o último ADMIN não deve poder perder seu próprio acesso administrativo.
+
+Minha sugestão é adotar estas regras:
+
+- ADMIN pode atribuir e remover perfis.
+- RH pode atribuir e remover perfis funcionais.
+- RH nunca pode atribuir ou remover `ADMIN`.
+- Nenhum usuário pode remover o último perfil `ADMIN` ativo do sistema.
+- A desativação do último usuário ADMIN também deverá ser impedida.
+
+Isso evita que o sistema fique sem administrador.
+
+4. Próximo passo — revisar os DTOs
+
+Antes de criar `UserRoleService`, quero verificar como os DTOs estão organizados.
+
+Execute:
+
+```
+find src/main/java/com/julyturadm/dto \
+  -type f -name "*.java" | sort
+```
+
+Depois, mostre:
+
+```
+cat src/main/java/com/julyturadm/dto/response/UserResponse.java
+cat src/main/java/com/julyturadm/dto/request/UserCreateRequest.java
+```
+
+Com isso, definiremos o formato das respostas da API para atribuição e consulta de perfis, sem 
+expor entidades JPA.
+
+Ainda estamos na fase de análise. Nenhuma alteração necessária até aqui.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/java/com/julyturadm/dto \
+  -type f -name "*.java" | sort
+src/main/java/com/julyturadm/dto/request/LoginRequest.java
+src/main/java/com/julyturadm/dto/request/UserCreateRequest.java
+src/main/java/com/julyturadm/dto/response/LoginResponse.java
+src/main/java/com/julyturadm/dto/response/UserResponse.java
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/dto/response/UserResponse.java
+cat src/main/java/com/julyturadm/dto/request/UserCreateRequest.java
+package com.julyturadm.dto.response;
+
+import java.time.LocalDateTime;
+
+public record UserResponse(
+
+    Long id,
+
+    String name,
+
+    String email,
+
+    Boolean enabled,
+
+    LocalDateTime createdAt,
+
+    LocalDateTime updatedAt
+
+) {
+}
+package com.julyturadm.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UserCreateRequest (
+
+    @NotBlank(message = "O nome é obrigatório.")
+    @Size(max = 100, message = "O nome deve ter no máximo 100 caracteres.")
+    String name,
+
+    @NotBlank(message = "O e-mail é obrigatório.")
+    @Email(message = "Informe um endereço de e-mail válido.")
+    @Size(max = 255, message = "O e-mail deve ter no máximo 255 caracteres.")
+    String email,
+
+    @NotBlank(message = "A senha é obrigatória.")
+    @Size(min = 8, max = 72,
+          message = "A senha deve ter entre 8 e 72 caracteres.")
+    String password
+
+) {
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito.
+
+Os DTOs atuais são simples e seguem uma boa prática: utilizam `record` e não expõem as entidades JPA.
+
+1. O que identificamos
+
+Atualmente:
+
+- `UserResponse` apresenta os dados básicos do usuário.
+- `UserCreateRequest` recebe nome, email e senha.
+- Não existe DTO para atribuição ou consulta de perfis.
+- Não existe DTO para gerenciamento de permissões.
+
+Minha recomendação é não acrescentar os perfis diretamente ao `UserResponse` neste momento.
+
+Podemos criar DTOs específicos, evitando misturar a consulta de usuários com o gerenciamento de
+associações.
+
+2. Proposta para a futura API
+
+Podemos trabalhar com estes endpoints:
+
+| Método | Endpoint                             | Finalidade                  |
+| ------ | ------------------------------------ | --------------------------- |
+| GET    | `/api/users/{id}/roles`              | Consultar perfis do usuário |
+| PUT    | `/api/users/{userId}/roles/{roleId}` | Atribuir perfil             |
+| DELETE | `/api/users/{userId}/roles/{roleId}` | Remover perfil              |
+
+A autorização será:
+
+- ADMIN: todas as operações.
+- RH: atribuir, consultar e remover somente perfis funcionais.
+- RH: nunca atribuir ou remover `ADMIN`.
+
+Para gerenciamento do catálogo:
+
+- `/api/roles`: gerenciamento de perfis.
+- `/api/permissions`: gerenciamento de permissões.
+- `/api/roles/{id}/permissions`: gerenciamento das permissões associadas aos perfis.
+
+Essas operações de catálogo serão exclusivas do ADMIN.
+
+3. Uma observação sobre o último ADMIN
+
+Eu havia sugerido impedir a remoção ou desativação do último ADMIN.
+
+É uma proteção interessante contra bloqueio administrativo, mas ainda não foi uma regra
+aprovada por você.
+
+Portanto, não vou incorporá-la como requisito sem sua confirmação.
+
+4. Próxima análise — tratamento de exceções
+
+Antes de implementar os novos serviços, quero verificar como o projeto trata erros de negócio e
+recursos inexistentes.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/common/exception/BusinessException.java
+cat src/main/java/com/julyturadm/common/exception/ResourceNotFoundException.java
+```
+
+E depois:
+
+```
+cat src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+```
+
+Assim poderemos manter respostas HTTP consistentes, por exemplo:
+ `403 Forbidden` para operações não autorizadas,
+ `404 Not Found` para perfis inexistentes e
+ `409 Conflict` para associações duplicadas.
+
+Vamos continuar sem alterar código até concluir essa revisão.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/common/exception/BusinessException.java
+package com.julyturadm.common.exception;
+
+public class BusinessException extends RuntimeException {
+
+    public BusinessException(String message) {
+        super(message);
+    }
+}
+
+package com.julyturadm.common.exception;
+
+public class ResourceNotFoundException extends RuntimeException {
+
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+package com.julyturadm.common.exception;
+
+import java.time.LocalDateTime;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import org.springframework.security.core.AuthenticationException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(
+            ResourceNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage(),
+                request.getRequestURI());
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessException(
+            BusinessException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request.getRequestURI());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidation(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+
+        FieldError fieldError = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .orElse(null);
+
+        String message = fieldError != null
+                ? fieldError.getDefaultMessage()
+                : "Os dados enviados são inválidos.";
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                message,
+                request.getRequestURI());
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildResponse(
+            HttpStatus status,
+            String message,
+            String path) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                path);
+
+        return ResponseEntity.status(status).body(response);
+    }
+
+    //@ExceptionHandler(AuthenticationException.class)
+    //public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+    //        AuthenticationException exception,
+    //        HttpServletRequest request) {
+    //
+    //    HttpStatus status = HttpStatus.UNAUTHORIZED;
+    //
+    //    ApiErrorResponse response = new ApiErrorResponse(
+    //            LocalDateTime.now(),
+    //            status.value(),
+    //            "Unauthorized",
+    //            "E-mail ou senha inválidos.",
+    //            request.getRequestURI());
+    // 
+    //    return ResponseEntity.status(status).body(response);
+    //}
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+            AuthenticationException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.UNAUTHORIZED,
+                "E-mail ou senha inválidos.",
+                request.getRequestURI());
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente. O tratamento de exceções já possui uma estrutura adequada para a próxima fase.
+
+1. Análise do tratamento de erros
+
+| Exceção                           | HTTP | Avaliação                          |
+| --------------------------------- | ---- | ---------------------------------- |
+| `ResourceNotFoundException`       | 404  | Correto                            |
+| `BusinessException`               | 409  | Adequado para conflitos de negócio |
+| `MethodArgumentNotValidException` | 400  | Correto                            |
+| `AuthenticationException`         | 401  | Correto                            |
+
+Há um ponto importante: 403 Forbidden não deve ser tratado como erro de negócio comum.
+
+O Spring Security já trata automaticamente as tentativas de acesso autenticado sem autorização,
+inclusive nos métodos protegidos por `@PreAuthorize`.
+
+Portanto, não precisamos modificar o `GlobalExceptionHandler` agora.
+
+2. Arquitetura revisada
+
+Concluímos a análise das principais peças existentes:
+
+Modelo de dados
+
+Aprovado
+
+Entidades `Role`, `Permission`, `RolePermission` e `UserRole`.
+
+Repositórios
+
+Suficientes
+
+Operações básicas de consulta e associação já disponíveis.
+
+Autorização de usuários
+
+Implementada
+
+`UserController` protegido por authorities.
+
+Gerenciamento de perfis
+
+A implementar
+
+Ainda não existem os serviços e controllers específicos.
+
+3. Próxima fase: implementação
+
+Minha proposta é seguir esta sequência:
+
+1. `UserRoleService`: atribuição, remoção e consulta de perfis.
+2. `UserController`: novos endpoints para associação de perfis.
+3. Testes: ADMIN pode atribuir qualquer perfil; RH não pode atribuir `ADMIN`.
+4. `RoleService` e `RoleController`: gerenciamento do catálogo de perfis.
+5. `PermissionService` e `PermissionController`: gerenciamento do catálogo de permissões.
+6. `RolePermissionService`: associação e remoção de permissões dos perfis.
+
+A separação entre os serviços é importante: o RH administra usuários, mas não administra o catálogo
+de segurança.
+
+4. Vamos começar pelo UserRoleService
+
+Antes de escrever o código, falta uma última confirmação sobre uma regra de negócio.
+
+Você aprova que RH também possa remover perfis funcionais dos usuários, além de atribuí-los, desde
+que nunca possa atribuir ou remover o perfil `ADMIN`?
+
+Essa decisão define a autorização dos endpoints `PUT` e `DELETE` de associação de perfis.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Sim, eu aprovo que o RH também possa remover perfis funcionais dos usuários, além de atribuí-los,
+desde que nunca possa atribuir ou remover o perfil `ADMIN`.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Essa regra fica aprovada e passa a fazer parte dos requisitos do JulyTurAdm.
+
+1. Matriz de autorização atualizada
+
+Operação	                       |ADMIN  | RH  | Setores
+-----------------------------------|-------|-----|---------------------------------------
+Criar usuários                      Sim	     Sim   Não
+Consultar usuários                  Sim	     Sim   Não
+Desativar / reativar usuários	    Sim	     Sim   Não
+Atribuir perfis funcionais	        Sim	     Sim   Não
+Remover perfis funcionais	        Sim	     Sim   Não
+Atribuir perfil ADMIN	            Sim	     Não   Não
+Remover perfil ADMIN	            Sim	     Não   Não
+Gerenciar catálogo de roles	        Sim	     Não   Não
+Gerenciar catálogo de permissions	Sim	     Não   Não
+Alterar roles_permissions           Sim      Não   Não
+-----------------------------------|-------|-----|---------------------------------------
+
+2. Vamos implementar o UserRoleService
+A implementação terá três operações:
+- assignRole: atribuir perfil.
+- removeRole: remover perfil.
+- findUserRoles: consultar perfis do usuário.
+
+A regra mais importante será validada dentro do serviço: mesmo que alguém tente chamar a
+operação diretamente, o RH não poderá atribuir nem remover ADMIN.
+
+3. Antes de criar o serviço
+Precisamos verificar a entidade User, especialmente seus relacionamentos e métodos disponíveis.
+
+Execute:
+cat src/main/java/com/julyturadm/domain/entity/User.java
+
+Envie o conteúdo completo.
+
+Depois disso, começaremos a implementação, primeiro pela entidade UserRole, se necessário, e em
+seguida pelo serviço.
+
+Vamos manter a segurança e os 38 testes aprovados como referência.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/User.java
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 255)
+    private String email;
+
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @Column(nullable = false)
+    private Boolean enabled = true;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;
+
+    @OneToMany(
+        mappedBy = "user",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+
+    // Adicionar um método estático público à entidade `User`.
+    // permitirá criar usuários sem expor publicamente o construtor.
+    public static User create(String name, String email, String password) {
+        User user = new User();
+        user.setName(name);
+        user.setEmail(email);
+        user.setPassword(password);
+        user.setEnabled(true);
+        return user;
+    }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. A entidade `User` está coerente com o modelo que definimos:
+
+- O relacionamento `@OneToMany(mappedBy = "user")` está correto para `users_roles`.
+- `FetchType.LAZY` preserva o carregamento sob demanda.
+- O método `User.create(...)` mantém o construtor protegido e centraliza a criação.
+- Não precisamos alterar a entidade `User` para implementar a associação de perfis.
+
+O próximo passo será seguir o mesmo padrão de fábrica que já usamos em
+`RolePermission`: criar um método `UserRole.create(User, Role)`.
+
+Assim, a associação será construída com as duas entidades já carregadas do banco, preenchendo
+também a chave composta.
+
+Etapa 1 — adicionar a fábrica em `UserRole.java`
+
+Abra:
+
+```
+src/main/java/com/julyturadm/domain/entity/UserRole.java
+```
+
+Mantenha os imports e os mapeamentos atuais.
+Acrescente este método antes da última chave `}` da classe:
+
+```
+public static UserRole create(User user, Role role) {
+    UserRole userRole = new UserRole();
+
+    userRole.setId(new UserRoleId(user.getId(), role.getId()));
+    userRole.setUser(user);
+    userRole.setRole(role);
+
+    return userRole;
+}
+```
+
+Por que preencher os três campos?
+
+- `id`: define a chave composta (`user_id`, `role_id`).
+- `user`: estabelece a associação com o usuário.
+- `role`: estabelece a associação com o perfil.
+
+Como vamos buscar `User` e `Role` no banco antes de criar a associação, ambos já terão seus 
+respectivos IDs.
+
+Depois de salvar o arquivo, execute:
+
+```
+mvn -DskipTests compile
+```
+
+Envie o resultado.
+
+Se a compilação passar, avançaremos para o serviço de atribuição e remoção de perfis, respeitando a
+regra de que o RH nunca pode atribuir ou remover `ADMIN`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -DskipTests compile
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 30 source files with javac [debug parameters release 17] to target/classes
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.199 s
+[INFO] Finished at: 2026-11-11T13:38:57-03:00
+[INFO] ------------------------------------------------------------------------
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ 
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo! A compilação terminou com BUILD SUCCESS.
+
+Isso confirma que o código-fonte está compilando corretamente e que não há alterações pendentes 
+para recompilar.
+
+Vamos continuar exatamente de onde paramos, sem refazer etapas já concluídas.
+
+Próxima etapa — criar o `UserRoleService`
+
+Continua no arquivo: [20261111_Chat-Gpt:Etapa1-25-Criar_Classe_`UserRoleService`.txt]
+
+
+-------------------------------------------------fim-----------------------------------------------
+

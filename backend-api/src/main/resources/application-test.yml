@@ -7,8 +7,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
-    open-in-view: false
+      ddl-auto: create-drop ## ddl-auto: create-drop: cria o esquema para os testes e o descarta ao final.
+    open-in-view: false ## Porta aleatória para o servidor.
 
 server:
   port: 0

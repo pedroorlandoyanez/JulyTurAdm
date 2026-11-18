@@ -19,19 +19,21 @@ public class UserRole {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId("userId")
-    @JoinColumn(
-        name = "user_id",
-        nullable = false,
-        foreignKey = @ForeignKey(name = "FK_ur_user")
-    )
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "FK_ur_user"))
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId("roleId")
-    @JoinColumn(
-        name = "role_id",
-        nullable = false,
-        foreignKey = @ForeignKey(name = "FK_ur_role")
-    )
+    @JoinColumn(name = "role_id", nullable = false, foreignKey = @ForeignKey(name = "FK_ur_role"))
     private Role role;
+
+    public static UserRole create(User user, Role role) {
+        UserRole userRole = new UserRole();
+
+        userRole.setId(new UserRoleId(user.getId(), role.getId()));
+        userRole.setUser(user);
+        userRole.setRole(role);
+
+        return userRole;
+    }
 }

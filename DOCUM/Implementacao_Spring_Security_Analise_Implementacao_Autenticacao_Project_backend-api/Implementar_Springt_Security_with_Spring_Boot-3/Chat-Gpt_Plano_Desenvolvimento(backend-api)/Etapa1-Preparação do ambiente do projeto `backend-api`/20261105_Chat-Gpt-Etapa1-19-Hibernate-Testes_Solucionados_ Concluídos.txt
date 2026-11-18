@@ -1,0 +1,1583 @@
+﻿
+05/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1-19-Hibernate Banco de Testes e as tabelas inexistentes ('bd_paytur_test, 
+          table: roles_permissions' doesn't exist) 
+---------------------------------------------------------------------------------------------------
+
+
+
+
+| Classe de teste                | Testes |
+| ------------------------------ | ------ |
+| JwtAuthenticationConverterTest | 4      |
+| AuthenticationServiceTest      | 2      |
+| UserServiceTest                | 10     |
+| RepositoryIntegrationTest      | 7      |
+| CustomUserDetailsServiceTest   | 4      |
+| Total                          | 27     |
+
+Também confirmamos:
+
+- Java 17.0.10 utilizado na execução.
+- Spring Boot 3.5.7.
+- Seis arquivos de teste compilados.
+- Cinco interfaces de repositório JPA encontradas.
+- Perfil `test` ativo na integração.
+
+2. Dois avisos que merecem atenção
+
+-Hibernate — tabelas inexistentes
+-Table 'bd_paytur_test.roles_permissions' doesn't exist
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente! Encontramos a causa do problema do VS Code: a classe `JwtAuthenticationConverterTest.java`
+havia sido criada em `src/main/java`, quando deveria estar em `src/test/java`.
+
+Foi um erro de localização, não de dependências.
+
+A comparação com `CustomUserDetailsServiceTest.java` permitiu identificar isso.
+
+Dois avisos que merecem atenção
+
+Embora os testes tenham passado, observei dois avisos no log.
+
+A. Hibernate — tabelas inexistentes
+
+```
+Table 'bd_paytur_test.roles_permissions' doesn't exist
+```
+
+O Hibernate tentou remover chaves estrangeiras de tabelas que ainda não existiam.
+
+Como a execução terminou normalmente, isso não impediu os testes.
+
+Entretanto, precisamos investigar a sequência de criação e remoção do esquema de testes para
+eliminar esse aviso.
+
+B. Spring Security — AuthenticationProvider
+
+```
+Global AuthenticationManager configured with an AuthenticationProvider bean.
+UserDetailsService beans will not be used...
+```
+
+Esse aviso aparece porque declaramos explicitamente um `AuthenticationProvider` no `SecurityConfig`.
+
+Nossa configuração utiliza intencionalmente o `DaoAuthenticationProvider` com `CustomUserDetailsService`.
+
+Portanto, não vamos removê-lo apenas para eliminar o aviso.
+
+Primeiro vamos avaliar a configuração completa.
+
+3. Situação atual do projeto
+
+O fluxo de autenticação já possui uma estrutura bastante consistente:
+
+Autenticação:
+
+Cliente — POST `/api/auth/login`
+
+AuthenticationService
+
+AuthenticationManager / DaoAuthenticationProvider
+
+CustomUserDetailsService / MySQL
+
+JWT — roles + permissions
+
+JwtAuthenticationConverter
+
+Autorizações dos endpoints
+
+4. Próxima etapa recomendada
+
+Antes de testar com Postman, proponho avançarmos nesta ordem:
+
+1. Investigar e corrigir os avisos do Hibernate no ambiente de testes.
+2. Avaliar o aviso do `AuthenticationProvider`.
+3. Criar testes de integração HTTP para o login: sucesso, credenciais inválidas e validação.
+4. Testar acesso com JWT válido e sem JWT.
+5. Implementar as regras de autorização por permissões (`USER_CREATE`, `USER_DISABLE` etc.).
+
+Vamos começar pelo primeiro item, sem alterar o banco principal `bd_paytur`.
+
+A preservação de `bd_paytur` continua sendo uma condição obrigatória do projeto.
+
+O próximo arquivo que precisamos examinar é:
+
+```
+src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+```
+
+Envie o conteúdo completo dessa classe.
+
+Assim poderemos investigar a origem dos avisos do Hibernate antes de modificar qualquer configuração.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import com.julyturadm.domain.entity.id.UserRoleId;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Constructor;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class RepositoryIntegrationTest {
+
+        @Autowired
+        private JdbcTemplate jdbcTemplate;
+
+        @Autowired
+        private UserRepository userRepository;
+
+        @Autowired
+        private RoleRepository roleRepository;
+
+        @Autowired
+        private PermissionRepository permissionRepository;
+
+        @Autowired
+        private UserRoleRepository userRoleRepository;
+
+        @Autowired
+        private RolePermissionRepository rolePermissionRepository;
+
+        @Autowired
+        private EntityManager entityManager;
+
+        private <T> T createEntity(Class<T> type) throws Exception {
+                Constructor<T> constructor = type.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+        }
+
+        private String uniqueValue(String prefix) {
+                return prefix + "_" + UUID.randomUUID();
+        }
+
+        @Test
+        void shouldConnectOnlyToTestDatabase() {
+
+                String database = jdbcTemplate.queryForObject(
+                                "SELECT DATABASE()",
+                                String.class);
+
+                assertEquals("bd_paytur_test", database);
+        }
+
+        @Test
+        void shouldPersistAndFindUserByEmail() throws Exception {
+
+                User user = createEntity(User.class);
+
+                String email = uniqueValue("user") + "@test.com";
+
+                user.setName("Usuario Teste");
+                user.setEmail(email);
+                user.setPassword("password-test");
+                user.setEnabled(true);
+
+                User savedUser = userRepository.saveAndFlush(user);
+
+                assertNotNull(savedUser.getId());
+
+                assertTrue(userRepository.existsByEmail(email));
+
+                User foundUser = userRepository.findByEmail(email)
+                                .orElseThrow();
+
+                assertEquals(email, foundUser.getEmail());
+                assertEquals("Usuario Teste", foundUser.getName());
+                assertTrue(foundUser.getEnabled());
+
+                assertTrue(
+                                userRepository.findAllByEnabledTrue()
+                                                .stream()
+                                                .anyMatch(item -> item.getId().equals(savedUser.getId())));
+        }
+
+        @Test
+        void shouldPersistAndFindRole() throws Exception {
+
+                Role role = createEntity(Role.class);
+
+                String roleName = uniqueValue("ROLE_TEST");
+
+                role.setName(roleName);
+
+                Role savedRole = roleRepository.saveAndFlush(role);
+
+                assertNotNull(savedRole.getId());
+                assertTrue(roleRepository.existsByName(roleName));
+
+                Role foundRole = roleRepository.findByName(roleName)
+                                .orElseThrow();
+
+                assertEquals(roleName, foundRole.getName());
+        }
+
+        @Test
+        void shouldPersistAndFindPermission() throws Exception {
+
+                Permission permission = createEntity(Permission.class);
+
+                String permissionName = uniqueValue("PERMISSION_TEST");
+
+                permission.setName(permissionName);
+
+                Permission savedPermission = permissionRepository.saveAndFlush(permission);
+
+                assertNotNull(savedPermission.getId());
+                assertTrue(permissionRepository.existsByName(permissionName));
+
+                Permission foundPermission = permissionRepository.findByName(permissionName)
+                                .orElseThrow();
+
+                assertEquals(permissionName, foundPermission.getName());
+        }
+
+        @Test
+        void shouldPersistUserRoleRelationship() throws Exception {
+
+                User user = createEntity(User.class);
+
+                user.setName("Usuario Relacionamento");
+                user.setEmail(uniqueValue("relationship") + "@test.com");
+                user.setPassword("password-test");
+                user.setEnabled(true);
+
+                user = userRepository.saveAndFlush(user);
+
+                Role role = createEntity(Role.class);
+
+                // role.setName(uniqueValue("ROLE_USER_TEST"));
+                role.setName(uniqueValue("RU"));
+
+                role = roleRepository.saveAndFlush(role);
+
+                UserRole userRole = createEntity(UserRole.class);
+
+                userRole.setId(new UserRoleId(user.getId(), role.getId()));
+                userRole.setUser(user);
+                userRole.setRole(role);
+
+                userRoleRepository.saveAndFlush(userRole);
+
+                UserRoleId id = new UserRoleId(
+                                user.getId(),
+                                role.getId());
+
+                assertTrue(userRoleRepository.existsById(id));
+
+                assertTrue(
+                                userRoleRepository.existsByUser_IdAndRole_Id(
+                                                user.getId(),
+                                                role.getId()));
+
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByUser_Id(user.getId()).size());
+
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByRole_Id(role.getId()).size());
+        }
+
+        @Test
+        void shouldPersistRolePermissionRelationship() throws Exception {
+
+                Role role = createEntity(Role.class);
+
+                // role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
+                role.setName(uniqueValue("RP"));
+
+                role = roleRepository.saveAndFlush(role);
+
+                Permission permission = createEntity(Permission.class);
+
+                permission.setName(uniqueValue("PERMISSION_ROLE_TEST"));
+
+                permission = permissionRepository.saveAndFlush(permission);
+
+                RolePermission rolePermission = createEntity(RolePermission.class);
+
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
+
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
+
+                rolePermissionRepository.saveAndFlush(rolePermission);
+
+                RolePermissionId id = new RolePermissionId(
+                                role.getId(),
+                                permission.getId());
+
+                assertTrue(rolePermissionRepository.existsById(id));
+
+                assertTrue(
+                                rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                                                role.getId(),
+                                                permission.getId()));
+
+                assertEquals(
+                                1,
+                                rolePermissionRepository.findAllByRole_Id(role.getId()).size());
+
+                assertEquals(
+                                1,
+                                rolePermissionRepository
+                                                .findAllByPermission_Id(permission.getId()).size());
+        }
+
+        // teste de integração que crie um usuário, um perfil e uma permissão no banco
+        // de testes e valide o carregamento conjunto.
+        @Test
+        void shouldLoadUserWithRolesAndPermissionsForAuthentication()
+                        throws Exception {
+
+                User user = createEntity(User.class);
+                user.setName("Usuario Autenticacao");
+                user.setEmail(uniqueValue("auth") + "@test.com");
+                user.setPassword("password-test");
+                user.setEnabled(true);
+                user = userRepository.saveAndFlush(user);
+
+                Role role = createEntity(Role.class);
+                role.setName(uniqueValue("AUTH_ROLE"));
+                role = roleRepository.saveAndFlush(role);
+
+                Permission permission = createEntity(Permission.class);
+                permission.setName(uniqueValue("AUTH_PERMISSION"));
+                permission = permissionRepository.saveAndFlush(permission);
+
+                UserRole userRole = createEntity(UserRole.class);
+                userRole.setId(new UserRoleId(user.getId(), role.getId()));
+                userRole.setUser(user);
+                userRole.setRole(role);
+                userRoleRepository.saveAndFlush(userRole);
+
+                RolePermission rolePermission = createEntity(RolePermission.class);
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
+
+                // Pedro em 05/11/2026
+                rolePermissionRepository.saveAndFlush(rolePermission);
+
+                // Sincroniza os registros com o banco.
+                entityManager.flush();
+
+                // Limpa o contexto de persistência.
+                entityManager.clear();
+
+                // Primeira consulta: usuário e papéis.
+                User loadedUser = userRepository
+                                .findByEmailWithRoles(user.getEmail())
+                                .orElseThrow();
+
+                // Segunda consulta: papéis e permissões.
+                List<Role> loadedRoles = roleRepository.findAllByUserEmailWithPermissions(
+                                user.getEmail());
+
+                // Valida usuário.
+                assertEquals(user.getEmail(), loadedUser.getEmail());
+                assertEquals(1, loadedUser.getUserRoles().size());
+
+                // Valida papel.
+                UserRole foundUserRole = loadedUser.getUserRoles().get(0);
+
+                assertEquals(role.getName(), foundUserRole.getRole().getName());
+
+                // Valida carregamento das permissões.
+                assertEquals(1, loadedRoles.size());
+                assertEquals(1, loadedRoles.get(0).getRolePermissions().size());
+
+                assertEquals(
+                                permission.getName(),
+                                loadedRoles.get(0)
+                                                .getRolePermissions()
+                                                .get(0)
+                                                .getPermission()
+                                                .getName());
+        }
+
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Recebi o código do `RepositoryIntegrationTest.java`.
+
+Fiz a revisão e identifiquei um ponto importante: a classe de teste não parece ser a causa direta
+dos avisos de DDL do Hibernate.
+
+A estrutura dos testes está adequada, especialmente a proteção que verifica se a conexão está 
+realmente utilizando `bd_paytur_test`.
+
+Vamos analisar os avisos separadamente, sem modificar o banco principal.
+
+1. Análise do RepositoryIntegrationTest
+
+Há alguns pontos positivos:
+
+- `@ActiveProfiles("test")` ativa o perfil de testes.
+- `@Import(TestDatabaseSafetyConfiguration.class)` incorpora a proteção do banco.
+- `@Transactional` permite reverter as operações dos testes.
+- `EntityManager.flush()` e `clear()` ajudam a comprovar que os dados são efetivamente persistidos e depois recuperados.
+- O teste de autenticação verifica o carregamento das associações JPA sem depender de carregamento EAGER.
+
+Portanto, não recomendo modificar essa classe agora.
+
+2. Investigação do aviso Hibernate
+
+O aviso apresentado anteriormente foi:
+
+```
+Error executing DDL:
+alter table roles_permissions drop foreign key FK_rp_permission
+
+Table 'bd_paytur_test.roles_permissions' doesn't exist
+```
+
+O Hibernate está tentando executar operações de remoção de chaves estrangeiras antes de criar
+as tabelas.
+
+Isso pode estar relacionado à estratégia de geração do esquema, especialmente ao uso de:
+
+```
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+```
+
+Entretanto, precisamos confirmar como está configurada a geração do esquema e se existe algum
+script SQL adicional.
+
+3. Próxima verificação: application-test.yml
+
+Abra:
+
+```
+src/main/resources/application-test.yml
+```
+
+Execute:
+
+```
+cat src/main/resources/application-test.yml
+```
+
+Envie o conteúdo completo.
+
+Também quero verificar se existem scripts SQL que possam interferir na criação das tabelas:
+
+```
+find src/main/resources -maxdepth 3 -type f
+```
+
+4. Sobre o aviso do Spring Security
+
+O aviso:
+
+```
+Global AuthenticationManager configured with an AuthenticationProvider bean.
+UserDetailsService beans will not be used...
+```
+
+Não representa uma falha de autenticação.
+
+Nossa configuração registra explicitamente o `DaoAuthenticationProvider`, que utiliza o
+`CustomUserDetailsService`.
+
+Vamos deixar esse ponto para depois, sem alterar a configuração que já passou nos testes.
+
+Minha orientação: não modifique nenhum arquivo ainda.
+
+Primeiro vamos conferir `application-test.yml` e os recursos SQL.
+
+Depois decidiremos se é necessário ajustar a estratégia de criação do esquema.
+
+O objetivo é eliminar os avisos sem comprometer o isolamento entre `bd_paytur_test` e `bd_paytur`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/resources/application-test.yml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+server:
+  port: 0
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src/main/resources -maxdepth 3 -type f
+src/main/resources/application.yml
+src/main/resources/application-test.yml
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. Agora temos uma informação importante: não existem scripts SQL em `src/main/resources`.
+
+Portanto, os avisos de `DROP FOREIGN KEY` não estão sendo provocados por arquivos `schema.sql` ou `data.sql`.
+
+O `application-test.yml` também está coerente com o ambiente de testes:
+
+- Banco: `bd_paytur_test`.
+- Hibernate: `create-drop`.
+- `open-in-view: false`.
+- Porta HTTP aleatória (`0`).
+
+Como os 27 testes passaram, não há evidência de falha funcional.
+
+Porém, vale investigar os avisos antes de alterar a configuração do Hibernate.
+
+Não vamos mexer no banco principal `bd_paytur`.
+
+Minha hipótese principal é que o Hibernate esteja tentando limpar as chaves estrangeiras antes de
+criar as tabelas.
+
+Em um banco de testes vazio, essas chaves ainda não existem; por isso, o MySQL registra os avisos.
+
+Isso pode ser inofensivo, mas precisamos confirmar a origem.
+
+Próxima verificação: vamos localizar onde os nomes dessas chaves são definidos no mapeamento JPA.
+
+Execute:
+
+```
+grep -RniE 'FK_rp_permission|FK_ur|ForeignKey|foreignKey' src/main/java
+```
+Envie a saída completa. Com isso, verificaremos se os nomes dos relacionamentos estão definidos 
+explicitamente nas entidades ou se são gerados pelo Hibernate. Não altere nada por enquanto.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -RniE 'FK_rp_permission|FK_ur|ForeignKey|foreignKey' src/main/java
+src/main/java/com/julyturadm/domain/entity/UserRole.java:25:        foreignKey = @ForeignKey(name = "FK_ur_user")
+src/main/java/com/julyturadm/domain/entity/UserRole.java:34:        foreignKey = @ForeignKey(name = "FK_ur_role")
+src/main/java/com/julyturadm/domain/entity/RolePermission.java:25:        foreignKey = @ForeignKey(name = "FK_rp_role")
+src/main/java/com/julyturadm/domain/entity/RolePermission.java:34:        foreignKey = @ForeignKey(name = "FK_rp_permission")
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo. Encontramos a origem dos nomes das quatro chaves estrangeiras: elas estão declaradas 
+explicitamente nas anotações `@ForeignKey` das entidades `UserRole` e `RolePermission`.
+
+Isso confirma que o Hibernate conhece os nomes das constraints.
+
+Ainda não explica, por si só, por que tenta removê-las antes de as tabelas existirem.
+
+Próximo passo: analisar os dois mapeamentos completos.
+
+Execute:
+
+```
+cat src/main/java/com/julyturadm/domain/entity/UserRole.java
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+```
+
+Envie a saída. Quero conferir `@Table`, `@JoinColumn`, `@MapsId` e `@ForeignKey` em conjunto, para
+verificar se os nomes das tabelas e das constraints estão consistentes.
+
+Por enquanto, não altere as entidades nem o `ddl-auto`.
+
+Os 27 testes continuam sendo nossa referência de funcionamento.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/UserRole.java
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.UserRoleId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "users_roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class UserRole {
+
+    @EmbeddedId
+    private UserRoleId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("userId")
+    @JoinColumn(
+        name = "user_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_user")
+    )
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_role")
+    )
+    private Role role;
+}
+
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    @EmbeddedId
+    private RolePermissionId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_role")
+    )
+    private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(
+        name = "permission_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_permission")
+    )
+    private Permission permission;
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Analisei os dois mapeamentos.
+
+Não encontrei inconsistência estrutural aparente.
+
+Eles seguem o padrão JPA esperado para relacionamentos muitos-para-muitos implementados por 
+entidades associativas.
+
+1. Verificação dos mapeamentos
+
+| Verificação         | `UserRole`              | `RolePermission`         |
+| ------------------- | ----------------------- | ------------------------ |
+| Tabela              | `users_roles`           | `roles_permissions`      |
+| Chave composta      | `UserRoleId`            | `RolePermissionId`       |
+| `@MapsId`           | `userId`, `roleId`      | `roleId`, `permissionId` |
+| Relacionamentos     | `ManyToOne`             | `ManyToOne`              |
+| Carregamento        | `LAZY`                  | `LAZY`                   |
+| Chaves estrangeiras | Nomeadas explicitamente | Nomeadas explicitamente  |
+
+Os nomes das propriedades em `@MapsId` precisam corresponder aos campos existentes nas respectivas
+classes de chave composta. Vamos confirmar isso também.
+
+2. Minha avaliação sobre os avisos
+
+O Hibernate está tentando executar:
+
+```
+ALTER TABLE roles_permissions
+DROP FOREIGN KEY FK_rp_permission;
+```
+
+Mas a tabela ainda não existe no banco de testes.
+
+Isso pode acontecer durante a operação de criação e remoção do esquema (`create-drop`).
+
+O aviso isolado não demonstra que o relacionamento esteja errado.
+
+Não recomendo mudar `create-drop` para `update` ou remover as anotações `@ForeignKey`.
+
+Isso poderia mascarar o problema em vez de resolvê-lo.
+
+3. Próxima verificação
+
+Vamos conferir as duas classes de chave composta:
+
+```
+cat src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java
+cat src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+```
+
+Quero confirmar especialmente:
+
+- Se os nomes dos campos correspondem aos valores de `@MapsId`.
+- Se ambos os campos estão anotados com `@Column` corretamente.
+- Se as classes implementam `Serializable`, `equals()` e `hashCode()`.
+
+Depois disso, poderemos decidir se existe algum ajuste necessário ou se os avisos são apenas efeitos
+da inicialização do esquema de testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java
+cat src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserRoleId implements Serializable {
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "role_id")
+    private Long roleId;
+}
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class RolePermissionId implements Serializable {
+
+    @Column(name = "role_id")
+    private Long roleId;
+
+    @Column(name = "permission_id")
+    private Long permissionId;
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente. As duas classes de chave composta estão corretamente estruturadas.
+
+Não identifiquei problemas no mapeamento.
+
+1. Resultado da análise
+
+| Critério                      | `UserRoleId` | `RolePermissionId` |
+| ----------------------------- | ------------ | ------------------ |
+| `@Embeddable`                 | Correto      | Correto            |
+| `Serializable`                | Correto      | Correto            |
+| Campos `Long`                 | Correto      | Correto            |
+| `@Column`                     | Correto      | Correto            |
+| Construtor sem argumentos     | Correto      | Correto            |
+| `equals()` e `hashCode()`     | Correto      | Correto            |
+| Correspondência com `@MapsId` | Correto      | Correto            |
+
+As propriedades também correspondem exatamente:
+
+- `UserRole`: `userId` e `roleId`.
+- `RolePermission`: `roleId` e `permissionId`.
+
+Portanto, não precisamos modificar essas classes.
+
+2. Conclusão até aqui
+
+Já verificamos:
+
+1. `application-test.yml`;
+2. ausência de scripts SQL em `src/main/resources`;
+3. nomes explícitos das chaves estrangeiras;
+4. entidades associativas;
+5. classes de chave composta.
+
+Não encontramos inconsistência estrutural nesses pontos.
+
+Os avisos de `DROP FOREIGN KEY` ainda precisam ser investigados.
+
+Não devemos tratá-los como resolvidos simplesmente porque os testes passaram.
+
+3. Próxima etapa: verificar o esquema real de teste
+
+Quero conferir se as tabelas e suas chaves estrangeiras foram efetivamente criadas no MySQL.
+
+Execute:
+
+```
+docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" bd_paytur_test -e "
+SHOW TABLES;
+SHOW CREATE TABLE users_roles;
+SHOW CREATE TABLE roles_permissions;
+"'
+```
+
+Esse comando consulta somente `bd_paytur_test`; não altera nenhum dado.
+
+Envie a saída completa. Assim poderemos comparar o esquema produzido pelo Hibernate com os relacionamentos declarados nas entidades e decidir se há algum ajuste necessário.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" bd_paytur_test -e "
+SHOW TABLES;
+SHOW CREATE TABLE users_roles;
+SHOW CREATE TABLE roles_permissions;
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1146 (42S02) at line 3: Table 'bd_paytur_test.users_roles' doesn't exist
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Esse resultado é importante.
+
+O MySQL confirmou que a tabela `users_roles` não existe em `bd_paytur_test` neste momento.
+
+Mas atenção: isso ainda não significa que o Hibernate falhou ao criar as tabelas.
+
+Há uma explicação possível: sua configuração `ddl-auto: create-drop` cria as tabelas quando o contexto
+de testes inicia e as remove quando o contexto é encerrado.
+
+Como o `mvn test` já terminou, é possível que o banco esteja vazio novamente.
+
+Isso também explicaria os avisos que observamos.
+
+1. Vamos confirmar o estado atual
+
+Execute:
+
+```
+docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" bd_paytur_test -e "
+SHOW TABLES;
+"'
+```
+
+Envie a saída completa.
+
+2. O que estamos verificando
+
+- Se não houver tabelas, isso é compatível com a remoção do esquema pelo `create-drop`.
+- Se houver tabelas, examinaremos por que as tabelas associativas não foram criadas.
+
+Não altere o `ddl-auto` nem execute comandos SQL de criação manual.
+
+Primeiro precisamos distinguir o comportamento normal de encerramento do contexto de um problema
+real na geração do esquema.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" bd_paytur_test -e "
+SHOW TABLES;
+"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. A saída confirma que `bd_paytur_test` está vazio: nenhuma tabela foi listada.
+
+Isso é compatível com o comportamento esperado de:
+
+```
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+```
+
+O Hibernate cria o esquema ao iniciar o contexto de testes e o remove quando o contexto é encerrado.
+
+Minha conclusão até agora
+
+- Os mapeamentos `UserRole` e `RolePermission` estão estruturalmente corretos.
+- As classes de chave composta estão corretas.
+- Os 27 testes passaram.
+- O banco de testes foi limpo após a execução.
+- Os avisos de remoção de chaves estrangeiras podem estar relacionados à limpeza inicial de um esquema inexistente, mas ainda não confirmamos isso definitivamente.
+
+Próxima verificação: observar a criação do esquema
+
+Vamos executar apenas o teste de integração e guardar o log completo:
+
+```
+mvn -Dtest=RepositoryIntegrationTest test > /tmp/julituradm-repository-test.log 2>&1
+```
+
+Depois execute:
+
+```
+grep -nE 'create table|alter table|drop table|drop foreign key|WARN|ERROR|BUILD' \
+/tmp/julituradm-repository-test.log
+```
+
+Envie a saída dos dois comandos.
+
+Assim poderemos observar a sequência de operações do Hibernate: se ele tenta remover constraints antes de criar as tabelas e se consegue criá-las normalmente.
+
+Não precisamos modificar nenhuma entidade neste momento.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=RepositoryIntegrationTest test > /tmp/julituradm-repository-test.log 2>&1
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -nE 'create table|alter table|drop table|drop foreign key|WARN|ERROR|BUILD' \
+/tmp/julituradm-repository-test.log
+59:2026-11-05T21:29:33.300-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+61:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+197:2026-11-05T21:29:33.310-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_role" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+199:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table roles_permissions drop foreign key FK_rp_role" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+335:2026-11-05T21:29:33.316-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table users_roles drop foreign key FK_ur_role" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+337:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table users_roles drop foreign key FK_ur_role" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+473:2026-11-05T21:29:33.320-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table users_roles drop foreign key FK_ur_user" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+475:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table users_roles drop foreign key FK_ur_user" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+614:2026-11-05T21:29:49.320-03:00  WARN 70001 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+624:[INFO] BUILD SUCCESS
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Agora temos uma evidência mais concreta.
+
+O log confirma que os quatro avisos acontecem durante a inicialização do Hibernate, antes da execução dos testes.
+
+Observe a sequência:
+
+1. Hibernate tenta remover `FK_rp_permission`.
+2. A tabela `roles_permissions` ainda não existe.
+3. Tenta remover `FK_rp_role`, também sem a tabela.
+4. Repete o procedimento para as duas constraints de `users_roles`.
+5. A aplicação continua e termina com `BUILD SUCCESS`.
+
+Isso é compatível com uma tentativa de limpeza inicial do esquema pelo `create-drop`.
+
+Minha avaliação: os avisos parecem ser de limpeza de um esquema inexistente, não de falha nos
+relacionamentos JPA.
+
+Entretanto, vamos confirmar se as tabelas são criadas corretamente durante a inicialização.
+
+1. Verificar a geração do esquema
+
+O comando anterior filtrou apenas algumas palavras e não mostrou eventuais instruções SQL com
+outros formatos.
+
+Execute:
+
+```
+grep -niE 'create|alter|drop|users_roles|roles_permissions|Hibernate:' \
+/tmp/julituradm-repository-test.log
+```
+
+Envie a saída.
+
+2. Sobre o segundo aviso
+
+Também apareceu:
+
+```
+Global AuthenticationManager configured with an AuthenticationProvider bean.
+```
+
+Esse aviso é diferente: ele informa que você configurou explicitamente um `AuthenticationProvider`,
+portanto o Spring Security não utilizará automaticamente o `UserDetailsService` para configurar a
+autenticação.
+
+No nosso projeto, isso é intencional: o `DaoAuthenticationProvider` utiliza o
+`CustomUserDetailsService` e o `PasswordEncoder` configurado.
+
+Não vamos remover essa configuração.
+
+Primeiro vamos concluir a investigação do Hibernate. Não altere nada ainda.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -niE 'create|alter|drop|users_roles|roles_permissions|Hibernate:' \
+/tmp/julituradm-repository-test.log
+59:2026-11-05T21:29:33.300-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+61:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+65:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+66:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+67:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+68:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+69:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+70:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+75:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+76:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+80:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+81:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+87:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+88:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+187:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.roles_permissions' doesn't exist
+188:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+197:2026-11-05T21:29:33.310-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_role" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+199:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table roles_permissions drop foreign key FK_rp_role" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+203:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+204:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+205:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+206:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+207:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+208:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+213:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+214:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+218:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+219:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+225:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+226:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+325:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.roles_permissions' doesn't exist
+326:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+335:2026-11-05T21:29:33.316-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table users_roles drop foreign key FK_ur_role" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+337:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table users_roles drop foreign key FK_ur_role" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+341:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+342:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+343:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+344:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+345:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+346:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+351:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+352:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+356:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+357:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+363:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+364:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+463:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.users_roles' doesn't exist
+464:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+473:2026-11-05T21:29:33.320-03:00  WARN 70001 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table users_roles drop foreign key FK_ur_user" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+475:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table users_roles drop foreign key FK_ur_user" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+479:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+480:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+481:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+482:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+483:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+484:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+489:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+490:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+494:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+495:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+501:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+502:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+601:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.users_roles' doesn't exist
+602:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+614:2026-11-05T21:29:49.320-03:00  WARN 70001 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Agora conseguimos identificar exatamente a origem dos avisos. O trecho mais importante do log é este:
+
+```
+org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping
+org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences
+org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop
+```
+
+Isso demonstra que os comandos `DROP FOREIGN KEY` são executados pelo SchemaDropper do Hibernate,
+durante a inicialização do contexto JPA.
+
+1. O que podemos concluir
+
+O Hibernate está tentando remover constraints de tabelas que ainda não existem em `bd_paytur_test`.
+
+Isso acontece antes da criação do esquema, durante a etapa de limpeza inicial.
+
+Portanto:
+
+- Não encontramos erro nos mapeamentos das entidades associativas.
+- Não encontramos erro nas classes de chave composta.
+- Os testes continuam passando.
+- O aviso está relacionado à estratégia de geração do esquema.
+
+O comportamento é compatível com a limpeza inicial executada pelo `create-drop`.
+
+Não há motivo, neste momento, para modificar as entidades.
+
+2. Quero fazer uma última verificação
+
+Precisamos confirmar se o Hibernate efetivamente cria as tabelas depois dessa etapa de limpeza.
+
+Execute:
+
+```
+grep -niE 'create table|create index|alter table.*add constraint|insert into' \
+/tmp/julituradm-repository-test.log
+```
+
+Se aparecerem instruções de criação das tabelas e constraints, teremos confirmação de que a geração
+do esquema funciona apesar dos avisos iniciais.
+
+3. Decisão sobre a configuração
+
+Por enquanto, vamos preservar:
+
+```
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+```
+
+Essa configuração é adequada para o banco exclusivo de testes, `bd_payturadm_test` — no projeto, o nome correto é `bd_paytur_test`.
+
+Também manteremos a proteção que impede a execução dos testes contra o banco principal `bd_paytur`.
+
+Depois dessa verificação, poderemos encerrar a investigação se a criação estiver correta e voltar
+ao desenvolvimento do JulyTurAdm, sem introduzir mudanças desnecessárias no modelo JPA.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -niE 'create table|create index|alter table.*add constraint|insert into' \
+/tmp/julituradm-repository-test.log
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+A saída vazia é uma informação importante: não encontramos no log nenhuma instrução SQL de criação
+de tabelas, índices ou constraints com os padrões pesquisados.
+
+Isso muda um pouco nossa investigação. Os testes passaram, mas ainda não temos evidência direta da
+geração do esquema.
+
+Vamos verificar se o Hibernate está registrando as operações de criação com outro formato.
+
+1. Consulte o trecho do log após os avisos
+
+Execute:
+
+```
+sed -n '600,640p' /tmp/julituradm-repository-test.log
+```
+
+2. Verifique se o teste realmente persistiu as tabelas
+
+Execute novamente:
+
+```
+docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" bd_paytur_test -e "SHOW TABLES;"'
+```
+
+Envie as duas saídas.
+
+Importante: não vamos alterar o `ddl-auto` nem as entidades.
+
+Quero primeiro entender por que os testes de integração conseguem persistir e consultar entidades
+se o log não apresenta comandos de criação.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sed -n '600,640p' /tmp/julituradm-repository-test.log
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495) ~[surefire-booter-3.5.4.jar:3.5.4]
+Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.users_roles' doesn't exist
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:837) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:685) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+	at com.zaxxer.hikari.pool.ProxyStatement.execute(ProxyStatement.java:95) ~[HikariCP-6.3.3.jar:na]
+	at com.zaxxer.hikari.pool.HikariProxyStatement.execute(HikariProxyStatement.java) ~[HikariCP-6.3.3.jar:na]
+	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:80) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+	... 124 common frames omitted
+
+2026-11-05T21:29:48.421-03:00  INFO 70001 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-05T21:29:48.759-03:00  INFO 70001 --- [julyturadm-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-11-05T21:29:49.319-03:00  INFO 70001 --- [julyturadm-backend] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-11-05T21:29:49.320-03:00  WARN 70001 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+2026-11-05T21:29:50.262-03:00  INFO 70001 --- [julyturadm-backend] [           main] c.j.d.r.RepositoryIntegrationTest        : Started RepositoryIntegrationTest in 21.468 seconds (process running for 22.666)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 24.15 s -- in com.julyturadm.domain.repository.RepositoryIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  34.355 s
+[INFO] Finished at: 2026-11-05T21:30:00-03:00
+[INFO] ------------------------------------------------------------------------
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ docker compose exec mysql-julituradm sh -c \
+'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" bd_paytur_test -e "SHOW TABLES;"'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Agora precisamos corrigir uma interpretação anterior: os testes passaram, mas isso não prova que as
+tabelas associativas foram criadas corretamente.
+
+O trecho do log confirma que o `EntityManagerFactory` foi inicializado apesar dos avisos.
+
+Os sete testes também passaram. Entretanto, não temos ainda uma evidência clara da sequência de criação
+das tabelas.
+
+Há um detalhe importante: o `SHOW TABLES` foi executado depois do encerramento do Maven.
+
+Como usamos `create-drop`, é esperado que o esquema já tenha sido removido.
+
+Próxima etapa: habilitar o log DDL do Hibernate
+
+Vamos fazer uma alteração temporária somente no arquivo `application-test.yml`.
+
+Abra:
+
+```
+code src/main/resources/application-test.yml
+```
+
+Acrescente ao final:
+
+```
+logging:
+  level:
+    org.hibernate.tool.schema: DEBUG
+    org.hibernate.SQL: DEBUG
+```
+
+Salve o arquivo.
+
+Depois execute:
+
+```
+mvn -Dtest=RepositoryIntegrationTest test > /tmp/julituradm-ddl-debug.log 2>&1
+```
+
+E filtre:
+
+```
+grep -niE 'create|drop|alter|users_roles|roles_permissions|SchemaCreator|SchemaDropper' \
+/tmp/julituradm-ddl-debug.log
+```
+
+Envie a saída.
+
+O que queremos descobrir: se o Hibernate executa a criação das cinco tabelas principais e 
+associativas depois da limpeza inicial.
+
+Não altere as entidades nem o `ddl-auto`.
+
+Estamos preservando o banco principal `bd_paytur` e a configuração de segurança dos testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=RepositoryIntegrationTest test > /tmp/julituradm-ddl-debug.log 2>&1
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ grep -niE 'create|drop|alter|users_roles|roles_permissions|SchemaCreator|SchemaDropper' \
+/tmp/julituradm-ddl-debug.log
+59:2026-11-06T21:13:59.381-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table roles_permissions drop foreign key FK_rp_permission
+60:2026-11-06T21:13:59.413-03:00  WARN 50277 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+62:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+66:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+67:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+68:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+69:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+70:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+71:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+76:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+77:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+81:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+82:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+88:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+89:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+188:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.roles_permissions' doesn't exist
+189:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+198:2026-11-06T21:13:59.420-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table roles_permissions drop foreign key FK_rp_role
+199:2026-11-06T21:13:59.423-03:00  WARN 50277 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_role" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+201:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table roles_permissions drop foreign key FK_rp_role" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+205:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+206:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+207:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+208:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+209:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+210:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+215:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+216:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+220:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+221:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+227:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+228:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+327:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.roles_permissions' doesn't exist
+328:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+337:2026-11-06T21:13:59.431-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table users_roles drop foreign key FK_ur_role
+338:2026-11-06T21:13:59.433-03:00  WARN 50277 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table users_roles drop foreign key FK_ur_role" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+340:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table users_roles drop foreign key FK_ur_role" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+344:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+345:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+346:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+347:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+348:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+349:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+354:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+355:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+359:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+360:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+366:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+367:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+466:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.users_roles' doesn't exist
+467:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+476:2026-11-06T21:13:59.437-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table users_roles drop foreign key FK_ur_user
+477:2026-11-06T21:13:59.443-03:00  WARN 50277 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table users_roles drop foreign key FK_ur_user" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+479:org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table users_roles drop foreign key FK_ur_user" via JDBC [Table 'bd_paytur_test.users_roles' doesn't exist]
+483:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.applyConstraintDropping(SchemaDropperImpl.java:479) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+484:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropConstraintsTablesSequences(SchemaDropperImpl.java:245) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+485:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.dropFromMetadata(SchemaDropperImpl.java:218) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+486:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.performDrop(SchemaDropperImpl.java:186) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+487:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:156) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+488:	at org.hibernate.tool.schema.internal.SchemaDropperImpl.doDrop(SchemaDropperImpl.java:116) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+493:	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+494:	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
+498:	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.12.jar:6.2.12]
+499:	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.12.jar:6.2.12]
+505:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.12.jar:6.2.12]
+506:	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
+605:Caused by: java.sql.SQLSyntaxErrorException: Table 'bd_paytur_test.users_roles' doesn't exist
+606:	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112) ~[mysql-connector-j-9.4.0.jar:9.4.0]
+615:2026-11-06T21:13:59.447-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : drop table if exists permissions
+616:2026-11-06T21:13:59.560-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : drop table if exists roles
+617:2026-11-06T21:13:59.602-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : drop table if exists roles_permissions
+618:2026-11-06T21:13:59.645-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : drop table if exists users
+619:2026-11-06T21:13:59.688-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : drop table if exists users_roles
+620:2026-11-06T21:13:59.728-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : create table permissions (created_at datetime(6), id bigint not null auto_increment, updated_at datetime(6), name varchar(80) not null, primary key (id)) engine=InnoDB
+621:2026-11-06T21:14:01.601-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : create table roles (created_at datetime(6), id bigint not null auto_increment, updated_at datetime(6), name varchar(50) not null, primary key (id)) engine=InnoDB
+622:2026-11-06T21:14:02.260-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : create table roles_permissions (permission_id bigint not null, role_id bigint not null, primary key (permission_id, role_id)) engine=InnoDB
+623:2026-11-06T21:14:02.903-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : create table users (enabled bit not null, created_at datetime(6), id bigint not null auto_increment, updated_at datetime(6), name varchar(100) not null, email varchar(255) not null, password varchar(255) not null, primary key (id)) engine=InnoDB
+624:2026-11-06T21:14:03.562-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : create table users_roles (role_id bigint not null, user_id bigint not null, primary key (role_id, user_id)) engine=InnoDB
+625:2026-11-06T21:14:04.365-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table permissions add constraint UKpnvtwliis6p05pn6i3ndjrqt2 unique (name)
+626:2026-11-06T21:14:04.942-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table roles add constraint UKofx66keruapi6vyqpv6f2or37 unique (name)
+627:2026-11-06T21:14:05.518-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table users add constraint UK6dotkott2kjsp8vw4d0m25fb7 unique (email)
+628:2026-11-06T21:14:06.019-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table roles_permissions add constraint FK_rp_permission foreign key (permission_id) references permissions (id)
+629:2026-11-06T21:14:07.990-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table roles_permissions add constraint FK_rp_role foreign key (role_id) references roles (id)
+630:2026-11-06T21:14:10.412-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table users_roles add constraint FK_ur_role foreign key (role_id) references roles (id)
+631:2026-11-06T21:14:12.507-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : alter table users_roles add constraint FK_ur_user foreign key (user_id) references users (id)
+635:2026-11-06T21:14:15.898-03:00  WARN 50277 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+640:2026-11-06T21:14:18.992-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select u1_0.id,u1_0.created_at,u1_0.email,u1_0.enabled,u1_0.name,u1_0.password,u1_0.updated_at from users u1_0 where u1_0.email=?
+641:2026-11-06T21:14:19.003-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select u1_0.id,u1_0.created_at,u1_0.email,u1_0.enabled,u1_0.name,u1_0.password,u1_0.updated_at from users u1_0 where u1_0.enabled
+645:2026-11-06T21:14:19.533-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select ur1_0.role_id,ur1_0.user_id from users_roles ur1_0 where (ur1_0.role_id,ur1_0.user_id) in ((?,?))
+646:2026-11-06T21:14:19.553-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : insert into users_roles (role_id,user_id) values (?,?)
+647:2026-11-06T21:14:19.558-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select rp1_0.permission_id,rp1_0.role_id from roles_permissions rp1_0 where (rp1_0.permission_id,rp1_0.role_id) in ((?,?))
+648:2026-11-06T21:14:19.562-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : insert into roles_permissions (permission_id,role_id) values (?,?)
+649:2026-11-06T21:14:19.589-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select distinct u1_0.id,u1_0.created_at,u1_0.email,u1_0.enabled,u1_0.name,u1_0.password,u1_0.updated_at,ur1_0.user_id,ur1_0.role_id,r1_0.id,r1_0.created_at,r1_0.name,r1_0.updated_at from users u1_0 left join users_roles ur1_0 on u1_0.id=ur1_0.user_id left join roles r1_0 on r1_0.id=ur1_0.role_id where u1_0.email=?
+650:2026-11-06T21:14:19.608-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select distinct r1_0.id,r1_0.created_at,r1_0.name,rp1_0.role_id,rp1_0.permission_id,p1_0.id,p1_0.created_at,p1_0.name,p1_0.updated_at,r1_0.updated_at from roles r1_0 join users_roles ur1_0 on r1_0.id=ur1_0.role_id join users u1_0 on u1_0.id=ur1_0.user_id left join roles_permissions rp1_0 on r1_0.id=rp1_0.role_id left join permissions p1_0 on p1_0.id=rp1_0.permission_id where u1_0.email=?
+653:2026-11-06T21:14:19.726-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select p1_0.id,p1_0.created_at,p1_0.name,p1_0.updated_at from permissions p1_0 where p1_0.name=?
+656:2026-11-06T21:14:19.928-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select rp1_0.permission_id,rp1_0.role_id from roles_permissions rp1_0 where (rp1_0.permission_id,rp1_0.role_id) in ((?,?))
+657:2026-11-06T21:14:19.931-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : insert into roles_permissions (permission_id,role_id) values (?,?)
+658:2026-11-06T21:14:19.995-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select count(*) from roles_permissions rp1_0 where (rp1_0.permission_id,rp1_0.role_id)=(?,?)
+659:2026-11-06T21:14:20.001-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select rp1_0.permission_id,rp1_0.role_id from roles_permissions rp1_0 join roles r1_0 on r1_0.id=rp1_0.role_id join permissions p1_0 on p1_0.id=rp1_0.permission_id where r1_0.id=? and p1_0.id=? limit ?
+660:2026-11-06T21:14:20.006-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select rp1_0.permission_id,rp1_0.role_id from roles_permissions rp1_0 join roles r1_0 on r1_0.id=rp1_0.role_id where r1_0.id=?
+661:2026-11-06T21:14:20.011-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select rp1_0.permission_id,rp1_0.role_id from roles_permissions rp1_0 join permissions p1_0 on p1_0.id=rp1_0.permission_id where p1_0.id=?
+664:2026-11-06T21:14:20.181-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select ur1_0.role_id,ur1_0.user_id from users_roles ur1_0 where (ur1_0.role_id,ur1_0.user_id) in ((?,?))
+665:2026-11-06T21:14:20.187-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : insert into users_roles (role_id,user_id) values (?,?)
+666:2026-11-06T21:14:20.194-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select count(*) from users_roles ur1_0 where (ur1_0.role_id,ur1_0.user_id)=(?,?)
+667:2026-11-06T21:14:20.201-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select ur1_0.role_id,ur1_0.user_id from users_roles ur1_0 join users u1_0 on u1_0.id=ur1_0.user_id join roles r1_0 on r1_0.id=ur1_0.role_id where u1_0.id=? and r1_0.id=? limit ?
+668:2026-11-06T21:14:20.208-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select ur1_0.role_id,ur1_0.user_id from users_roles ur1_0 join users u1_0 on u1_0.id=ur1_0.user_id where u1_0.id=?
+669:2026-11-06T21:14:20.216-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select ur1_0.role_id,ur1_0.user_id from users_roles ur1_0 join roles r1_0 on r1_0.id=ur1_0.role_id where r1_0.id=?
+672:2026-11-06T21:14:20.569-03:00 DEBUG 50277 --- [julyturadm-backend] [           main] org.hibernate.SQL                        : select r1_0.id,r1_0.created_at,r1_0.name,r1_0.updated_at from roles r1_0 where r1_0.name=?
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente! 
+
+Agora temos a confirmação que faltava. O log de depuração esclareceu o comportamento do Hibernate.
+
+O esquema JPA está sendo criado corretamente.
+
+Não precisamos modificar as entidades nem as chaves estrangeiras.
+
+1. O que o log comprovou
+
+Na inicialização, o Hibernate executa três etapas.
+
+Etapa A — limpeza inicial
+
+Tenta remover quatro chaves estrangeiras que ainda não existem:
+
+```
+alter table roles_permissions drop foreign key FK_rp_permission;
+alter table roles_permissions drop foreign key FK_rp_role;
+alter table users_roles drop foreign key FK_ur_role;
+alter table users_roles drop foreign key FK_ur_user;
+```
+
+Isso gera os avisos que investigamos.
+
+Etapa B — criação das tabelas
+
+Confirmado no log
+
+O Hibernate cria as cinco tabelas:
+
+| Tabela              | Resultado |
+| ------------------- | --------- |
+| `permissions`       | Criada    |
+| `roles`             | Criada    |
+| `roles_permissions` | Criada    |
+| `users`             | Criada    |
+| `users_roles`       | Criada    |
+
+Etapa C — criação das constraints
+
+Também foram criadas as quatro chaves estrangeiras:
+
+```
+FK_rp_permission
+FK_rp_role
+FK_ur_role
+FK_ur_user
+```
+
+Além disso, o log mostra operações `INSERT`, `SELECT` e consultas com `JOIN` nas duas tabelas
+associativas.
+
+Isso confirma que os relacionamentos estão funcionando durante os testes.
+
+2. Decisão técnica
+
+Minha recomendação é manter:
+
+```
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+```
+
+Não precisamos mudar:
+
+- `UserRole.java`;
+- `RolePermission.java`;
+- `UserRoleId.java`;
+- `RolePermissionId.java`;
+- os nomes das chaves estrangeiras.
+
+Os avisos iniciais são de uma tentativa de limpeza de objetos inexistentes.
+
+São incômodos, mas não impediram a criação do esquema nem a execução dos testes.
+
+3. Uma pequena limpeza
+
+Como habilitamos o log detalhado temporariamente, recomendo retirar estas configurações de
+`application-test.yml`:
+
+```
+logging:
+  level:
+    org.hibernate.tool.schema: DEBUG
+    org.hibernate.SQL: DEBUG
+```
+
+Mantenha o restante do arquivo intacto.
+
+4. Situação atual do JulyTurAdm
+
+Etapa de repositórios e testes concluída
+
+| Componente                  | Situação      |
+| --------------------------- | ------------- |
+| Entidades JPA               | Implementadas |
+| Chaves compostas            | Implementadas |
+| Relacionamentos LAZY        | Implementados |
+| Repositórios JPA            | Implementados |
+| Consultas para autenticação | Testadas      |
+| Testes de integração        | 7 aprovados   |
+| Testes unitários            | 20 aprovados  |
+| Proteção do banco de testes | Implementada  |
+
+Total: 27 testes aprovados, sem falhas.
+
+Minha sugestão para a próxima fase é desenvolver os testes de integração HTTP da API, começando pelo
+fluxo de autenticação:
+
+1. Login válido e emissão de JWT.
+2. Login com senha incorreta.
+3. Validação dos dados recebidos.
+4. Acesso a endpoint protegido sem token.
+5. Acesso com token válido.
+6. Verificação de permissões e autoridades.
+
+Assim avançaremos da camada de persistência para a integração real entre Spring MVC e Spring Security.
+
+
+Continua no arquivo: [20261106_Chat-Gpt-Etapa1-20-Hibernate-(bd_paytur_test)tabelas inexistentes.txt]
+
+-------------------------------------------------fim-----------------------------------------------
+

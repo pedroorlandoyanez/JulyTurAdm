@@ -1,0 +1,3511 @@
+﻿
+06/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt: Etapa1-20-Hibernate testes de integração HTTP da API
+---------------------------------------------------------------------------------------------------
+
+* Minha sugestão para a próxima fase é desenvolver os testes de integração HTTP da API, começando
+  pelo fluxo de autenticação. Verificar a linha acontinuação parece que deu tudo certo!
+
+Excelente! Agora os 6 testes HTTP de autenticação passaram, sem falhas ou erros.
+
+Teste	Resultado
+Login com credenciais válidas	Passou
+Senha incorreta	Passou
+Usuário inexistente	Passou
+E-mail inválido	Passou
+E-mail vazio	Passou
+Senha vazia	Passou
+
+O que corrigimos
+
+A inclusão de:
+entityManager.flush();
+entityManager.clear();
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente! Agora temos a confirmação que faltava. O log de depuração esclareceu o comportamento do Hibernate.
+
+O esquema JPA está sendo criado corretamente. Não precisamos modificar as entidades nem as chaves estrangeiras.
+
+1. O que o log comprovou
+
+Na inicialização, o Hibernate executa três etapas.
+
+Etapa A — limpeza inicial
+
+Tenta remover quatro chaves estrangeiras que ainda não existem:
+
+```
+alter table roles_permissions drop foreign key FK_rp_permission;
+alter table roles_permissions drop foreign key FK_rp_role;
+alter table users_roles drop foreign key FK_ur_role;
+alter table users_roles drop foreign key FK_ur_user;
+```
+
+Isso gera os avisos que investigamos.
+
+Etapa B — criação das tabelas
+
+Confirmado no log
+
+O Hibernate cria as cinco tabelas:
+
+| Tabela              | Resultado |
+| ------------------- | --------- |
+| `permissions`       | Criada    |
+| `roles`             | Criada    |
+| `roles_permissions` | Criada    |
+| `users`             | Criada    |
+| `users_roles`       | Criada    |
+
+Etapa C — criação das constraints
+
+Também foram criadas as quatro chaves estrangeiras:
+
+```
+FK_rp_permission
+FK_rp_role
+FK_ur_role
+FK_ur_user
+```
+
+Além disso, o log mostra operações `INSERT`, `SELECT` e consultas com `JOIN` nas duas tabelas
+associativas.
+
+Isso confirma que os relacionamentos estão funcionando durante os testes.&#x20;
+
+2. Decisão técnica
+
+Minha recomendação é manter:
+
+```
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+```
+
+Não precisamos mudar:
+
+- `UserRole.java`;
+- `RolePermission.java`;
+- `UserRoleId.java`;
+- `RolePermissionId.java`;
+- os nomes das chaves estrangeiras.
+
+Os avisos iniciais são de uma tentativa de limpeza de objetos inexistentes.
+
+São incômodos, mas não impediram a criação do esquema nem a execução dos testes.
+
+3. Uma pequena limpeza
+
+Como habilitamos o log detalhado temporariamente, recomendo retirar estas configurações de
+`application-test.yml`:
+
+```
+logging:
+  level:
+    org.hibernate.tool.schema: DEBUG
+    org.hibernate.SQL: DEBUG
+```
+
+Mantenha o restante do arquivo intacto.
+
+4. Situação atual do JulyTurAdm
+
+Etapa de repositórios e testes concluída
+
+| Componente                  | Situação      |
+| --------------------------- | ------------- |
+| Entidades JPA               | Implementadas |
+| Chaves compostas            | Implementadas |
+| Relacionamentos LAZY        | Implementados |
+| Repositórios JPA            | Implementados |
+| Consultas para autenticação | Testadas      |
+| Testes de integração        | 7 aprovados   |
+| Testes unitários            | 20 aprovados  |
+| Proteção do banco de testes | Implementada  |
+
+Total: 27 testes aprovados, sem falhas.
+
+Minha sugestão para a próxima fase é desenvolver os testes de integração HTTP da API, começando pelo fluxo de autenticação:
+
+1. Login válido e emissão de JWT.
+2. Login com senha incorreta.
+3. Validação dos dados recebidos.
+4. Acesso a endpoint protegido sem token.
+5. Acesso com token válido.
+6. Verificação de permissões e autoridades.
+
+Assim avançaremos da camada de persistência para a integração real entre Spring MVC e Spring Security.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Vamos para a proxima fase que seria desenvolver os testes de integração HTTP da API, começando pelo
+fluxo de autenticação.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Vamos iniciar essa fase de forma incremental, preservando o que já está funcionando no JulyTurAdm.
+
+A primeira etapa será desenvolver testes de integração HTTP do fluxo de autenticação, verificando
+a API através de requisições reais ao ambiente Spring, e não apenas testando os serviços isoladamente.
+
+1. O que vamos validar
+
+A sequência inicial será:
+
+| Teste                                        | Resultado esperado |
+| -------------------------------------------- | ------------------ |
+| Login com e-mail e senha válidos             | `200 OK` e JWT     |
+| Login com senha incorreta                    | `401 Unauthorized` |
+| Login com usuário inexistente                | `401 Unauthorized` |
+| Login com campos inválidos                   | `400 Bad Request`  |
+| Acesso a endpoint protegido sem token        | `401 Unauthorized` |
+| Acesso a endpoint protegido com token válido | `200 OK`           |
+
+Também verificaremos se o token contém as informações esperadas, especialmente `roles` e
+`permissions`.
+
+---
+Importante: 
+Vamos utilizar exclusivamente o banco `bd_payturadm_test`?
+Não, o nome definido no projeto é `bd_paytur_test`.
+
+Manteremos a proteção existente para impedir que os testes utilizem o banco principal `bd_paytur`.
+
+2. Primeiro passo: examinar a estrutura atual
+
+Antes de escrever qualquer teste, quero conferir os arquivos atuais para evitar duplicar 
+configurações ou criar testes incompatíveis com a implementação existente.
+
+No terminal, entre no diretório `backend-api` e execute:
+
+```
+cd ~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api
+
+printf '\n===== AUTH CONTROLLER =====\n'
+cat src/main/java/com/julyturadm/controller/AuthController.java
+
+printf '\n===== USER CONTROLLER =====\n'
+cat src/main/java/com/julyturadm/controller/UserController.java
+
+printf '\n===== SECURITY CONFIG =====\n'
+cat src/main/java/com/julyturadm/config/SecurityConfig.java
+
+printf '\n===== AUTHENTICATION SERVICE =====\n'
+cat src/main/java/com/julyturadm/security/AuthenticationService.java
+
+printf '\n===== TEST FILES =====\n'
+find src/test/java -type f | sort
+```
+
+Envie a saída completa.
+
+Por enquanto, não altere nenhum arquivo. Depois de examinar esses elementos, definiremos a primeira classe de testes HTTP, sua configuração e os dados de teste. Vamos avançar etapa por etapa, executando os testes e analisando os resultados antes de prosseguir.&#x20;
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== AUTH CONTROLLER =====\n'
+cat src/main/java/com/julyturadm/controller/AuthController.java
+
+printf '\n===== USER CONTROLLER =====\n'
+cat src/main/java/com/julyturadm/controller/UserController.java
+
+printf '\n===== SECURITY CONFIG =====\n'
+cat src/main/java/com/julyturadm/config/SecurityConfig.java
+
+printf '\n===== AUTHENTICATION SERVICE =====\n'
+cat src/main/java/com/julyturadm/security/AuthenticationService.java
+
+printf '\n===== TEST FILES =====\n'
+find src/test/java -type f | sort
+
+===== AUTH CONTROLLER =====
+package com.julyturadm.controller;
+
+import com.julyturadm.dto.request.LoginRequest;
+import com.julyturadm.dto.response.LoginResponse;
+import com.julyturadm.service.AuthenticationService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthenticationService authenticationService;
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request) {
+
+        LoginResponse response =
+                authenticationService.authenticate(request);
+
+        return ResponseEntity.ok(response);
+    }
+}
+
+===== USER CONTROLLER =====
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import com.julyturadm.dto.request.UserCreateRequest;
+import com.julyturadm.dto.response.UserResponse;
+import com.julyturadm.service.UserService;
+
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+
+        UserResponse response = userService.createUser(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> findUserById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.findUserById(id)
+        );
+    }
+
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserResponse> findUserByEmail(
+            @PathVariable String email) {
+
+        return ResponseEntity.ok(
+            userService.findUserByEmail(email)
+        );
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserResponse>> findAllActiveUsers() {
+
+        return ResponseEntity.ok(
+            userService.findAllActiveUsers()
+        );
+    }
+
+    @PatchMapping("/{id}/disable")
+    public ResponseEntity<UserResponse> disableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.disableUser(id)
+        );
+    }
+
+    @PatchMapping("/{id}/enable")
+    public ResponseEntity<UserResponse> enableUser(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+            userService.enableUser(id)
+        );
+    }
+}
+
+===== SECURITY CONFIG =====
+package com.julyturadm.config;
+
+import com.julyturadm.security.CustomUserDetailsService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import org.springframework.http.HttpMethod;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    // `CustomUserDetailsService`: localiza o usuário e suas autoridades.
+    private final CustomUserDetailsService userDetailsService;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(
+            PasswordEncoder passwordEncoder) {
+
+        // `DaoAuthenticationProvider`: valida as credenciais utilizando BCrypt.
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+
+        provider.setPasswordEncoder(passwordEncoder);
+
+        return provider;
+    }
+
+    // ---
+    // O metodo `AuthenticationManager` será o ponto de entrada para validar as
+    // credenciais:
+    // `AuthenticationService → AuthenticationManager → DaoAuthenticationProvider →
+    // CustomUserDetailsService → UserRepository`
+    // O `PasswordEncoder` fará a comparação com o hash BCrypt armazenado no banco.
+    // ---
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration)
+            throws Exception {
+
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationProvider authenticationProvider,
+            JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+
+        http
+                .csrf(csrf -> csrf.disable())
+
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .authenticationProvider(authenticationProvider)
+
+                // ----------------------------------------
+                // Requisição Acesso
+                // ----------------------------------------
+                // POST /api/auth/login Público
+                // POST /api/users Protegido
+                // GET /api/users Protegido
+                // PATCH /api/users/{id}/disable Protegido
+                // Demais endpoints Protegido
+                // ----------------------------------------
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/auth/login")
+                        .permitAll()
+                        .anyRequest().authenticated())
+
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+                        .authenticationEntryPoint(
+                                new BearerTokenAuthenticationEntryPoint())
+                        .accessDeniedHandler(
+                                new BearerTokenAccessDeniedHandler()));
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+
+        Converter<Jwt, Collection<GrantedAuthority>> authoritiesConverter = jwt -> {
+
+            Set<GrantedAuthority> authorities = new LinkedHashSet<>();
+
+            addClaimAuthorities(jwt, "roles", authorities);
+            addClaimAuthorities(jwt, "permissions", authorities);
+
+            return authorities;
+        };
+
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+
+        return converter;
+    }
+
+    private void addClaimAuthorities(
+            Jwt jwt,
+            String claimName,
+            Set<GrantedAuthority> authorities) {
+
+        Object claim = jwt.getClaims().get(claimName);
+
+        if (claim instanceof Collection<?> values) {
+            values.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .map(SimpleGrantedAuthority::new)
+                    .forEach(authorities::add);
+        }
+    }
+
+}
+
+===== AUTHENTICATION SERVICE =====
+cat: src/main/java/com/julyturadm/security/AuthenticationService.java: Arquivo ou diretório inexistente
+
+===== TEST FILES =====
+src/test/java/com/julyturadm/config/JwtAuthenticationConverterTest.java
+src/test/java/com/julyturadm/config/TestDatabaseSafetyConfiguration.java
+src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+src/test/java/com/julyturadm/security/CustomUserDetailsServiceTest.java
+src/test/java/com/julyturadm/service/AuthenticationServiceTest.java
+src/test/java/com/julyturadm/service/UserServiceTest.java
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+A estrutura está adequada para começarmos.
+
+Há um detalhe importante: o `AuthController` utiliza `com.julyturadm.service.AuthenticationService`,
+portanto o caminho correto do serviço é `service`, e não `security`.
+
+O erro no `cat` foi apenas o caminho incorreto; não indica problema na aplicação.
+
+Também confirmei que:
+
+- O login é público (`POST /api/auth/login`).
+- Os demais endpoints exigem autenticação.
+- A aplicação utiliza JWT e sessão `STATELESS`.
+- Já temos testes unitários para `AuthenticationService` e para o conversor de autoridades JWT.
+  Não precisamos duplicá-los: agora vamos testar o fluxo pela camada HTTP.
+
+1. Conferir os DTOs, serviço e configuração de testes
+
+Antes de criar a classe de integração, precisamos conferir os formatos exatos das respostas e como
+os testes atuais preparam os usuários.
+
+Execute agora este segundo bloco de comandos:
+
+```
+printf '\n===== AUTHENTICATION SERVICE =====\n'
+cat src/main/java/com/julyturadm/service/AuthenticationService.java
+
+printf '\n===== LOGIN REQUEST =====\n'
+cat src/main/java/com/julyturadm/dto/request/LoginRequest.java
+
+printf '\n===== LOGIN RESPONSE =====\n'
+cat src/main/java/com/julyturadm/dto/response/LoginResponse.java
+
+printf '\n===== API ERROR RESPONSE =====\n'
+cat src/main/java/com/julyturadm/dto/response/ApiErrorResponse.java
+
+printf '\n===== GLOBAL EXCEPTION HANDLER =====\n'
+cat src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+
+printf '\n===== AUTHENTICATION SERVICE TEST =====\n'
+cat src/test/java/com/julyturadm/service/AuthenticationServiceTest.java
+
+printf '\n===== REPOSITORY INTEGRATION TEST =====\n'
+cat src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+
+printf '\n===== TEST APPLICATION CONFIGURATION =====\n'
+cat src/main/resources/application-test.yml
+```
+
+Com isso, vamos decidir como preparar os dados de autenticação no banco de testes, sem depender
+de usuários existentes no banco principal.
+
+Minha proposta é começar com `@SpringBootTest` e `MockMvc`: assim testamos o processamento HTTP,
+a validação, os filtros de segurança, a autenticação e a geração do JWT dentro do contexto real do
+Spring, sem precisar iniciar um servidor externo.
+
+Envie a saída e, em seguida, montaremos a primeira classe de testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== AUTHENTICATION SERVICE =====\n'
+cat src/main/java/com/julyturadm/service/AuthenticationService.java
+
+printf '\n===== LOGIN REQUEST =====\n'
+cat src/main/java/com/julyturadm/dto/request/LoginRequest.java
+
+printf '\n===== LOGIN RESPONSE =====\n'
+cat src/main/java/com/julyturadm/dto/response/LoginResponse.java
+
+printf '\n===== API ERROR RESPONSE =====\n'
+cat src/main/java/com/julyturadm/dto/response/ApiErrorResponse.java
+
+printf '\n===== GLOBAL EXCEPTION HANDLER =====\n'
+cat src/main/java/com/julyturadm/common/exception/GlobalExceptionHandler.java
+
+printf '\n===== AUTHENTICATION SERVICE TEST =====\n'
+cat src/test/java/com/julyturadm/service/AuthenticationServiceTest.java
+
+printf '\n===== REPOSITORY INTEGRATION TEST =====\n'
+cat src/test/java/com/julyturadm/domain/repository/RepositoryIntegrationTest.java
+
+printf '\n===== TEST APPLICATION CONFIGURATION =====\n'
+cat src/main/resources/application-test.yml
+
+===== AUTHENTICATION SERVICE =====
+package com.julyturadm.service;
+
+import com.julyturadm.dto.request.LoginRequest;
+import com.julyturadm.dto.response.LoginResponse;
+import com.julyturadm.security.JwtService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
+//---
+// A classe `AuthenticationService.java`
+// O fluxo será:
+//
+//1. Receber o e-mail e a senha.
+//2. Encaminhar as credenciais ao `AuthenticationManager`.
+//3. O Spring Security validará a senha usando BCrypt.
+//4. Se a autenticação for aprovada, o `JwtService` emitirá o token.
+//5. Retornar o token no `LoginResponse`.
+//---
+@Service
+@RequiredArgsConstructor
+public class AuthenticationService {
+
+    private static final long TOKEN_EXPIRATION_SECONDS = 1800;
+
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+
+    public LoginResponse authenticate(LoginRequest request) {
+
+        Authentication authentication =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                request.email(),
+                                request.password()
+                        )
+                );
+
+        String accessToken = jwtService.generateToken(
+                (org.springframework.security.core.userdetails.UserDetails)
+                        authentication.getPrincipal()
+        );
+
+        return new LoginResponse(
+                accessToken,
+                "Bearer",
+                TOKEN_EXPIRATION_SECONDS
+        );
+    }
+}
+
+===== LOGIN REQUEST =====
+package com.julyturadm.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record LoginRequest(
+
+    @NotBlank(message = "O e-mail é obrigatório.")
+    @Email(message = "Informe um endereço de e-mail válido.")
+    @Size(max = 255, message = "O e-mail deve ter no máximo 255 caracteres.")
+    String email,
+
+    @NotBlank(message = "A senha é obrigatória.")
+    @Size(max = 72, message = "A senha excede o tamanho permitido.")
+    String password
+
+) {
+}
+
+===== LOGIN RESPONSE =====
+package com.julyturadm.dto.response;
+
+public record LoginResponse(
+
+    String accessToken,
+
+    String tokenType,
+    // O campo `expiresIn` representará o tempo de validade do token em segundos: 1800 segundos (30 minutos).
+    long expiresIn
+
+) {
+}
+
+===== API ERROR RESPONSE =====
+cat: src/main/java/com/julyturadm/dto/response/ApiErrorResponse.java: Arquivo ou diretório inexistente
+
+===== GLOBAL EXCEPTION HANDLER =====
+package com.julyturadm.common.exception;
+
+import java.time.LocalDateTime;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import org.springframework.security.core.AuthenticationException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(
+            ResourceNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage(),
+                request.getRequestURI());
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiErrorResponse> handleBusinessException(
+            BusinessException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request.getRequestURI());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleValidation(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+
+        FieldError fieldError = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .orElse(null);
+
+        String message = fieldError != null
+                ? fieldError.getDefaultMessage()
+                : "Os dados enviados são inválidos.";
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                message,
+                request.getRequestURI());
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildResponse(
+            HttpStatus status,
+            String message,
+            String path) {
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                path);
+
+        return ResponseEntity.status(status).body(response);
+    }
+
+    //@ExceptionHandler(AuthenticationException.class)
+    //public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+    //        AuthenticationException exception,
+    //        HttpServletRequest request) {
+    //
+    //    HttpStatus status = HttpStatus.UNAUTHORIZED;
+    //
+    //    ApiErrorResponse response = new ApiErrorResponse(
+    //            LocalDateTime.now(),
+    //            status.value(),
+    //            "Unauthorized",
+    //            "E-mail ou senha inválidos.",
+    //            request.getRequestURI());
+    // 
+    //    return ResponseEntity.status(status).body(response);
+    //}
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+            AuthenticationException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.UNAUTHORIZED,
+                "E-mail ou senha inválidos.",
+                request.getRequestURI());
+    }
+
+}
+
+===== AUTHENTICATION SERVICE TEST =====
+package com.julyturadm.service;
+
+import com.julyturadm.dto.request.LoginRequest;
+import com.julyturadm.dto.response.LoginResponse;
+import com.julyturadm.security.JwtService;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class AuthenticationServiceTest {
+
+    @Mock
+    private AuthenticationManager authenticationManager;
+
+    @Mock
+    private JwtService jwtService;
+
+    @InjectMocks
+    private AuthenticationService authenticationService;
+
+    @Test
+    void shouldAuthenticateUserAndReturnJwtToken() {
+
+        LoginRequest request = new LoginRequest(
+                "usuario@teste.com",
+                "Senha123"
+        );
+
+        UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername("usuario@teste.com")
+                .password("senha-criptografada")
+                .authorities("ROLE_ADMIN", "USER_CREATE")
+                .build();
+
+        Authentication authentication = mock(Authentication.class);
+
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+
+        when(authenticationManager.authenticate(
+                any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(authentication);
+
+        when(jwtService.generateToken(userDetails))
+                .thenReturn("jwt-token-teste");
+
+        LoginResponse response = authenticationService.authenticate(request);
+
+        assertNotNull(response);
+        assertEquals("jwt-token-teste", response.accessToken());
+        assertEquals("Bearer", response.tokenType());
+        assertEquals(1800L, response.expiresIn());
+
+        verify(authenticationManager).authenticate(
+                any(UsernamePasswordAuthenticationToken.class));
+
+        verify(jwtService).generateToken(userDetails);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCredentialsAreInvalid() {
+
+        LoginRequest request = new LoginRequest(
+                "usuario@teste.com",
+                "SenhaIncorreta"
+        );
+
+        when(authenticationManager.authenticate(
+                any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Credenciais inválidas."));
+
+        assertThrows(
+                BadCredentialsException.class,
+                () -> authenticationService.authenticate(request)
+        );
+
+        verify(authenticationManager).authenticate(
+                any(UsernamePasswordAuthenticationToken.class));
+
+        verifyNoInteractions(jwtService);
+    }
+}
+
+===== REPOSITORY INTEGRATION TEST =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import com.julyturadm.domain.entity.id.UserRoleId;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Constructor;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class RepositoryIntegrationTest {
+
+        @Autowired
+        private JdbcTemplate jdbcTemplate;
+
+        @Autowired
+        private UserRepository userRepository;
+
+        @Autowired
+        private RoleRepository roleRepository;
+
+        @Autowired
+        private PermissionRepository permissionRepository;
+
+        @Autowired
+        private UserRoleRepository userRoleRepository;
+
+        @Autowired
+        private RolePermissionRepository rolePermissionRepository;
+
+        @Autowired
+        private EntityManager entityManager;
+
+        private <T> T createEntity(Class<T> type) throws Exception {
+                Constructor<T> constructor = type.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+        }
+
+        private String uniqueValue(String prefix) {
+                return prefix + "_" + UUID.randomUUID();
+        }
+
+        @Test
+        void shouldConnectOnlyToTestDatabase() {
+
+                String database = jdbcTemplate.queryForObject(
+                                "SELECT DATABASE()",
+                                String.class);
+
+                assertEquals("bd_paytur_test", database);
+        }
+
+        @Test
+        void shouldPersistAndFindUserByEmail() throws Exception {
+
+                User user = createEntity(User.class);
+
+                String email = uniqueValue("user") + "@test.com";
+
+                user.setName("Usuario Teste");
+                user.setEmail(email);
+                user.setPassword("password-test");
+                user.setEnabled(true);
+
+                User savedUser = userRepository.saveAndFlush(user);
+
+                assertNotNull(savedUser.getId());
+
+                assertTrue(userRepository.existsByEmail(email));
+
+                User foundUser = userRepository.findByEmail(email)
+                                .orElseThrow();
+
+                assertEquals(email, foundUser.getEmail());
+                assertEquals("Usuario Teste", foundUser.getName());
+                assertTrue(foundUser.getEnabled());
+
+                assertTrue(
+                                userRepository.findAllByEnabledTrue()
+                                                .stream()
+                                                .anyMatch(item -> item.getId().equals(savedUser.getId())));
+        }
+
+        @Test
+        void shouldPersistAndFindRole() throws Exception {
+
+                Role role = createEntity(Role.class);
+
+                String roleName = uniqueValue("ROLE_TEST");
+
+                role.setName(roleName);
+
+                Role savedRole = roleRepository.saveAndFlush(role);
+
+                assertNotNull(savedRole.getId());
+                assertTrue(roleRepository.existsByName(roleName));
+
+                Role foundRole = roleRepository.findByName(roleName)
+                                .orElseThrow();
+
+                assertEquals(roleName, foundRole.getName());
+        }
+
+        @Test
+        void shouldPersistAndFindPermission() throws Exception {
+
+                Permission permission = createEntity(Permission.class);
+
+                String permissionName = uniqueValue("PERMISSION_TEST");
+
+                permission.setName(permissionName);
+
+                Permission savedPermission = permissionRepository.saveAndFlush(permission);
+
+                assertNotNull(savedPermission.getId());
+                assertTrue(permissionRepository.existsByName(permissionName));
+
+                Permission foundPermission = permissionRepository.findByName(permissionName)
+                                .orElseThrow();
+
+                assertEquals(permissionName, foundPermission.getName());
+        }
+
+        @Test
+        void shouldPersistUserRoleRelationship() throws Exception {
+
+                User user = createEntity(User.class);
+
+                user.setName("Usuario Relacionamento");
+                user.setEmail(uniqueValue("relationship") + "@test.com");
+                user.setPassword("password-test");
+                user.setEnabled(true);
+
+                user = userRepository.saveAndFlush(user);
+
+                Role role = createEntity(Role.class);
+
+                // role.setName(uniqueValue("ROLE_USER_TEST"));
+                role.setName(uniqueValue("RU"));
+
+                role = roleRepository.saveAndFlush(role);
+
+                UserRole userRole = createEntity(UserRole.class);
+
+                userRole.setId(new UserRoleId(user.getId(), role.getId()));
+                userRole.setUser(user);
+                userRole.setRole(role);
+
+                userRoleRepository.saveAndFlush(userRole);
+
+                UserRoleId id = new UserRoleId(
+                                user.getId(),
+                                role.getId());
+
+                assertTrue(userRoleRepository.existsById(id));
+
+                assertTrue(
+                                userRoleRepository.existsByUser_IdAndRole_Id(
+                                                user.getId(),
+                                                role.getId()));
+
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByUser_Id(user.getId()).size());
+
+                assertEquals(
+                                1,
+                                userRoleRepository.findAllByRole_Id(role.getId()).size());
+        }
+
+        @Test
+        void shouldPersistRolePermissionRelationship() throws Exception {
+
+                Role role = createEntity(Role.class);
+
+                // role.setName(uniqueValue("ROLE_PERMISSION_TEST"));
+                role.setName(uniqueValue("RP"));
+
+                role = roleRepository.saveAndFlush(role);
+
+                Permission permission = createEntity(Permission.class);
+
+                permission.setName(uniqueValue("PERMISSION_ROLE_TEST"));
+
+                permission = permissionRepository.saveAndFlush(permission);
+
+                RolePermission rolePermission = createEntity(RolePermission.class);
+
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
+
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
+
+                rolePermissionRepository.saveAndFlush(rolePermission);
+
+                RolePermissionId id = new RolePermissionId(
+                                role.getId(),
+                                permission.getId());
+
+                assertTrue(rolePermissionRepository.existsById(id));
+
+                assertTrue(
+                                rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                                                role.getId(),
+                                                permission.getId()));
+
+                assertEquals(
+                                1,
+                                rolePermissionRepository.findAllByRole_Id(role.getId()).size());
+
+                assertEquals(
+                                1,
+                                rolePermissionRepository
+                                                .findAllByPermission_Id(permission.getId()).size());
+        }
+
+        // teste de integração que crie um usuário, um perfil e uma permissão no banco
+        // de testes e valide o carregamento conjunto.
+        @Test
+        void shouldLoadUserWithRolesAndPermissionsForAuthentication()
+                        throws Exception {
+
+                User user = createEntity(User.class);
+                user.setName("Usuario Autenticacao");
+                user.setEmail(uniqueValue("auth") + "@test.com");
+                user.setPassword("password-test");
+                user.setEnabled(true);
+                user = userRepository.saveAndFlush(user);
+
+                Role role = createEntity(Role.class);
+                role.setName(uniqueValue("AUTH_ROLE"));
+                role = roleRepository.saveAndFlush(role);
+
+                Permission permission = createEntity(Permission.class);
+                permission.setName(uniqueValue("AUTH_PERMISSION"));
+                permission = permissionRepository.saveAndFlush(permission);
+
+                UserRole userRole = createEntity(UserRole.class);
+                userRole.setId(new UserRoleId(user.getId(), role.getId()));
+                userRole.setUser(user);
+                userRole.setRole(role);
+                userRoleRepository.saveAndFlush(userRole);
+
+                RolePermission rolePermission = createEntity(RolePermission.class);
+                rolePermission.setId(
+                                new RolePermissionId(role.getId(), permission.getId()));
+                rolePermission.setRole(role);
+                rolePermission.setPermission(permission);
+
+                // Pedro em 05/11/2026
+                rolePermissionRepository.saveAndFlush(rolePermission);
+
+                // Sincroniza os registros com o banco.
+                entityManager.flush();
+
+                // Limpa o contexto de persistência.
+                entityManager.clear();
+
+                // Primeira consulta: usuário e papéis.
+                User loadedUser = userRepository
+                                .findByEmailWithRoles(user.getEmail())
+                                .orElseThrow();
+
+                // Segunda consulta: papéis e permissões.
+                List<Role> loadedRoles = roleRepository.findAllByUserEmailWithPermissions(
+                                user.getEmail());
+
+                // Valida usuário.
+                assertEquals(user.getEmail(), loadedUser.getEmail());
+                assertEquals(1, loadedUser.getUserRoles().size());
+
+                // Valida papel.
+                UserRole foundUserRole = loadedUser.getUserRoles().get(0);
+
+                assertEquals(role.getName(), foundUserRole.getRole().getName());
+
+                // Valida carregamento das permissões.
+                assertEquals(1, loadedRoles.size());
+                assertEquals(1, loadedRoles.get(0).getRolePermissions().size());
+
+                assertEquals(
+                                permission.getName(),
+                                loadedRoles.get(0)
+                                                .getRolePermissions()
+                                                .get(0)
+                                                .getPermission()
+                                                .getName());
+        }
+
+}
+===== TEST APPLICATION CONFIGURATION =====
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:${MYSQL_PORT:3309}/bd_paytur_test
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+server:
+  port: 0
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Analisei a saída.
+
+Temos uma boa base para começar os testes HTTP: o `AuthController` recebe `POST /api/auth/login`,
+o `AuthenticationService` autentica pelo `AuthenticationManager` e emite o JWT, e a configuração de
+segurança permite o login sem token e exige autenticação nos demais endpoints.
+
+Há dois detalhes que precisamos considerar:
+
+1. O `AuthenticationService` está em `com.julyturadm.service`, e não em `com.julyturadm.security`.
+   O teste unitário já confirma o comportamento do serviço.
+
+2. O `application-test.yml` aponta para `bd_paytur_test`, com `create-drop`, e o teste de repositório
+   já possui proteção explícita para esse banco.
+   Vamos reutilizar essa proteção nos testes HTTP.
+
+Também vi que o arquivo `ApiErrorResponse.java` não está em `dto/response`, embora o
+`GlobalExceptionHandler` o utilize.
+
+Isso não impede os testes; precisamos apenas descobrir seu pacote real antes de escrever asserções
+sobre o corpo dos erros.
+
+3. Estratégia dos testes HTTP
+
+Minha recomendação é utilizar MockMvc com `@SpringBootTest` e `@AutoConfigureMockMvc`.
+
+Assim, testaremos a aplicação Spring integrada, incluindo:
+
+- Controller e validação dos DTOs;
+- `AuthenticationManager` e `DaoAuthenticationProvider`;
+- `CustomUserDetailsService`;
+- Repositórios JPA e banco MySQL de testes;
+- Geração e validação do JWT;
+- Filtros e regras de segurança.
+
+Não vamos utilizar mocks para substituir o fluxo de autenticação.
+
+Queremos testar a integração real entre essas camadas.
+
+4. Próxima verificação: entidades e dependências
+
+Antes de implementar a classe, preciso confirmar como criar os usuários, perfis e permissões nos
+testes, respeitando os relacionamentos JPA já definidos.
+
+Execute:
+
+```
+printf '\n===== API ERROR RESPONSE =====\n'
+find src/main/java -name 'ApiErrorResponse.java' -print
+
+printf '\n===== USER ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/User.java
+
+printf '\n===== ROLE ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/Role.java
+
+printf '\n===== PERMISSION ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/Permission.java
+
+printf '\n===== USER ROLE ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/UserRole.java
+
+printf '\n===== ROLE PERMISSION ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+printf '\n===== POM TEST DEPENDENCIES =====\n'
+grep -n -A5 -B2 -E 'spring-boot-starter-test|spring-security-test|mockito' pom.xml
+```
+
+Com essa saída, vamos criar a primeira classe:
+
+`src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java`
+
+Começaremos com três cenários: login válido, credenciais incorretas e dados de login inválidos.
+
+Depois ampliaremos para usuário desabilitado e acesso a endpoints protegidos com e sem JWT.
+
+Não altere os arquivos ainda.
+
+Primeiro vamos fechar a estratégia de preparação dos dados e garantir que os testes não dependam
+de registros existentes no banco.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== API ERROR RESPONSE =====\n'
+find src/main/java -name 'ApiErrorResponse.java' -print
+
+printf '\n===== USER ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/User.java
+
+printf '\n===== ROLE ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/Role.java
+
+printf '\n===== PERMISSION ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/Permission.java
+
+printf '\n===== USER ROLE ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/UserRole.java
+
+printf '\n===== ROLE PERMISSION ENTITY =====\n'
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+printf '\n===== POM TEST DEPENDENCIES =====\n'
+grep -n -A5 -B2 -E 'spring-boot-starter-test|spring-security-test|mockito' pom.xml
+
+===== API ERROR RESPONSE =====
+src/main/java/com/julyturadm/common/exception/ApiErrorResponse.java
+
+===== USER ENTITY =====
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 255)
+    private String email;
+
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @Column(nullable = false)
+    private Boolean enabled = true;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;
+
+    @OneToMany(
+        mappedBy = "user",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+
+    // Adicionar um método estático público à entidade `User`.
+    // permitirá criar usuários sem expor publicamente o construtor.
+    public static User create(String name, String email, String password) {
+        User user = new User();
+        user.setName(name);
+        user.setEmail(email);
+        user.setPassword(password);
+        user.setEnabled(true);
+        return user;
+    }
+
+}
+
+===== ROLE ENTITY =====
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+}
+
+===== PERMISSION ENTITY =====
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Permission {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 80)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "permission",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+}
+
+===== USER ROLE ENTITY =====
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.UserRoleId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "users_roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class UserRole {
+
+    @EmbeddedId
+    private UserRoleId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("userId")
+    @JoinColumn(
+        name = "user_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_user")
+    )
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_ur_role")
+    )
+    private Role role;
+}
+===== ROLE PERMISSION ENTITY =====
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    @EmbeddedId
+    private RolePermissionId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_role")
+    )
+    private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(
+        name = "permission_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_permission")
+    )
+    private Permission permission;
+}
+===== POM TEST DEPENDENCIES =====
+72-        <dependency>
+73-            <groupId>org.springframework.boot</groupId>
+74:            <artifactId>spring-boot-starter-test</artifactId>
+75-            <scope>test</scope>
+76-        </dependency>
+77-
+78-        <!-- Testes de segurança -->
+79-        <dependency>
+80-            <groupId>org.springframework.security</groupId>
+81:            <artifactId>spring-security-test</artifactId>
+82-            <scope>test</scope>
+83-        </dependency>
+84-
+85-    </dependencies>
+86-
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo.
+
+Agora temos as informações necessárias sobre as entidades e as dependências de teste.
+
+A estrutura permite criar os dados diretamente nos testes, usando os repositórios JPA e o
+`PasswordEncoder` real.
+
+Assim, o login será validado com uma senha BCrypt armazenada no MySQL de testes.
+
+1. Estratégia de preparação dos dados
+
+Para cada cenário, criaremos os dados necessários:
+
+1. Um usuário com e-mail exclusivo.
+2. Uma senha codificada com BCrypt.
+3. Um perfil (`Role`) associado ao usuário.
+4. Uma permissão (`Permission`) associada ao perfil.
+
+Essa estrutura permitirá verificar não apenas a autenticação, mas também se o JWT contém as 
+autoridades esperadas.
+
+Usaremos `UUID` nos e-mails e nomes para evitar conflitos entre execuções.
+
+Também usaremos `@Transactional` para que os registros sejam revertidos ao final de cada teste.
+
+2. Antes de implementar: conferir os repositórios
+
+Preciso verificar os métodos disponíveis para salvar e consultar os relacionamentos. Execute:
+
+```
+printf '\n===== USER REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/UserRepository.java
+
+printf '\n===== ROLE REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+
+printf '\n===== PERMISSION REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+
+printf '\n===== USER ROLE REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/UserRoleRepository.java
+
+printf '\n===== ROLE PERMISSION REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+
+printf '\n===== EMBEDDED IDS =====\n'
+cat src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java
+cat src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+
+printf '\n===== TEST DATABASE SAFETY =====\n'
+cat src/test/java/com/julyturadm/config/TestDatabaseSafetyConfiguration.java
+```
+
+3. O que implementaremos em seguida
+
+A primeira classe será:
+
+`controller/AuthControllerIntegrationTest.java`
+
+Começaremos com estes testes:
+
+| Cenário                       | HTTP esperado |
+| ----------------------------- | ------------- |
+| Login com credenciais válidas | 200           |
+| Login com senha incorreta     | 401           |
+| Login com usuário inexistente | 401           |
+| E-mail inválido               | 400           |
+| E-mail ausente                | 400           |
+| Senha ausente                 | 400           |
+
+No cenário de sucesso, também verificaremos:
+
+- `accessToken` não vazio;
+- `tokenType` igual a `Bearer`;
+- `expiresIn` igual a 1800;
+- JWT válido e com `roles` e `permissions` esperadas.
+
+Não precisamos modificar nenhuma entidade ou configuração de segurança neste momento.
+
+Primeiro vamos confirmar os repositórios e, depois, implementar a classe completa de testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== USER REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/UserRepository.java
+
+printf '\n===== ROLE REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+
+printf '\n===== PERMISSION REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/PermissionRepository.java
+
+printf '\n===== USER ROLE REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/UserRoleRepository.java
+
+printf '\n===== ROLE PERMISSION REPOSITORY =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+
+printf '\n===== EMBEDDED IDS =====\n'
+cat src/main/java/com/julyturadm/domain/entity/id/UserRoleId.java
+cat src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+
+printf '\n===== TEST DATABASE SAFETY =====\n'
+cat src/test/java/com/julyturadm/config/TestDatabaseSafetyConfiguration.java
+
+===== USER REPOSITORY =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    List<User> findAllByEnabledTrue();
+
+    // ----------------------------------------------------------------------------------
+    // Por que essa consulta?
+    // - Recupera o usuário pelo e-mail.
+    // - Carrega os papéis associados.
+    // - Carrega as permissões de cada papel.
+    // - Usa `LEFT JOIN FETCH` para não excluir usuários que ainda não possuem
+    // papéis.
+    // - Usa `DISTINCT` para evitar usuários duplicados no resultado.
+    // ----------------------------------------------------------------------------------
+    // @Query("""
+    // SELECT DISTINCT u
+    // FROM User u
+    // LEFT JOIN FETCH u.userRoles ur
+    // LEFT JOIN FETCH ur.role r
+    // LEFT JOIN FETCH r.rolePermissions rp
+    // LEFT JOIN FETCH rp.permission
+    // WHERE u.email = :email
+    // """)
+    // Optional<User> findByEmailWithRolesAndPermissions(
+    // @Param("email") String email
+    // );
+    @Query("""
+        SELECT DISTINCT u
+        FROM User u
+        LEFT JOIN FETCH u.userRoles ur
+        LEFT JOIN FETCH ur.role
+        WHERE u.email = :email
+        """)
+    Optional<User> findByEmailWithRoles(
+    @Param("email") String email);
+}
+
+===== ROLE REPOSITORY =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.Role;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.util.List;
+
+public interface RoleRepository extends JpaRepository<Role, Long> {
+
+    Optional<Role> findByName(String name);
+
+    boolean existsByName(String name);
+
+    //---
+    // `JOIN r.userRoles ur`: identifica os papéis associados ao usuário.
+    // `LEFT JOIN FETCH r.rolePermissions`: carrega as permissões desses papéis.
+    // `LEFT JOIN FETCH rp.permission`: carrega os dados de cada permissão.
+    //---
+    @Query("""
+        SELECT DISTINCT r
+        FROM Role r
+        JOIN r.userRoles ur
+        LEFT JOIN FETCH r.rolePermissions rp
+        LEFT JOIN FETCH rp.permission
+        WHERE ur.user.email = :email
+    """)
+    List<Role> findAllByUserEmailWithPermissions(
+    @Param("email") String email
+    );
+}
+===== PERMISSION REPOSITORY =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.Permission;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface PermissionRepository
+        extends JpaRepository<Permission, Long> {
+
+    Optional<Permission> findByName(String name);
+
+    boolean existsByName(String name);
+}
+===== USER ROLE REPOSITORY =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.UserRoleId;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface UserRoleRepository
+        extends JpaRepository<UserRole, UserRoleId> {
+
+    List<UserRole> findAllByUser_Id(Long userId);
+
+    List<UserRole> findAllByRole_Id(Long roleId);
+
+    boolean existsByUser_IdAndRole_Id(Long userId, Long roleId);
+}
+===== ROLE PERMISSION REPOSITORY =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface RolePermissionRepository
+        extends JpaRepository<RolePermission, RolePermissionId> {
+
+    List<RolePermission> findAllByRole_Id(Long roleId);
+
+    List<RolePermission> findAllByPermission_Id(Long permissionId);
+
+    boolean existsByRole_IdAndPermission_Id(
+            Long roleId,
+            Long permissionId
+    );
+}
+===== EMBEDDED IDS =====
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserRoleId implements Serializable {
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "role_id")
+    private Long roleId;
+}
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class RolePermissionId implements Serializable {
+
+    @Column(name = "role_id")
+    private Long roleId;
+
+    @Column(name = "permission_id")
+    private Long permissionId;
+}
+
+===== TEST DATABASE SAFETY =====
+package com.julyturadm.config;
+
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+
+@TestConfiguration
+public class TestDatabaseSafetyConfiguration {
+
+    @Bean
+    static BeanFactoryPostProcessor databaseSafetyGuard(Environment environment) {
+
+        return beanFactory -> {
+            String url = environment.getProperty(
+                "spring.datasource.url",
+                ""
+            );
+
+            boolean isTestDatabase = url.matches(
+                "jdbc:mysql://[^/]+/bd_paytur_test(?:\\?.*)?"
+            );
+
+            if (!isTestDatabase) {
+                throw new IllegalStateException(
+                    "TESTE INTERROMPIDO: o banco configurado não é bd_paytur_test. "
+                    + "URL encontrada: " + url
+                );
+            }
+        };
+    }
+}
+
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito.
+
+Agora confirmamos que todos os repositórios necessários estão disponíveis e que os relacionamentos
+podem ser criados diretamente nos testes.
+
+Podemos começar a implementação.
+
+Não será necessário alterar as entidades, os repositórios ou a configuração de segurança.
+
+1. Criar a classe de integração HTTP
+
+No VS Code, crie o arquivo:
+
+`src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java`
+
+Atenção: caso o diretório `controller` ainda não exista dentro de `src/test/java/com/julyturadm`,
+crie-o.
+
+Insira o código abaixo:
+
+```
+
+package com.julyturadm.controller;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import com.julyturadm.domain.entity.id.UserRoleId;
+
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.domain.repository.UserRepository;
+import com.julyturadm.domain.repository.UserRoleRepository;
+
+import com.julyturadm.dto.request.LoginRequest;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Constructor;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class AuthControllerIntegrationTest {
+
+    private static final String LOGIN_URL = "/api/auth/login";
+    private static final String PASSWORD = "SenhaTeste123";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtDecoder jwtDecoder;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
+    private User user;
+    private String permissionName;
+
+    @BeforeEach
+    void setUp() throws Exception {
+
+        String uniqueId = UUID.randomUUID().toString();
+
+        // 1. Cria o usuário com senha BCrypt.
+        user = User.create(
+                "Usuario Teste",
+                "auth_" + uniqueId + "@teste.com",
+                passwordEncoder.encode(PASSWORD)
+        );
+
+        user = userRepository.saveAndFlush(user);
+
+        // 2. Cria o perfil.
+        Role role = createEntity(Role.class);
+        role.setName("TEST_ADMIN_" + uniqueId);
+
+        role = roleRepository.saveAndFlush(role);
+
+        // 3. Cria a permissão.
+        Permission permission = createEntity(Permission.class);
+
+        permissionName = "USER_READ_" + uniqueId;
+        permission.setName(permissionName);
+
+        permission = permissionRepository.saveAndFlush(permission);
+
+        // 4. Associa o usuário ao perfil.
+        UserRole userRole = createEntity(UserRole.class);
+
+        userRole.setId(
+                new UserRoleId(user.getId(), role.getId())
+        );
+
+        userRole.setUser(user);
+        userRole.setRole(role);
+
+        userRoleRepository.saveAndFlush(userRole);
+
+        // 5. Associa a permissão ao perfil.
+        RolePermission rolePermission =
+                createEntity(RolePermission.class);
+
+        rolePermission.setId(
+                new RolePermissionId(role.getId(), permission.getId())
+        );
+
+        rolePermission.setRole(role);
+        rolePermission.setPermission(permission);
+
+        rolePermissionRepository.saveAndFlush(rolePermission);
+    }
+
+    private <T> T createEntity(Class<T> type) throws Exception {
+
+        Constructor<T> constructor = type.getDeclaredConstructor();
+        constructor.setAccessible(true);
+
+        return constructor.newInstance();
+    }
+
+    private String createLoginJson(String email, String password)
+            throws Exception {
+
+        return objectMapper.writeValueAsString(
+                new LoginRequest(email, password)
+        );
+    }
+
+    @Test
+    void shouldAuthenticateUserAndReturnValidJwt() throws Exception {
+
+        String responseBody = mockMvc.perform(
+                post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createLoginJson(
+                                user.getEmail(),
+                                PASSWORD
+                        ))
+        )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(1800))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode response = objectMapper.readTree(responseBody);
+
+        String accessToken = response.get("accessToken").asText();
+
+        // Valida a assinatura e a validade do JWT.
+        Jwt jwt = jwtDecoder.decode(accessToken);
+
+        assertEquals(user.getEmail(), jwt.getSubject());
+
+        // Valida os perfis e as permissões presentes no token.
+        assertTrue(
+                jwt.getClaimAsStringList("roles")
+                        .contains("ROLE_TEST_ADMIN_" +
+                                userRoleRepository.findAllByUser_Id(user.getId())
+                                        .get(0).getRole().getName()
+                                        .substring("TEST_ADMIN_".length()))
+        );
+
+        assertTrue(
+                jwt.getClaimAsStringList("permissions")
+                        .contains(permissionName)
+        );
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenPasswordIsIncorrect() throws Exception {
+
+        mockMvc.perform(
+                post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createLoginJson(
+                                user.getEmail(),
+                                "SenhaIncorreta"
+                        ))
+        )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.message")
+                        .value("E-mail ou senha inválidos."));
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenUserDoesNotExist() throws Exception {
+
+        mockMvc.perform(
+                post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createLoginJson(
+                                "inexistente@teste.com",
+                                PASSWORD
+                        ))
+        )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenEmailIsInvalid() throws Exception {
+
+        mockMvc.perform(
+                post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createLoginJson(
+                                "email-invalido",
+                                PASSWORD
+                        ))
+        )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenEmailIsBlank() throws Exception {
+
+        mockMvc.perform(
+                post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createLoginJson(
+                                "",
+                                PASSWORD
+                        ))
+        )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenPasswordIsBlank() throws Exception {
+
+        mockMvc.perform(
+                post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createLoginJson(
+                                user.getEmail(),
+                                ""
+                        ))
+        )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+}
+
+```
+
+2. Um pequeno ajuste na validação do JWT
+
+Na primeira versão acima, a validação do perfil ficou desnecessariamente complexa porque recupera
+o nome do perfil novamente no banco.
+
+Vamos simplificar isso.
+
+Dentro da classe, declare também:
+
+```
+private String roleName;
+```
+
+No método `setUp()`, logo depois de:
+
+```
+role.setName("TEST_ADMIN_" + uniqueId);
+```
+
+adicione:
+
+```
+roleName = role.getName();
+```
+
+E substitua a asserção de perfil no teste de sucesso por:
+
+```
+assertTrue(
+        jwt.getClaimAsStringList("roles")
+                .contains("ROLE_" + roleName)
+);
+```
+
+Assim, verificamos diretamente o valor esperado, sem fazer outra consulta desnecessária.
+
+3. Executar somente os novos testes
+
+Depois de salvar o arquivo, execute:
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=AuthControllerIntegrationTest test
+```
+
+Essa execução deverá testar os seis cenários HTTP, utilizando o perfil `test` e
+o banco `bd_paytur_test`.
+
+Importante
+
+Não execute os testes com o perfil principal e não altere `application.yml`.
+
+4. O que esperamos encontrar
+
+| Cenário                        | Esperado |
+| ------------------------------ | -------- |
+| Login válido e JWT verificável | 200      |
+| Senha incorreta                | 401      |
+| Usuário inexistente            | 401      |
+| E-mail inválido                | 400      |
+| E-mail em branco               | 400      |
+| Senha em branco                | 400      |
+
+Por enquanto, execute somente essa classe.
+
+Envie o resultado completo do Maven.
+
+Vamos corrigir eventuais problemas antes de acrescentar os testes de acesso aos endpoints
+protegidos.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Seja mais especifico sobre esta frase: "E substitua a asserção de perfil no teste de sucesso por:
+```
+assertTrue(
+        jwt.getClaimAsStringList("roles")
+                .contains("ROLE_" + roleName)
+);
+```"
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Claro.
+
+Vou indicar exatamente qual trecho localizar, o que apagar e o que inserir no arquivo
+`AuthControllerIntegrationTest.java`.
+
+1. Primeiro, declare a variável `roleName`
+
+Localize a declaração das variáveis de instância:
+
+```
+private User user;
+private String permissionName;
+```
+
+Acrescente `roleName` logo abaixo:
+
+```
+private User user;
+private String permissionName;
+private String roleName;
+```
+
+2. Depois, armazene o nome do perfil criado
+
+Dentro do método `setUp()`, localize este trecho:
+
+```
+Role role = createEntity(Role.class);
+role.setName("TEST_ADMIN_" + uniqueId);
+
+role = roleRepository.saveAndFlush(role);
+```
+
+Modifique para:
+
+```
+Role role = createEntity(Role.class);
+role.setName("TEST_ADMIN_" + uniqueId);
+roleName = role.getName();
+role = roleRepository.saveAndFlush(role);
+```
+
+Agora a variável `roleName` guarda o nome exato do perfil criado para aquele teste.
+
+3. Finalmente, substitua a asserção do perfil
+
+Localize o método:
+
+```
+@Test
+void shouldAuthenticateUserAndReturnValidJwt() throws Exception {
+```
+
+Dentro dele, procure este trecho:
+
+```
+assertTrue(
+        jwt.getClaimAsStringList("roles")
+                .contains("ROLE_TEST_ADMIN_" +
+                        userRoleRepository.findAllByUser_Id(user.getId())
+                                .get(0).getRole().getName()
+                                .substring("TEST_ADMIN_".length()))
+);
+```
+
+Apague todo esse trecho e coloque exatamente este:
+
+```
+assertTrue(
+        jwt.getClaimAsStringList("roles")
+                .contains("ROLE_" + roleName)
+);
+```
+
+4. Como ficará a parte de validação do JWT
+
+Para facilitar a conferência, o trecho completo deverá ficar assim:
+
+```
+// Valida a assinatura e a validade do JWT.
+Jwt jwt = jwtDecoder.decode(accessToken);
+
+assertEquals(user.getEmail(), jwt.getSubject());
+
+// Valida os perfis e as permissões presentes no token.
+assertTrue(
+        jwt.getClaimAsStringList("roles")
+                .contains("ROLE_" + roleName)
+);
+
+assertTrue(
+        jwt.getClaimAsStringList("permissions")
+                .contains(permissionName)
+);
+```
+
+Por que fizemos essa alteração?
+
+O `CustomUserDetailsService` adiciona o prefixo `ROLE_` ao nome do perfil quando constrói as
+autoridades:
+
+```
+authorities.add(
+    new SimpleGrantedAuthority("ROLE_" + role.getName())
+);
+```
+
+Já o `JwtService` separa essas autoridades e as grava na claim `roles`.
+
+Portanto, se o perfil criado no teste for `TEST_ADMIN_abc123`, esperamos encontrar no JWT:
+
+```
+ROLE_TEST_ADMIN_abc123
+```
+
+A variável `roleName` permite verificar exatamente esse valor, sem consultar novamente o banco.
+
+Faça essas três alterações e me avise quando terminar. Depois executaremos os testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Ok, alterações feitas.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=AuthControllerIntegrationTest test
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ set -a
+source ../.env
+set +a
+
+mvn -Dtest=AuthControllerIntegrationTest test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 7 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.controller.AuthControllerIntegrationTest
+22:32:49.750 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.julyturadm.controller.AuthControllerIntegrationTest]: AuthControllerIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+22:32:49.936 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.julyturadm.JulyTurAdmApplication for test class com.julyturadm.controller.AuthControllerIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-06T22:32:50.500-03:00  INFO 88084 --- [julyturadm-backend] [           main] c.j.c.AuthControllerIntegrationTest      : Starting AuthControllerIntegrationTest using Java 17.0.10 with PID 88084 (started by pedro in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api)
+2026-11-06T22:32:50.502-03:00  INFO 88084 --- [julyturadm-backend] [           main] c.j.c.AuthControllerIntegrationTest      : The following 1 profile is active: "test"
+2026-11-06T22:32:51.646-03:00  INFO 88084 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-11-06T22:32:51.730-03:00  INFO 88084 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 68 ms. Found 5 JPA repository interfaces.
+2026-11-06T22:32:52.441-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-11-06T22:32:52.501-03:00  INFO 88084 --- [julyturadm-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-11-06T22:32:52.566-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-11-06T22:32:52.871-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-11-06T22:32:52.899-03:00  INFO 88084 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-06T22:32:53.230-03:00  INFO 88084 --- [julyturadm-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@13404f75
+2026-11-06T22:32:53.232-03:00  INFO 88084 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-06T22:32:53.340-03:00  INFO 88084 --- [julyturadm-backend] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.0.46
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-11-06T22:32:54.627-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-11-06T22:32:54.698-03:00  WARN 88084 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+---
+	... 124 common frames omitted
+
+2026-11-06T22:33:10.610-03:00  INFO 88084 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-06T22:33:11.036-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-11-06T22:33:11.554-03:00  INFO 88084 --- [julyturadm-backend] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-11-06T22:33:11.554-03:00  WARN 88084 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+2026-11-06T22:33:12.346-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-06T22:33:12.347-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-06T22:33:12.348-03:00  INFO 88084 --- [julyturadm-backend] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-11-06T22:33:12.395-03:00  INFO 88084 --- [julyturadm-backend] [           main] c.j.c.AuthControllerIntegrationTest      : Started AuthControllerIntegrationTest in 22.287 seconds (process running for 23.546)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+MockHttpServletRequest:
+      HTTP Method = POST
+      Request URI = /api/auth/login
+       Parameters = {}
+          Headers = [Content-Type:"application/json;charset=UTF-8", Content-Length:"90"]
+             Body = {"email":"auth_3bd24506-dd7f-4e82-8c74-f1823daa5866@teste.com","password":"SenhaTeste123"}
+    Session Attrs = {}
+
+Handler:
+             Type = com.julyturadm.controller.AuthController
+           Method = com.julyturadm.controller.AuthController#login(LoginRequest)
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 200
+    Error message = null
+          Headers = [Content-Type:"application/json", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = application/json
+             Body = {"accessToken":"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhdXRoXzNiZDI0NTA2LWRkN2YtNGU4Mi04Yzc0LWYxODIzZGFhNTg2NkB0ZXN0ZS5jb20iLCJleHAiOjE3OTQwMTY5OTYsImlhdCI6MTc5NDAxNTE5NiwicGVybWlzc2lvbnMiOltdLCJyb2xlcyI6WyJST0xFX1RFU1RfQURNSU5fM2JkMjQ1MDYtZGQ3Zi00ZTgyLThjNzQtZjE4MjNkYWE1ODY2Il19.jtUUynUmgMcl3N_G5Cp8bgcMr_0gAJdG2fbz0nCtHK4","tokenType":"Bearer","expiresIn":1800}
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+[ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 27.03 s <<< FAILURE! -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[ERROR] com.julyturadm.controller.AuthControllerIntegrationTest.shouldAuthenticateUserAndReturnValidJwt -- Time elapsed: 0.834 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertTrue.failNotTrue(AssertTrue.java:63)
+	at org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:36)
+	at org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:31)
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:183)
+	at com.julyturadm.controller.AuthControllerIntegrationTest.shouldAuthenticateUserAndReturnValidJwt(AuthControllerIntegrationTest.java:183)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   AuthControllerIntegrationTest.shouldAuthenticateUserAndReturnValidJwt:183 expected: <true> but was: <false>
+[INFO] 
+[ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  38.341 s
+[INFO] Finished at: 2026-11-06T22:33:23-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project backend-api: There are test failures.
+[ERROR] 
+[ERROR] See /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+O resultado mostra que 5 dos 6 testes passaram. O login válido também retornou HTTP `200` e um JWT.
+
+A falha está concentrada no teste `shouldAuthenticateUserAndReturnValidJwt`, na linha 183 de `AuthControllerIntegrationTest.java`.
+
+Portanto, não parece ser um problema de autenticação em si, mas de uma das asserções que verificam
+o conteúdo do token.
+
+O log mostra que o JWT foi emitido com:
+
+- `roles`: contém `ROLE_TEST_ADMIN_...`
+- `permissions`: está vazio (`[]`)
+
+Isso nos dá uma pista importante: o perfil foi carregado, mas a permissão associada não chegou ao
+token.
+
+
+A mensagem indica que a falha provavelmente está na asserção da permissão, mas precisamos confirmar
+a linha exata antes de alterar o código.
+
+Vamos fazer uma inspeção, sem modificar nada.
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+printf '\n===== TESTE DE LOGIN =====\n'
+nl -ba src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java | sed -n '165,190p'
+
+printf '\n===== CUSTOM USER DETAILS SERVICE =====\n'
+cat src/main/java/com/julyturadm/security/CustomUserDetailsService.java
+
+printf '\n===== REPOSITÓRIO DE ROLES =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+```
+
+Envie a saída.
+
+O que vamos investigar: o perfil chegou ao JWT, mas a lista `permissions` veio vazia.
+
+Precisamos verificar se o teste criou corretamente a associação `RolePermission` e se o
+`CustomUserDetailsService` está carregando as permissões do perfil.
+
+Não altere ainda o teste nem as entidades. Vamos identificar a origem antes de corrigir.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== TESTE DE LOGIN =====\n'
+nl -ba src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java | sed -n '165,190p'
+
+printf '\n===== CUSTOM USER DETAILS SERVICE =====\n'
+cat src/main/java/com/julyturadm/security/CustomUserDetailsService.java
+
+printf '\n===== REPOSITÓRIO DE ROLES =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RoleRepository.java
+
+===== TESTE DE LOGIN =====
+   165	                .andReturn()
+   166	                .getResponse()
+   167	                .getContentAsString();
+   168	
+   169	        JsonNode response = objectMapper.readTree(responseBody);
+   170	
+   171	        String accessToken = response.get("accessToken").asText();
+   172	
+   173	        // Valida a assinatura e a validade do JWT.
+   174	        Jwt jwt = jwtDecoder.decode(accessToken);
+   175	
+   176	        assertEquals(user.getEmail(), jwt.getSubject());
+   177	
+   178	        // Valida os perfis e as permissões presentes no token.
+   179	        assertTrue(
+   180	                jwt.getClaimAsStringList("roles")
+   181	                        .contains("ROLE_" + roleName));
+   182	
+   183	        assertTrue(
+   184	                jwt.getClaimAsStringList("permissions")
+   185	                        .contains(permissionName));
+   186	    }
+   187	
+   188	    @Test
+   189	    void shouldReturnUnauthorizedWhenPasswordIsIncorrect() throws Exception {
+   190	
+
+===== CUSTOM USER DETAILS SERVICE =====
+package com.julyturadm.security;
+
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.domain.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+// Integra o usuário ao Spring Security.
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String email)
+            throws UsernameNotFoundException {
+
+        // 1. Busca o usuário e carrega seus papéis.
+        User user = userRepository
+                .findByEmailWithRoles(email)
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "Credenciais inválidas."
+                ));
+
+        // 2. Impede autenticação de usuário desativado.
+        if (!Boolean.TRUE.equals(user.getEnabled())) {
+            throw new UsernameNotFoundException(
+                    "Credenciais inválidas."
+            );
+        }
+
+        // 3. Busca os papéis e suas permissões.
+        List<Role> roles = roleRepository
+                .findAllByUserEmailWithPermissions(email);
+
+        // 4. Constrói as autoridades do usuário.
+        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+
+        for (Role role : roles) {
+
+            // Papel funcional.
+            authorities.add(
+                    new SimpleGrantedAuthority("ROLE_" + role.getName())
+            );
+
+            // Permissões granulares.
+            role.getRolePermissions().forEach(rolePermission -> {
+
+                String permissionName =
+                        rolePermission.getPermission().getName();
+
+                authorities.add(
+                        new SimpleGrantedAuthority(permissionName)
+                );
+            });
+        }
+
+        // 5. Retorna o usuário para o Spring Security.
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getEmail())
+                .password(user.getPassword())
+                .authorities(authorities)
+                .disabled(false)
+                .build();
+    }
+}
+
+===== REPOSITÓRIO DE ROLES =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.Role;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.util.List;
+
+public interface RoleRepository extends JpaRepository<Role, Long> {
+
+    Optional<Role> findByName(String name);
+
+    boolean existsByName(String name);
+
+    //---
+    // `JOIN r.userRoles ur`: identifica os papéis associados ao usuário.
+    // `LEFT JOIN FETCH r.rolePermissions`: carrega as permissões desses papéis.
+    // `LEFT JOIN FETCH rp.permission`: carrega os dados de cada permissão.
+    //---
+    @Query("""
+        SELECT DISTINCT r
+        FROM Role r
+        JOIN r.userRoles ur
+        LEFT JOIN FETCH r.rolePermissions rp
+        LEFT JOIN FETCH rp.permission
+        WHERE ur.user.email = :email
+    """)
+    List<Role> findAllByUserEmailWithPermissions(
+    @Param("email") String email
+    );
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Encontramos o ponto exato: o perfil está chegando corretamente ao JWT, mas a permissão não.
+
+A falha ocorre na linha 183, ao verificar `permissions`.
+
+O `CustomUserDetailsService` percorre `role.getRolePermissions()` e 
+extrai `rolePermission.getPermission().getName()`.
+
+A consulta do `RoleRepository` também prevê carregar essa associação com `LEFT JOIN FETCH`.
+
+Portanto, antes de mudar o serviço ou a consulta, precisamos verificar se o teste realmente persistiu
+a associação entre perfil e permissão.
+
+Próximo passo — inspeção de três trechos.
+
+Execute:
+
+```
+printf '\n===== SETUP DO TESTE =====\n'
+nl -ba src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java | sed -n '1,145p'
+
+printf '\n===== ENTIDADE ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+printf '\n===== ID ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+
+printf '\n===== REPOSITÓRIO ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+```
+
+Envie a saída.
+
+Quero conferir especialmente a criação e a gravação de `RolePermission`, incluindo o preenchimento do
+`@EmbeddedId` e dos relacionamentos `@MapsId`.
+
+Não altere nada ainda.
+
+A intenção é corrigir a origem do problema, preservando o desenho JPA que já validamos.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$printf '\n===== SETUP DO TESTE =====\n''
+nl -ba src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java | sed -n '1,145p'
+
+printf '\n===== ENTIDADE ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+printf '\n===== ID ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/entity/id/RolePermissionId.java
+
+printf '\n===== REPOSITÓRIO ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+
+===== SETUP DO TESTE =====
+     1	package com.julyturadm.controller;
+     2	
+     3	import com.fasterxml.jackson.databind.JsonNode;
+     4	import com.fasterxml.jackson.databind.ObjectMapper;
+     5	
+     6	import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+     7	import com.julyturadm.domain.entity.Permission;
+     8	import com.julyturadm.domain.entity.Role;
+     9	import com.julyturadm.domain.entity.RolePermission;
+    10	import com.julyturadm.domain.entity.User;
+    11	import com.julyturadm.domain.entity.UserRole;
+    12	import com.julyturadm.domain.entity.id.RolePermissionId;
+    13	import com.julyturadm.domain.entity.id.UserRoleId;
+    14	
+    15	import com.julyturadm.domain.repository.PermissionRepository;
+    16	import com.julyturadm.domain.repository.RolePermissionRepository;
+    17	import com.julyturadm.domain.repository.RoleRepository;
+    18	import com.julyturadm.domain.repository.UserRepository;
+    19	import com.julyturadm.domain.repository.UserRoleRepository;
+    20	
+    21	import com.julyturadm.dto.request.LoginRequest;
+    22	
+    23	import org.junit.jupiter.api.BeforeEach;
+    24	import org.junit.jupiter.api.Test;
+    25	
+    26	import org.springframework.beans.factory.annotation.Autowired;
+    27	import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+    28	import org.springframework.boot.test.context.SpringBootTest;
+    29	import org.springframework.context.annotation.Import;
+    30	import org.springframework.http.MediaType;
+    31	import org.springframework.security.crypto.password.PasswordEncoder;
+    32	import org.springframework.security.oauth2.jwt.Jwt;
+    33	import org.springframework.security.oauth2.jwt.JwtDecoder;
+    34	import org.springframework.test.context.ActiveProfiles;
+    35	import org.springframework.test.web.servlet.MockMvc;
+    36	import org.springframework.transaction.annotation.Transactional;
+    37	
+    38	import java.lang.reflect.Constructor;
+    39	import java.util.UUID;
+    40	
+    41	import static org.junit.jupiter.api.Assertions.*;
+    42	
+    43	import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+    44	import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+    45	
+    46	@SpringBootTest
+    47	@AutoConfigureMockMvc
+    48	@ActiveProfiles("test")
+    49	@Import(TestDatabaseSafetyConfiguration.class)
+    50	@Transactional
+    51	class AuthControllerIntegrationTest {
+    52	
+    53	    private static final String LOGIN_URL = "/api/auth/login";
+    54	    private static final String PASSWORD = "SenhaTeste123";
+    55	
+    56	    @Autowired
+    57	    private MockMvc mockMvc;
+    58	
+    59	    @Autowired
+    60	    private ObjectMapper objectMapper;
+    61	
+    62	    @Autowired
+    63	    private PasswordEncoder passwordEncoder;
+    64	
+    65	    @Autowired
+    66	    private JwtDecoder jwtDecoder;
+    67	
+    68	    @Autowired
+    69	    private UserRepository userRepository;
+    70	
+    71	    @Autowired
+    72	    private RoleRepository roleRepository;
+    73	
+    74	    @Autowired
+    75	    private PermissionRepository permissionRepository;
+    76	
+    77	    @Autowired
+    78	    private UserRoleRepository userRoleRepository;
+    79	
+    80	    @Autowired
+    81	    private RolePermissionRepository rolePermissionRepository;
+    82	
+    83	    private User user;
+    84	    private String permissionName;
+    85	    private String roleName;
+    86	
+    87	    @BeforeEach
+    88	    void setUp() throws Exception {
+    89	
+    90	        String uniqueId = UUID.randomUUID().toString();
+    91	
+    92	        // 1. Cria o usuário com senha BCrypt.
+    93	        user = User.create(
+    94	                "Usuario Teste",
+    95	                "auth_" + uniqueId + "@teste.com",
+    96	                passwordEncoder.encode(PASSWORD));
+    97	
+    98	        user = userRepository.saveAndFlush(user);
+    99	
+   100	        // 2. Cria o perfil.
+   101	        Role role = createEntity(Role.class);
+   102	        role.setName("TEST_ADMIN_" + uniqueId);
+   103	        roleName = role.getName();
+   104	
+   105	        role = roleRepository.saveAndFlush(role);
+   106	
+   107	        // 3. Cria a permissão.
+   108	        Permission permission = createEntity(Permission.class);
+   109	
+   110	        permissionName = "USER_READ_" + uniqueId;
+   111	        permission.setName(permissionName);
+   112	
+   113	        permission = permissionRepository.saveAndFlush(permission);
+   114	
+   115	        // 4. Associa o usuário ao perfil.
+   116	        UserRole userRole = createEntity(UserRole.class);
+   117	
+   118	        userRole.setId(
+   119	                new UserRoleId(user.getId(), role.getId()));
+   120	
+   121	        userRole.setUser(user);
+   122	        userRole.setRole(role);
+   123	
+   124	        userRoleRepository.saveAndFlush(userRole);
+   125	
+   126	        // 5. Associa a permissão ao perfil.
+   127	        RolePermission rolePermission = createEntity(RolePermission.class);
+   128	
+   129	        rolePermission.setId(
+   130	                new RolePermissionId(role.getId(), permission.getId()));
+   131	
+   132	        rolePermission.setRole(role);
+   133	        rolePermission.setPermission(permission);
+   134	
+   135	        rolePermissionRepository.saveAndFlush(rolePermission);
+   136	    }
+   137	
+   138	    private <T> T createEntity(Class<T> type) throws Exception {
+   139	
+   140	        Constructor<T> constructor = type.getDeclaredConstructor();
+   141	        constructor.setAccessible(true);
+   142	
+   143	        return constructor.newInstance();
+   144	    }
+   145	
+
+===== ENTIDADE ROLE PERMISSION =====
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    @EmbeddedId
+    private RolePermissionId id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(
+        name = "role_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_role")
+    )
+    private Role role;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(
+        name = "permission_id",
+        nullable = false,
+        foreignKey = @ForeignKey(name = "FK_rp_permission")
+    )
+    private Permission permission;
+}
+===== ID ROLE PERMISSION =====
+package com.julyturadm.domain.entity.id;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class RolePermissionId implements Serializable {
+
+    @Column(name = "role_id")
+    private Long roleId;
+
+    @Column(name = "permission_id")
+    private Long permissionId;
+}
+
+===== REPOSITÓRIO ROLE PERMISSION =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface RolePermissionRepository
+        extends JpaRepository<RolePermission, RolePermissionId> {
+
+    List<RolePermission> findAllByRole_Id(Long roleId);
+
+    List<RolePermission> findAllByPermission_Id(Long permissionId);
+
+    boolean existsByRole_IdAndPermission_Id(
+            Long roleId,
+            Long permissionId
+    );
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+A criação da associação no teste está aparentemente correta: você preenche o `RolePermissionId`,
+define `role` e `permission` e executa `saveAndFlush()`.
+
+O `@MapsId` também está sendo utilizado de acordo com os campos definidos no identificador composto.
+
+Ainda não temos evidência para alterar essa entidade.
+
+Há duas possibilidades que precisamos separar:
+
+1. A consulta do repositório não está recuperando a permissão associada ao perfil.
+
+2. A consulta recupera a permissão, mas o `JwtService` não a inclui na claim `permissions`.
+
+Próxima inspeção — dois arquivos.
+
+Execute:
+
+```
+printf '\n===== ENTIDADE ROLE =====\n'
+cat src/main/java/com/julyturadm/domain/entity/Role.java
+
+printf '\n===== SERVIÇO JWT =====\n'
+cat src/main/java/com/julyturadm/security/JwtService.java
+```
+
+Envie a saída.
+
+Com esses dois arquivos, poderemos verificar o mapeamento da coleção `rolePermissions` e a 
+transformação das autoridades em claims JWT.
+
+Depois faremos uma verificação objetiva da associação persistida, sem modificar prematuramente
+o modelo JPA.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== ENTIDADE ROLE =====\n'
+cat src/main/java/com/julyturadm/domain/entity/Role.java
+
+printf '\n===== SERVIÇO JWT =====\n'
+cat src/main/java/com/julyturadm/security/JwtService.java
+
+===== ENTIDADE ROLE =====
+package com.julyturadm.domain.entity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;    
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<UserRole> userRoles = new ArrayList<>();
+
+    @OneToMany(
+        mappedBy = "role",
+        fetch = FetchType.LAZY
+    )
+    private List<RolePermission> rolePermissions = new ArrayList<>();
+}
+
+===== SERVIÇO JWT =====
+package com.julyturadm.security;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+
+//---
+//A classe JwtService.java gera tokens JWT assinados com HS256, incluindo:
+//- Identificação do usuário (sub).
+//- Data de emissão (iat).
+//- Expiração em 30 minutos (exp).
+//- Papéis funcionais (roles).
+//- Permissões granulares (permissions).
+//---
+// `JwtEncoder`: assina os tokens com HS256.
+// `JwtDecoder`: valida a assinatura com HS256.
+// `JWT_SECRET`: é carregado por variável de ambiente, sem expor a chave no código.
+// O `application.yml`: está apontando corretamente para `${JWT_SECRET}`.
+//---
+@Service
+@RequiredArgsConstructor
+public class JwtService {
+
+    private static final long TOKEN_EXPIRATION_MINUTES = 30;
+
+    private final JwtEncoder jwtEncoder;
+
+    public String generateToken(UserDetails userDetails) {
+
+        Instant issuedAt = Instant.now();
+
+        Instant expiresAt = issuedAt.plus(
+                TOKEN_EXPIRATION_MINUTES,
+                ChronoUnit.MINUTES
+        );
+
+        List<String> authorities = userDetails.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<String> roles = authorities.stream()
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .toList();
+
+        List<String> permissions = authorities.stream()
+                .filter(authority -> !authority.startsWith("ROLE_"))
+                .toList();
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject(userDetails.getUsername())
+                .issuedAt(issuedAt)
+                .expiresAt(expiresAt)
+                .claim("roles", roles)
+                .claim("permissions", permissions)
+                .build();
+
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+
+        return jwtEncoder.encode(
+                JwtEncoderParameters.from(header, claims)
+        ).getTokenValue();
+    }
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Agora temos uma informação importante: o `JwtService` está correto na separação entre perfis e 
+permissões.
+
+Ele recebe as autoridades do usuário e coloca todas as que não começam com `ROLE_` na claim
+`permissions`.
+
+O mapeamento de `Role.rolePermissions` também está coerente com a entidade `RolePermission`.
+
+Assim, ainda não devemos alterar o `JwtService`, o `Role` ou o `RolePermission`.
+
+Precisamos descobrir em qual etapa a permissão deixa de aparecer.
+
+A hipótese mais provável agora está no contexto de persistência do próprio teste.
+
+Veja o que acontece:
+
+1. O teste cria e persiste um `Role`.
+
+2. O Hibernate mantém esse objeto `Role` no contexto de persistência, com sua coleção
+   `rolePermissions` inicialmente vazia.
+
+3. Depois, o teste persiste `RolePermission` diretamente pelo repositório.
+
+4. A associação é gravada no banco, mas a coleção inversa `role.getRolePermissions()` pode continuar
+   vazia na memória.
+
+5. Durante o login, o serviço pode reutilizar esse objeto já gerenciado.
+
+Isso explica por que o perfil aparece no JWT, mas a permissão não.
+
+Vamos corrigir primeiro o isolamento do teste, forçando o Hibernate a descartar os objetos em memória
+e recarregá-los do banco. Não precisamos mudar nenhuma entidade ou serviço.
+
+1. Adicione os imports
+
+No arquivo:
+
+`src/test/java/com/julyturadm/controller/AuthControllerIntegrationTest.java`
+
+Junto aos demais imports, acrescente:
+
+```
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+```
+
+2. Injete o EntityManager
+
+Localize este bloco:
+
+```
+@Autowired
+private RolePermissionRepository rolePermissionRepository;
+```
+
+Imediatamente abaixo, acrescente:
+
+```
+@PersistenceContext
+private EntityManager entityManager;
+```
+
+3. Limpe o contexto de persistência
+
+Localize o final do método `setUp()`:
+
+```
+rolePermissionRepository.saveAndFlush(rolePermission);
+```
+
+Imediatamente depois, acrescente:
+
+```
+// Garante que os próximos acessos recarreguem as entidades do banco.
+entityManager.flush();
+entityManager.clear();
+```
+
+O final do método deverá ficar assim:
+
+```
+rolePermissionRepository.saveAndFlush(rolePermission);
+
+// Garante que os próximos acessos recarreguem as entidades do banco.
+entityManager.flush();
+entityManager.clear();
+```
+
+4. Execute novamente
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=AuthControllerIntegrationTest test
+```
+
+Por que essa solução é adequada?
+
+Ela faz o teste buscar as associações persistidas no MySQL de teste, em vez de depender de coleções
+que podem estar desatualizadas na memória.
+
+Não estamos alterando o modelo JPA nem enfraquecendo as verificações do JWT.
+
+Queremos que a permissão continue sendo validada de verdade.
+
+Envie o resultado antes de fazermos qualquer outra alteração.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ set -a
+source ../.env
+set +a
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ mvn -Dtest=AuthControllerIntegrationTest test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.julyturadm:backend-api >---------------------
+[INFO] Building JulyTurAdm Backend API 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ backend-api ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:compile (default-compile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ backend-api ---
+[INFO] skip non existing resourceDirectory /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.14.1:testCompile (default-testCompile) @ backend-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.4:test (default-test) @ backend-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.julyturadm.controller.AuthControllerIntegrationTest
+22:54:02.006 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.julyturadm.controller.AuthControllerIntegrationTest]: AuthControllerIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+22:54:02.210 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.julyturadm.JulyTurAdmApplication for test class com.julyturadm.controller.AuthControllerIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-06T22:54:02.837-03:00  INFO 99842 --- [julyturadm-backend] [           main] c.j.c.AuthControllerIntegrationTest      : Starting AuthControllerIntegrationTest using Java 17.0.10 with PID 99842 (started by pedro in /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api)
+2026-11-06T22:54:02.839-03:00  INFO 99842 --- [julyturadm-backend] [           main] c.j.c.AuthControllerIntegrationTest      : The following 1 profile is active: "test"
+2026-11-06T22:54:03.806-03:00  INFO 99842 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-11-06T22:54:03.885-03:00  INFO 99842 --- [julyturadm-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 64 ms. Found 5 JPA repository interfaces.
+2026-11-06T22:54:04.512-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-11-06T22:54:04.560-03:00  INFO 99842 --- [julyturadm-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-11-06T22:54:04.602-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-11-06T22:54:04.921-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-11-06T22:54:04.950-03:00  INFO 99842 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-06T22:54:05.288-03:00  INFO 99842 --- [julyturadm-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@62360a68
+2026-11-06T22:54:05.290-03:00  INFO 99842 --- [julyturadm-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-06T22:54:05.381-03:00  INFO 99842 --- [julyturadm-backend] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 8.0.46
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-11-06T22:54:06.671-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-11-06T22:54:06.740-03:00  WARN 99842 --- [julyturadm-backend] [           main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "alter table roles_permissions drop foreign key FK_rp_permission" via JDBC [Table 'bd_paytur_test.roles_permissions' doesn't exist]
+---
+2026-11-06T22:54:22.438-03:00  INFO 99842 --- [julyturadm-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-06T22:54:22.861-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-11-06T22:54:23.498-03:00  INFO 99842 --- [julyturadm-backend] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-11-06T22:54:23.499-03:00  WARN 99842 --- [julyturadm-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used by Spring Security for automatically configuring username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider. If the current configuration is intentional, to turn off this warning, increase the logging level of 'org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer' to ERROR
+2026-11-06T22:54:24.456-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-06T22:54:24.456-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-06T22:54:24.458-03:00  INFO 99842 --- [julyturadm-backend] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-11-06T22:54:24.489-03:00  INFO 99842 --- [julyturadm-backend] [           main] c.j.c.AuthControllerIntegrationTest      : Started AuthControllerIntegrationTest in 22.079 seconds (process running for 23.595)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 26.17 s -- in com.julyturadm.controller.AuthControllerIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  34.897 s
+[INFO] Finished at: 2026-11-06T22:54:34-03:00
+[INFO] ------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+BUILD SUCCESS
+ 
+Excelente! Agora os 6 testes HTTP de autenticação passaram, sem falhas ou erros.
+
+Teste	Resultado
+Login com credenciais válidas	Passou
+Senha incorreta	Passou
+Usuário inexistente	Passou
+E-mail inválido	Passou
+E-mail vazio	Passou
+Senha vazia	Passou
+
+O que corrigimos
+
+A inclusão de:
+entityManager.flush();
+entityManager.clear();
+
+
+garantiu que o teste não dependesse de associações eventualmente desatualizadas no contexto de
+persistência.
+
+Isso também confirmou que o carregamento das permissões e a geração das claims JWT funcionam quando
+as associações são recuperadas do banco.
+
+Próxima etapa: autorização HTTP
+
+Vamos ampliar AuthControllerIntegrationTest para verificar três situações:
+1. Acesso a endpoint protegido sem token JWT → HTTP 401.
+2. Acesso com token JWT válido → HTTP permitido.
+3. Acesso com token inválido → HTTP 401.
+
+Depois, verificaremos se os perfis e as permissões realmente controlam o acesso aos recursos.
+
+Não precisamos alterar o código agora.
+
+O próximo passo será inspecionar o UserController e definir os testes com base nos endpoints que ele já oferece.
+
+Continua no arquivo: [20261106_Chat-Gpt: Etapa1-21-Hibernate_testes_Autorizacao_HTTP.txt]
+
+-------------------------------------------------fim-----------------------------------------------
+

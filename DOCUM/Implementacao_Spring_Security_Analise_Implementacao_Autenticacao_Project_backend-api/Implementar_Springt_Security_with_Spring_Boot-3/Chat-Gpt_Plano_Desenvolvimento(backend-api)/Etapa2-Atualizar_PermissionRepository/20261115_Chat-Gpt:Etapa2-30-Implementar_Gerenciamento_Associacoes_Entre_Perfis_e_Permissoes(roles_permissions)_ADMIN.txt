@@ -1,0 +1,1748 @@
+﻿
+15/11/2026
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt:Etapa2-30-Implementar_Gerenciamento_Associacoes_Entre_Perfis_e_Permissoes(roles_permissions)_ADMIN
+---------------------------------------------------------------------------------------------------
+
+Para lembrar dos codigos HTTP combinados com os verbos do HTTP:
+
+• 200 OK: A requisição foi bem-sucedida. O significado do sucesso depende do método HTTP utilizado
+  (ex: em um GET, os dados solicitados são retornados no corpo da resposta).
+
+• 204 No Content: A requisição foi processada com sucesso, mas não há conteúdo para retornar no
+  corpo da resposta (altamente utilizado em requisições DELETE ou PUT/PATCH quando não há necessidade
+  de devolver o objeto atualizado).
+
+• 401 Unauthorized: O cliente precisa se autenticar para obter a resposta solicitada 
+  (falta de token ou credenciais inválidas).
+
+• 403 Forbidden: O cliente foi autenticado, mas não tem direitos de acesso ao recurso 
+  (permissão insuficiente).
+
+• 409 Conflict: A requisição não pôde ser concluída devido a um conflito com o estado atual do 
+  servidor (ex: tentar cadastrar um usuário com um e-mail que já existe).
+
+
+-------------------------------------------------------------------------------------------------
+Resumo do arquivo em 15/11/2026:
+
+
+-----------------------------------------fim do resumo---------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Excelente resultado! 
+76 testes aprovados
+
+O comando mvn test confirmou:
+
+Indicador           Resultado
+Testes executados   76
+Falhas               0
+Erros                0
+Ignorados            0
+
+Build	SUCCESS
+
+Situação atual do JulyTurAdm
+
+Concluímos e validamos:
+- Autenticação com JWT.
+- Autorização baseada em roles e permissions.
+- Gerenciamento de usuários.
+- Atribuição e remoção de perfis dos usuários, respeitando as restrições de ADMIN e RH.
+- CRUD de perfis (Role).
+- CRUD de permissões (Permission).
+
+Um marco importante: temos agora 76 testes passando, sem regressões identificadas na suíte completa.
+
+Próxima etapa recomendada
+
+Minha sugestão é implementar o gerenciamento das associações entre perfis e permissões
+(roles_permissions), com endpoints exclusivos para ADMIN.
+
+Isso permitirá:
+1. Consultar as permissões de um perfil.
+2. Associar uma permissão a um perfil.
+3. Remover uma permissão de um perfil.
+4. Impedir associações duplicadas.
+5. Garantir que RH e usuários setoriais não administrem essas associações.
+
+Podemos seguir o mesmo método: implementar, testar cada cenário e executar novamente a suíte completa.
+
+Assim, avançamos para o próximo módulo do backend sem comprometer o que já está funcionando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+O projeto esta funcionado, o backup foi bem sucedido, vamos continuar para a próxima etapa.
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito!
+
+Vamos continuar com o JulyTurAdm.
+
+Parabéns por concluir o backup e preservar uma versão estável do projeto.
+
+Nossa próxima etapa será o gerenciamento das associações entre perfis e permissões (`roles_permissions`).
+
+Etapa 1 — verificar a estrutura existente
+
+Antes de criar qualquer classe, vamos conferir o que já existe para evitar duplicações e manter o 
+padrão adotado nos módulos de usuários, perfis e permissões.
+
+No terminal, dentro de `backend-api`, execute:
+
+```
+printf '\n===== ENTIDADE ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+printf '\n===== REPOSITÓRIO ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+
+printf '\n===== SERVIÇOS EXISTENTES =====\n'
+ls -1 src/main/java/com/julyturadm/service/
+
+printf '\n===== CONTROLLERS EXISTENTES =====\n'
+ls -1 src/main/java/com/julyturadm/controller/
+```
+
+Envie a saída.
+
+O que vamos implementar
+
+A proposta é criar o gerenciamento de associações com estas operações:
+
+| Operação                          | Endpoint proposto                                       |
+| --------------------------------- | ------------------------------------------------------- |
+| Consultar permissões de um perfil | GET `/api/roles/{roleId}/permissions`                   |
+| Associar permissão a perfil       | PUT `/api/roles/{roleId}/permissions/{permissionId}`    |
+| Remover permissão de perfil       | DELETE `/api/roles/{roleId}/permissions/{permissionId}` |
+
+Todas serão exclusivas de ADMIN. RH e perfis setoriais não poderão administrar essas associações.
+
+Vamos implementar e testar gradualmente, preservando as regras de negócio e os 76 testes que já 
+estão passando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== ENTIDADE ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/entity/RolePermission.java
+
+printf '\n===== REPOSITÓRIO ROLE PERMISSION =====\n'
+cat src/main/java/com/julyturadm/domain/repository/RolePermissionRepository.java
+
+printf '\n===== SERVIÇOS EXISTENTES =====\n'
+ls -1 src/main/java/com/julyturadm/service/
+
+printf '\n===== CONTROLLERS EXISTENTES =====\n'
+ls -1 src/main/java/com/julyturadm/controller/
+
+===== ENTIDADE ROLE PERMISSION =====
+package com.julyturadm.domain.entity;
+
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "roles_permissions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class RolePermission {
+
+    // - `RolePermissionId` recebe os IDs dos dois registros.
+    @EmbeddedId
+    private RolePermissionId id;
+
+    // ---
+    // - `setRole()` estabelece o relacionamento com o perfil.
+    // - `@MapsId` mantém os campos da chave composta sincronizados com os
+    //    relacionamentos no momento da persistência.
+    // ---
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("roleId")
+    @JoinColumn(name = "role_id", nullable = false, foreignKey = @ForeignKey(name = "FK_rp_role"))
+    private Role role;
+
+    // ---
+    // - `setPermission()` estabelece o relacionamento com a permissão.
+    // - `@MapsId` mantém os campos da chave composta sincronizados com os
+    //    relacionamentos no momento da persistência.
+    // ---
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("permissionId")
+    @JoinColumn(name = "permission_id", nullable = false, foreignKey = @ForeignKey(name = "FK_rp_permission"))
+    private Permission permission;
+       
+    // ---
+    // Esse método permite criar uma role e uma permissao sem expor publicamente o 
+    // construtor da entidade.
+    // ---    
+    public static RolePermission create(
+            Role role,
+            Permission permission) {
+
+        RolePermission rolePermission = new RolePermission();
+
+        rolePermission.setId(
+                new RolePermissionId(
+                        role.getId(),
+                        permission.getId()));
+
+        rolePermission.setRole(role);
+        rolePermission.setPermission(permission);
+
+        return rolePermission;
+    }
+
+}
+===== REPOSITÓRIO ROLE PERMISSION =====
+package com.julyturadm.domain.repository;
+
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.id.RolePermissionId;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface RolePermissionRepository
+        extends JpaRepository<RolePermission, RolePermissionId> {
+
+    List<RolePermission> findAllByRole_Id(Long roleId);
+
+    List<RolePermission> findAllByPermission_Id(Long permissionId);
+
+    boolean existsByRole_IdAndPermission_Id(
+            Long roleId,
+            Long permissionId
+    );
+
+    // Verifica se o perfil possui permissões associadas.
+    boolean existsByRole_Id(Long roleId);
+         
+    // Verifica se a permissão está associada a algum perfil.
+    boolean existsByPermission_Id(Long permissionId);
+    
+}
+===== SERVIÇOS EXISTENTES =====
+AuthenticationService.java
+PermissionService.java
+RoleService.java
+UserRoleService.java
+UserService.java
+
+===== CONTROLLERS EXISTENTES =====
+AuthController.java
+PermissionController.java
+RoleController.java
+UserController.java
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo.
+
+A estrutura já possui os elementos fundamentais para implementar esse módulo.
+
+Não precisamos criar uma nova entidade nem alterar a estrutura das cinco tabelas.
+
+1. Análise da estrutura atual
+
+RolePermission.java
+
+- Utiliza chave primária composta (`RolePermissionId`).
+- Relaciona `Role` e `Permission` com `@ManyToOne`.
+- Utiliza `FetchType.LAZY`.
+- Utiliza `@MapsId` para sincronizar os relacionamentos com a chave composta.
+- Possui o método estático `create()`.
+
+RolePermissionRepository.java
+
+Já possui os métodos necessários:
+
+- `findAllByRole_Id()`
+- `findAllByPermission_Id()`
+- `existsByRole_IdAndPermission_Id()`
+- `existsByRole_Id()`
+- `existsByPermission_Id()`
+
+Portanto, não precisamos acrescentar métodos ao repositório neste momento.
+
+2. Arquitetura que vamos implementar
+
+Novo módulo: RolePermission
+
+RolePermissionController
+
+Endpoints REST e autorização ADMIN
+
+RolePermissionService
+
+Regras de negócio e transações
+
+RolePermissionRepository
+
+Persistência das associações
+
+Role
+
+Perfil
+
+Permission
+
+Permissão
+
+3. Regras de negócio
+
+Vamos preservar estas regras:
+
+1. Somente ADMIN pode consultar e administrar as associações.
+2. Não permitir associar perfil inexistente.
+3. Não permitir associar permissão inexistente.
+4. Não permitir associações duplicadas.
+5. Permitir remover uma associação existente.
+6. Não permitir remover uma associação inexistente.
+7. Não excluir automaticamente perfis ou permissões ao remover uma associação.
+
+4. Primeira implementação — DTO de resposta
+
+Vamos começar criando o DTO que será utilizado na consulta das permissões de um perfil.
+
+Crie o arquivo:
+
+`src/main/java/com/julyturadm/dto/response/RolePermissionResponse.java`
+
+Conteúdo:
+
+```
+
+package com.julyturadm.dto.response;
+
+public record RolePermissionResponse(
+        Long roleId,
+        String roleName,
+        Long permissionId,
+        String permissionName
+) {
+}
+
+```
+
+Esse DTO permite retornar os dados do perfil e da permissão sem expor as entidades JPA.
+
+Por enquanto, faça somente essa criação.
+
+Depois execute:
+
+```
+cat src/main/java/com/julyturadm/dto/response/RolePermissionResponse.java
+```
+
+Envie o resultado para conferirmos antes de avançar para o `RolePermissionService`.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ cat src/main/java/com/julyturadm/dto/response/RolePermissionResponse.java
+package com.julyturadm.dto.response;
+
+public record RolePermissionResponse(
+        Long roleId,
+        String roleName,
+        Long permissionId,
+        String permissionName
+) {
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. O `RolePermissionResponse.java` está correto.
+
+A estrutura do DTO está de acordo com o padrão que adotamos no projeto.
+
+Próxima etapa — criar RolePermissionService
+
+Agora vamos implementar as regras de negócio para consultar, associar e remover permissões de perfis.
+
+Crie:
+
+`src/main/java/com/julyturadm/service/RolePermissionService.java`
+
+Conteúdo:
+
+```
+
+package com.julyturadm.service;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.julyturadm.common.exception.BusinessException;
+import com.julyturadm.common.exception.ResourceNotFoundException;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.dto.response.RolePermissionResponse;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class RolePermissionService {
+
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
+
+    @Transactional(readOnly = true)
+    public List<RolePermissionResponse> findPermissionsByRoleId(Long roleId) {
+
+        Role role = findRoleOrThrow(roleId);
+
+        return rolePermissionRepository.findAllByRole_Id(roleId)
+                .stream()
+                .map(rolePermission -> toResponse(role, rolePermission.getPermission()))
+                .toList();
+    }
+
+    public void assignPermissionToRole(Long roleId, Long permissionId) {
+
+        Role role = findRoleOrThrow(roleId);
+
+        Permission permission = findPermissionOrThrow(permissionId);
+
+        if (rolePermissionRepository.existsByRole_IdAndPermission_Id(
+                roleId, permissionId)) {
+
+            throw new BusinessException(
+                    "Essa permissão já está associada ao perfil.");
+        }
+
+        RolePermission rolePermission =
+                RolePermission.create(role, permission);
+
+        rolePermissionRepository.save(rolePermission);
+    }
+
+    public void removePermissionFromRole(Long roleId, Long permissionId) {
+
+        Role role = findRoleOrThrow(roleId);
+
+        Permission permission = findPermissionOrThrow(permissionId);
+
+        RolePermissionId id =
+                new RolePermissionId(roleId, permissionId);
+
+        RolePermission rolePermission = rolePermissionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Associação entre perfil e permissão não encontrada."));
+
+        rolePermissionRepository.delete(rolePermission);
+    }
+
+    private Role findRoleOrThrow(Long roleId) {
+
+        return roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Perfil não encontrado: " + roleId));
+    }
+
+    private Permission findPermissionOrThrow(Long permissionId) {
+
+        return permissionRepository.findById(permissionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Permissão não encontrada: " + permissionId));
+    }
+
+    private RolePermissionResponse toResponse(
+            Role role,
+            Permission permission) {
+
+        return new RolePermissionResponse(
+                role.getId(),
+                role.getName(),
+                permission.getId(),
+                permission.getName());
+    }
+}
+
+```
+
+Importante: esse código utiliza `RolePermissionId`, portanto precisamos importar a classe:
+
+```
+import com.julyturadm.domain.entity.id.RolePermissionId;
+```
+
+Acrescente esse import junto aos demais.
+
+Depois de criar o arquivo, execute:
+
+```
+mvn -q -DskipTests compile
+```
+
+Envie o resultado. Se a compilação passar, seguimos para o controller.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Build SUCCESS
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Ótimo! `RolePermissionService` compilou com sucesso.
+
+Build SUCCESS
+
+Já temos as três operações implementadas na camada de serviço:
+
+- Consultar permissões associadas a um perfil.
+- Associar uma permissão a um perfil.
+- Remover uma associação existente.
+
+Próxima etapa — RolePermissionController
+
+Agora vamos criar a camada REST, mantendo todas as operações exclusivas de ADMIN.
+
+Crie o arquivo:
+
+`src/main/java/com/julyturadm/controller/RolePermissionController.java`
+
+Conteúdo:
+
+```
+
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import com.julyturadm.dto.response.RolePermissionResponse;
+import com.julyturadm.service.RolePermissionService;
+
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/api/roles/{roleId}/permissions")
+@RequiredArgsConstructor
+public class RolePermissionController {
+
+    private final RolePermissionService rolePermissionService;
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<RolePermissionResponse>> findPermissionsByRoleId(
+            @PathVariable Long roleId) {
+
+        return ResponseEntity.ok(
+                rolePermissionService.findPermissionsByRoleId(roleId));
+    }
+
+    @PutMapping("/{permissionId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> assignPermissionToRole(
+            @PathVariable Long roleId,
+            @PathVariable Long permissionId) {
+
+        rolePermissionService.assignPermissionToRole(roleId, permissionId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @DeleteMapping("/{permissionId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> removePermissionFromRole(
+            @PathVariable Long roleId,
+            @PathVariable Long permissionId) {
+
+        rolePermissionService.removePermissionFromRole(roleId, permissionId);
+
+        return ResponseEntity.noContent().build();
+    }
+}
+
+```
+
+Endpoints resultantes
+
+| Método | Endpoint                                         | Resposta |
+| ------ | ------------------------------------------------ | -------- |
+| GET    | `/api/roles/{roleId}/permissions`                | 200      |
+| PUT    | `/api/roles/{roleId}/permissions/{permissionId}` | 201      |
+| DELETE | `/api/roles/{roleId}/permissions/{permissionId}` | 204      |
+
+O `PUT` foi escolhido porque a associação representa um recurso identificado pelo
+par `roleId` + `permissionId`.
+
+Depois de criar, execute:
+
+```
+mvn -q -DskipTests compile
+```
+
+Envie o resultado. Depois vamos construir os testes de integração, começando pela consulta e associação de permissões.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+Build SUCCESS
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito!
+
+Build SUCCESS
+
+Agora temos o módulo `RolePermission` implementado nas três camadas:
+
+- DTO: `RolePermissionResponse`.
+- Service: `RolePermissionService`.
+- Controller: `RolePermissionController`.
+
+Antes de testar, vamos preparar a classe de testes de integração seguindo o padrão utilizado em `RoleControllerIntegrationTest` e `PermissionControllerIntegrationTest`.
+
+Etapa seguinte — criar Permission/Role association integration test
+
+Crie o arquivo:
+
+`src/test/java/com/julyturadm/controller/RolePermissionControllerIntegrationTest.java`
+
+Para manter nosso método incremental, primeiro vamos verificar a estrutura de referência.
+
+Execute:
+
+```
+sed -n '1,180p' src/test/java/com/julyturadm/controller/PermissionControllerIntegrationTest.java
+```
+
+Envie a saída. Com ela, vamos preparar a nova classe reutilizando a configuração de segurança,
+autenticação JWT, banco de testes e usuários ADMIN, RH e setorial, sem duplicar ou alterar 
+configurações existentes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ sed -n '1,180p' src/test/java/com/julyturadm/controller/PermissionControllerIntegrationTest.java
+package com.julyturadm.controller;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.domain.repository.UserRepository;
+import com.julyturadm.domain.repository.UserRoleRepository;
+import com.julyturadm.dto.request.LoginRequest;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+//---
+// Por que manter esses componentes?
+//- `PermissionRepository`: prepara e verifica permissões.
+//- `RolePermissionRepository`: cria associações para testar a integridade referencial.
+//- `EntityManager`: garante a sincronização dos registros antes das requisições.
+//- `TestDatabaseSafetyConfiguration`: protege o banco de produção.
+//- `obtainAccessToken()`: permite testar a autorização real com JWT.
+//---
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class PermissionControllerIntegrationTest {
+
+    private static final String PASSWORD = "Test@123456";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private User adminUser;
+    private User rhUser;
+    private User sectorUser;
+
+    private Role adminRole;
+    private Role rhRole;
+    private Role sectorRole;
+
+    @BeforeEach
+    void setUp() {
+
+        adminRole = roleRepository.save(Role.create("ADMIN"));
+        rhRole = roleRepository.save(Role.create("RH"));
+        sectorRole = roleRepository.save(Role.create("CONTABILIDADE"));
+
+        adminUser = createUser("admin");
+        rhUser = createUser("rh");
+        sectorUser = createUser("sector");
+
+        userRoleRepository.save(UserRole.create(adminUser, adminRole));
+        userRoleRepository.save(UserRole.create(rhUser, rhRole));
+        userRoleRepository.save(UserRole.create(sectorUser, sectorRole));
+
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private User createUser(String prefix) {
+
+        String uniqueEmail = prefix + "-"
+                + UUID.randomUUID().toString().substring(0, 8)
+                + "@test.com";
+
+        User user = User.create(
+                "Usuário " + prefix,
+                uniqueEmail,
+                passwordEncoder.encode(PASSWORD));
+
+        return userRepository.save(user);
+    }
+
+    private String obtainAccessToken(String email) throws Exception {
+
+        String requestBody = objectMapper.writeValueAsString(
+                new LoginRequest(email, PASSWORD));
+
+        String responseBody = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode responseJson = objectMapper.readTree(responseBody);
+
+        return responseJson.get("accessToken").asText();
+    }
+
+    // ---
+    @Test
+    void adminShouldCreatePermission() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        String requestBody = """
+                {
+                    "name": "PERMISSION_TEST"
+                }
+                """;
+
+        mockMvc.perform(post("/api/permissions")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("PERMISSION_TEST"));
+    }
+
+    @Test
+    void adminShouldFindPermissionById() throws Exception {
+
+        String token = obtainAccessToken(adminUser.getEmail());
+
+        Permission permission = permissionRepository.save(
+                Permission.create("USER_READ"));
+
+        entityManager.flush();
+
+        mockMvc.perform(get("/api/permissions/{id}", permission.getId())
+                .header("Authorization", "Bearer " + token))
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito. A estrutura de referência está clara e podemos reutilizar o mesmo padrão de testes.
+
+Vamos criar a nova classe mantendo:
+
+- Banco isolado `bd_paytur_test`.
+- Autenticação JWT real.
+- Usuários ADMIN, RH e CONTABILIDADE.
+- Preparação dos dados com `@BeforeEach`.
+- Transações revertidas ao final de cada teste.
+
+Etapa 1 — estrutura inicial da classe
+
+Crie o arquivo:
+
+`src/test/java/com/julyturadm/controller/RolePermissionControllerIntegrationTest.java`
+
+Insira este conteúdo:
+
+```
+
+package com.julyturadm.controller;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.julyturadm.config.TestDatabaseSafetyConfiguration;
+import com.julyturadm.domain.entity.Permission;
+import com.julyturadm.domain.entity.Role;
+import com.julyturadm.domain.entity.RolePermission;
+import com.julyturadm.domain.entity.User;
+import com.julyturadm.domain.entity.UserRole;
+import com.julyturadm.domain.repository.PermissionRepository;
+import com.julyturadm.domain.repository.RolePermissionRepository;
+import com.julyturadm.domain.repository.RoleRepository;
+import com.julyturadm.domain.repository.UserRepository;
+import com.julyturadm.domain.repository.UserRoleRepository;
+import com.julyturadm.dto.request.LoginRequest;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Import(TestDatabaseSafetyConfiguration.class)
+@Transactional
+class RolePermissionControllerIntegrationTest {
+
+    private static final String PASSWORD = "Test@123456";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private User adminUser;
+    private User rhUser;
+    private User sectorUser;
+
+    private Role adminRole;
+    private Role rhRole;
+    private Role sectorRole;
+
+    @BeforeEach
+    void setUp() {
+
+        adminRole = roleRepository.save(Role.create("ADMIN"));
+        rhRole = roleRepository.save(Role.create("RH"));
+        sectorRole = roleRepository.save(Role.create("CONTABILIDADE"));
+
+        adminUser = createUser("admin");
+        rhUser = createUser("rh");
+        sectorUser = createUser("sector");
+
+        userRoleRepository.save(UserRole.create(adminUser, adminRole));
+        userRoleRepository.save(UserRole.create(rhUser, rhRole));
+        userRoleRepository.save(UserRole.create(sectorUser, sectorRole));
+
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private User createUser(String prefix) {
+
+        String uniqueEmail = prefix + "-"
+                + UUID.randomUUID().toString().substring(0, 8)
+                + "@test.com";
+
+        User user = User.create(
+                "Usuário " + prefix,
+                uniqueEmail,
+                passwordEncoder.encode(PASSWORD));
+
+        return userRepository.save(user);
+    }
+
+    private String obtainAccessToken(String email) throws Exception {
+
+        String requestBody = objectMapper.writeValueAsString(
+                new LoginRequest(email, PASSWORD));
+
+        String responseBody = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode responseJson = objectMapper.readTree(responseBody);
+
+        return responseJson.get("accessToken").asText();
+    }
+}
+
+```
+
+Etapa 2 — conferir a estrutura
+
+Depois de salvar, execute:
+
+```
+tail -n 70 src/test/java/com/julyturadm/controller/RolePermissionControllerIntegrationTest.java
+```
+
+Envie a saída.
+
+Ainda não vamos executar testes: primeiro vamos acrescentar os cenários de consulta e associação.
+
+Assim, construímos a cobertura de forma gradual e conseguimos identificar exatamente qualquer problema.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ tail -n 70 src/test/java/com/julyturadm/controller/RolePermissionControllerIntegrationTest.java
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private User adminUser;
+    private User rhUser;
+    private User sectorUser;
+
+    private Role adminRole;
+    private Role rhRole;
+    private Role sectorRole;
+
+    @BeforeEach
+    void setUp() {
+
+        adminRole = roleRepository.save(Role.create("ADMIN"));
+        rhRole = roleRepository.save(Role.create("RH"));
+        sectorRole = roleRepository.save(Role.create("CONTABILIDADE"));
+
+        adminUser = createUser("admin");
+        rhUser = createUser("rh");
+        sectorUser = createUser("sector");
+
+        userRoleRepository.save(UserRole.create(adminUser, adminRole));
+        userRoleRepository.save(UserRole.create(rhUser, rhRole));
+        userRoleRepository.save(UserRole.create(sectorUser, sectorRole));
+
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    private User createUser(String prefix) {
+
+        String uniqueEmail = prefix + "-"
+                + UUID.randomUUID().toString().substring(0, 8)
+                + "@test.com";
+
+        User user = User.create(
+                "Usuário " + prefix,
+                uniqueEmail,
+                passwordEncoder.encode(PASSWORD));
+
+        return userRepository.save(user);
+    }
+
+    private String obtainAccessToken(String email) throws Exception {
+
+        String requestBody = objectMapper.writeValueAsString(
+                new LoginRequest(email, PASSWORD));
+
+        String responseBody = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode responseJson = objectMapper.readTree(responseBody);
+
+        return responseJson.get("accessToken").asText();
+    }
+
+    //---
+    
+}
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Perfeito.
+
+O esqueleto da classe está correto: configuração do teste, usuários, perfis e autenticação estão
+preparados.
+
+Agora vamos começar com um teste simples: ADMIN consulta as permissões associadas a um perfil.
+
+1. Adicione este método antes do último `}` da classe RolePermissionControllerIntegrationTest.java
+
+```
+@Test
+void adminShouldFindPermissionsByRoleId() throws Exception {
+
+    Permission permissionCreate = permissionRepository.save(
+            Permission.create("USER_CREATE"));
+
+    Permission permissionRead = permissionRepository.save(
+            Permission.create("USER_READ"));
+
+    rolePermissionRepository.save(
+            RolePermission.create(adminRole, permissionCreate));
+
+    rolePermissionRepository.save(
+            RolePermission.create(adminRole, permissionRead));
+
+    entityManager.flush();
+    entityManager.clear();
+
+    String token = obtainAccessToken(adminUser.getEmail());
+
+    mockMvc.perform(get("/api/roles/{roleId}/permissions", adminRole.getId())
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].roleName").value("ADMIN"))
+            .andExpect(jsonPath("$[1].roleName").value("ADMIN"));
+}
+```
+
+Esse teste verifica se:
+
+- O ADMIN consegue consultar as permissões de um perfil.
+- A API retorna HTTP `200`.
+- As duas associações são retornadas.
+- O nome do perfil informado nas respostas é `ADMIN`.
+
+Atenção: não estamos exigindo uma ordem específica para as permissões, apenas que sejam retornadas
+duas associações.
+
+2. Execute somente esse teste
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=RolePermissionControllerIntegrationTest#adminShouldFindPermissionsByRoleId test
+```
+
+Envie o resultado. Vamos corrigir qualquer problema antes de acrescentar os próximos testes.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 23.55 s <<< FAILURE! -- in com.julyturadm.controller.RolePermissionControllerIntegrationTest
+
+[ERROR] com.julyturadm.controller.RolePermissionControllerIntegrationTest.adminShouldFindPermissionsByRoleId -- Time elapsed: 2.180 s <<< FAILURE!
+java.lang.AssertionError: Status expected:<200> but was:<404>
+	at org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)
+	at org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)
+	at org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)
+	at org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)
+	at com.julyturadm.controller.RolePermissionControllerIntegrationTest.adminShouldFindPermissionsByRoleId(RolePermissionControllerIntegrationTest.java:165)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   RolePermissionControllerIntegrationTest.adminShouldFindPermissionsByRoleId:165 Status expected:<200> but was:<404>
+[INFO] 
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  35.487 s
+[INFO] Finished at: 2026-11-15T13:37:40-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project backend-api: There are test failures.
+[ERROR] 
+[ERROR] See /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+O teste chegou a receber uma resposta HTTP, mas recebeu `404` em vez de `200`.
+
+Isso indica que precisamos identificar de onde vem esse 404: pode ser uma rota não encontrada ou uma exceção `ResourceNotFoundException` lançada pelo serviço.
+
+Não vamos alterar o código ainda. Primeiro, vamos obter o conteúdo da resposta.
+
+1. Faça uma pequena alteração no teste
+
+No início do arquivo, acrescente este import:
+
+```
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+```
+
+No teste `adminShouldFindPermissionsByRoleId`, acrescente `.andDo(print())` logo após
+a chamada `mockMvc.perform(...)`:
+
+```
+mockMvc.perform(get("/api/roles/{roleId}/permissions", adminRole.getId())
+        .header("Authorization", "Bearer " + token))
+        .andDo(print())
+        .andExpect(status().isOk())
+```
+
+Mantenha os demais `andExpect`.
+
+2. Execute novamente
+
+```
+set -a
+source ../.env
+set +a
+
+mvn -Dtest=RolePermissionControllerIntegrationTest#adminShouldFindPermissionsByRoleId test
+```
+
+Envie principalmente o trecho `MockHttpServletRequest`, `MockHttpServletResponse` e 
+qualquer mensagem de erro exibida.
+
+Assim identificaremos a causa antes de modificar qualquer classe.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+2026-11-15T13:48:59.425-03:00  INFO 53135 --- [julyturadm-backend] [           main] .RolePermissionControllerIntegrationTest : Started RolePermissionControllerIntegrationTest in 20.694 seconds (process running for 21.938)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+MockHttpServletRequest:
+      HTTP Method = GET
+      Request URI = /api/roles/1/permissions
+       Parameters = {}
+          Headers = [Authorization:"Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbi05YTU0NjZkY0B0ZXN0LmNvbSIsImV4cCI6MTc5NDc2MzE0MCwiaWF0IjoxNzk0NzYxMzQwLCJwZXJtaXNzaW9ucyI6WyJVU0VSX0NSRUFURSIsIlVTRVJfUkVBRCJdLCJyb2xlcyI6WyJST0xFX0FETUlOIl19.8N9AK3Fsob7ecS8DCvLvg58NIi8VIPTD7LVtSXDVbcs"]
+             Body = null
+    Session Attrs = {}
+
+Handler:
+             Type = org.springframework.web.servlet.resource.ResourceHttpRequestHandler
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = org.springframework.web.servlet.resource.NoResourceFoundException
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 404
+    Error message = No static resource api/roles/1/permissions.
+          Headers = [Vary:"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = null
+             Body = 
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+
+MockHttpServletRequest:
+      HTTP Method = POST
+      Request URI = /api/auth/login
+       Parameters = {}
+          Headers = [Content-Type:"application/json;charset=UTF-8", Content-Length:"60"]
+             Body = {"email":"admin-9a5466dc@test.com","password":"Test@123456"}
+    Session Attrs = {}
+
+Handler:
+             Type = com.julyturadm.controller.AuthController
+           Method = com.julyturadm.controller.AuthController#login(LoginRequest)
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 200
+    Error message = null
+          Headers = [Content-Type:"application/json", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = application/json
+             Body = {"accessToken":"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbi05YTU0NjZkY0B0ZXN0LmNvbSIsImV4cCI6MTc5NDc2MzE0MCwiaWF0IjoxNzk0NzYxMzQwLCJwZXJtaXNzaW9ucyI6WyJVU0VSX0NSRUFURSIsIlVTRVJfUkVBRCJdLCJyb2xlcyI6WyJST0xFX0FETUlOIl19.8N9AK3Fsob7ecS8DCvLvg58NIi8VIPTD7LVtSXDVbcs","tokenType":"Bearer","expiresIn":1800}
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+
+MockHttpServletRequest:
+      HTTP Method = GET
+      Request URI = /api/roles/1/permissions
+       Parameters = {}
+          Headers = [Authorization:"Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbi05YTU0NjZkY0B0ZXN0LmNvbSIsImV4cCI6MTc5NDc2MzE0MCwiaWF0IjoxNzk0NzYxMzQwLCJwZXJtaXNzaW9ucyI6WyJVU0VSX0NSRUFURSIsIlVTRVJfUkVBRCJdLCJyb2xlcyI6WyJST0xFX0FETUlOIl19.8N9AK3Fsob7ecS8DCvLvg58NIi8VIPTD7LVtSXDVbcs"]
+             Body = null
+    Session Attrs = {}
+
+Handler:
+             Type = org.springframework.web.servlet.resource.ResourceHttpRequestHandler
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = org.springframework.web.servlet.resource.NoResourceFoundException
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 404
+    Error message = No static resource api/roles/1/permissions.
+          Headers = [Vary:"Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = null
+             Body = 
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 23.06 s <<< FAILURE! -- in com.julyturadm.controller.RolePermissionControllerIntegrationTest
+[ERROR] com.julyturadm.controller.RolePermissionControllerIntegrationTest.adminShouldFindPermissionsByRoleId -- Time elapsed: 1.770 s <<< FAILURE!
+java.lang.AssertionError: Status expected:<200> but was:<404>
+	at org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)
+	at org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)
+	at org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)
+	at org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)
+	at com.julyturadm.controller.RolePermissionControllerIntegrationTest.adminShouldFindPermissionsByRoleId(RolePermissionControllerIntegrationTest.java:168)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   RolePermissionControllerIntegrationTest.adminShouldFindPermissionsByRoleId:168 Status expected:<200> but was:<404>
+[INFO] 
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  32.044 s
+[INFO] Finished at: 2026-11-15T13:49:08-03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project backend-api: There are test failures.
+[ERROR] 
+[ERROR] See /home/pedro/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Agora identificamos a causa com precisão: o Spring não está encontrando o
+`RolePermissionController` como controlador REST.
+
+O detalhe decisivo é:
+
+```
+Handler:
+Type = org.springframework.web.servlet.resource.ResourceHttpRequestHandler
+
+Resolved Exception:
+NoResourceFoundException
+
+Error message = No static resource api/roles/1/permissions.
+```
+
+Isso significa que a requisição nem chegou ao método do serviço.
+
+Portanto, não é um problema de banco de dados, associação ou autorização JWT.
+
+A autenticação funcionou: o login retornou `200` e gerou o token.
+
+Vamos verificar se o controlador está no pacote correto e se foi criado com o nome esperado, antes
+de modificar qualquer configuração.
+
+1. Execute estes comandos
+
+```
+printf '\n===== ROLE PERMISSION CONTROLLER =====\n'
+cat src/main/java/com/julyturadm/controller/RolePermissionController.java
+
+printf '\n===== ROLE CONTROLLER =====\n'
+head -n 35 src/main/java/com/julyturadm/controller/RoleController.java
+
+printf '\n===== MAIN APPLICATION =====\n'
+find src/main/java/com/julyturadm -maxdepth 2 -name '*Application.java' -print
+```
+
+Envie a saída completa.
+
+O que quero conferir:
+
+- Se `RolePermissionController` está em `com.julyturadm.controller`.
+- Se as anotações `@RestController` e `@RequestMapping` estão corretas.
+- Se a classe principal do Spring Boot está em `com.julyturadm` ou em um pacote que inclua os controllers na varredura de componentes.
+
+Não altere nada ainda. Vamos localizar a causa sem mexer nas configurações que já estão funcionando.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ printf '\n===== ROLE PERMISSION CONTROLLER =====\n'
+cat src/main/java/com/julyturadm/controller/RolePermissionController.java
+
+printf '\n===== ROLE CONTROLLER =====\n'
+head -n 35 src/main/java/com/julyturadm/controller/RoleController.java
+
+printf '\n===== MAIN APPLICATION =====\n'
+find src/main/java/com/julyturadm -maxdepth 2 -name '*Application.java' -print
+
+===== ROLE PERMISSION CONTROLLER =====
+cat: src/main/java/com/julyturadm/controller/RolePermissionController.java: Arquivo ou diretório inexistente
+
+===== ROLE CONTROLLER =====
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import com.julyturadm.dto.request.RoleCreateRequest;
+import com.julyturadm.dto.request.RoleUpdateRequest;
+import com.julyturadm.dto.response.RoleResponse;
+import com.julyturadm.service.RoleService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/api/roles")
+@RequiredArgsConstructor
+public class RoleController {
+
+    private final RoleService roleService;
+
+    //---
+    // Todos os metodos restritos ao ADMIN
+    // O uso de `hasRole('ADMIN')` está alinhado ao padrão do Spring Security:
+    // ele verifica a autoridade `ROLE_ADMIN`.
+    //---
+
+    // Cria um novo perfil.
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<RoleResponse> createRole(
+            @Valid @RequestBody RoleCreateRequest request) {
+
+===== MAIN APPLICATION =====
+src/main/java/com/julyturadm/JulyTurAdmApplication.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Encontramos o problema! A causa do `404` é simples: o arquivo&#x20;`RolePermissionController.java 
+não existe no diretório `controller`.
+
+Isso explica por que o Spring não registrou a rota.
+
+A classe principal está em `com.julyturadm`, portanto o pacote dos controllers está dentro do escopo
+normal de varredura.
+
+Vamos conferir onde o arquivo foi salvo, sem recriá-lo ainda.
+
+1. Procure o arquivo no projeto
+
+Execute:
+
+```
+find src -name 'RolePermissionController.java' -o -name 'RolePermissionService.java' -o -name 'RolePermissionResponse.java'
+```
+
+Envie o resultado.
+
+Se o controller estiver em outro diretório, vamos movê-lo para o local correto, preservando o conteúdo. Se não existir, vamos recriá-lo.
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+pedro@pedro-MS-7A15:~/Documentos/peter/VsCodeProject/Projects/JulyTurAdm/backend-api$ find src -name 'RolePermissionController.java' -o -name 'RolePermissionService.java' -o -name 'RolePermissionResponse.java'
+src/main/java/com/julyturadm/dto/response/RolePermissionResponse.java
+src/main/java/com/julyturadm/service/RolePermissionService.java
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+Confirmado: o `RolePermissionService` e o `RolePermissionResponse` existem, mas o 
+`RolePermissionController` realmente não foi criado. Por isso a rota retorna `404`.
+
+Vamos recriar somente esse arquivo.
+
+1. Crie o controller
+
+Execute no terminal:
+
+```
+cat > src/main/java/com/julyturadm/controller/RolePermissionController.java <<'EOF'
+package com.julyturadm.controller;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import com.julyturadm.dto.response.RolePermissionResponse;
+import com.julyturadm.service.RolePermissionService;
+
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequestMapping("/api/roles/{roleId}/permissions")
+@RequiredArgsConstructor
+public class RolePermissionController {
+
+    private final RolePermissionService rolePermissionService;
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<RolePermissionResponse>> findPermissionsByRoleId(
+            @PathVariable Long roleId) {
+
+        return ResponseEntity.ok(
+                rolePermissionService.findPermissionsByRoleId(roleId));
+    }
+
+    @PutMapping("/{permissionId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> assignPermissionToRole(
+            @PathVariable Long roleId,
+            @PathVariable Long permissionId) {
+
+        rolePermissionService.assignPermissionToRole(roleId, permissionId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @DeleteMapping("/{permissionId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> removePermissionFromRole(
+            @PathVariable Long roleId,
+            @PathVariable Long permissionId) {
+
+        rolePermissionService.removePermissionFromRole(roleId, permissionId);
+
+        return ResponseEntity.noContent().build();
+    }
+}
+EOF
+```
+
+2. Confira se o arquivo foi criado
+
+```
+cat src/main/java/com/julyturadm/controller/RolePermissionController.java
+```
+
+Depois me envie a saída. No próximo passo, vamos compilar e repetir o teste que apresentou `404`.
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+---------------------------------------------------------------------------------------------------
+Pedro disse:
+
+
+---------------------------------------------------------------------------------------------------
+Chat-Gpt disse:
+
+
+
+-------------------------------------------------fim-----------------------------------------------
+

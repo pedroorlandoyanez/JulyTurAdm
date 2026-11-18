@@ -17,4 +17,11 @@ public interface RolePermissionRepository
             Long roleId,
             Long permissionId
     );
+
+    // Verifica se o perfil possui permissões associadas.
+    boolean existsByRole_Id(Long roleId);
+         
+    // Verifica se a permissão está associada a algum perfil.
+    boolean existsByPermission_Id(Long permissionId);
+    
 }

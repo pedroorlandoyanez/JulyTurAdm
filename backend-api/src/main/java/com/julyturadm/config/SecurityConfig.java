@@ -32,10 +32,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+
 @Configuration
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
+      
     // `CustomUserDetailsService`: localiza o usuário e suas autoridades.
     private final CustomUserDetailsService userDetailsService;
 
@@ -111,6 +114,12 @@ public class SecurityConfig {
         return http.build();
     }
 
+    //---
+    // Converte roles e permissões em authorities
+    // Elimina duplicidades
+    // Trata claims ausentes
+    // Ignora valores de tipo inválido
+    //---
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
 
